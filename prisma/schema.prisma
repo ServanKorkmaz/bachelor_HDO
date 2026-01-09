@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LEADER
+  EMPLOYEE
+}
+
+enum NoteType {
+  GENERAL
+  ABSENCE
+  SICKNESS
+}
+
+enum NoteStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SwapRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users                User[]
+  shifts               Shift[]
+  notes                Note[]
+  swapRequests         SwapRequest[]
+  notifications        Notification[]
+  notificationSettings NotificationSettings?
+
+  @@map("teams")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      UserRole @default(EMPLOYEE)
+  teamId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team              Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  shifts            Shift[]
+  notesCreated      Note[]          @relation("NoteCreator")
+  swapRequestsMade  SwapRequest[]   @relation("SwapRequester")
+  swapRequestsFrom  SwapRequest[]   @relation("SwapFromUser")
+  swapRequestsTo    SwapRequest[]   @relation("SwapToUser")
+  swapRequestsDecided SwapRequest[] @relation("SwapDecider")
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model ShiftType {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  label           String
+  color           String   // hex color
+  defaultStartTime String  // HH:mm format
+  defaultEndTime  String   // HH:mm format
+  crossesMidnight Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  shifts Shift[]
+
+  @@map("shift_types")
+}
+
+model Shift {
+  id          String   @id @default(cuid())
+  teamId      String
+  userId      String
+  date        String   // YYYY-MM-DD format
+  startDateTime DateTime
+  endDateTime   DateTime
+  shiftTypeId String
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftType ShiftType @relation(fields: [shiftTypeId], references: [id], onDelete: Restrict)
+  swapRequests SwapRequest[]
+
+  @@index([teamId, date])
+  @@index([userId, date])
+  @@map("shifts")
+}
+
+model Note {
+  id          String     @id @default(cuid())
+  teamId      String
+  createdByUserId String
+  type        NoteType
+  status      NoteStatus @default(PENDING)
+  title       String?
+  body        String
+  dateFrom    String     // YYYY-MM-DD format
+  dateTo      String     // YYYY-MM-DD format
+  visibility  String     @default("ALL")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  team    Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy User @relation("NoteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, dateFrom, dateTo])
+  @@map("notes")
+}
+
+model SwapRequest {
+  id              String            @id @default(cuid())
+  teamId          String
+  requestedByUserId String
+  fromUserId      String
+  toUserId        String
+  shiftId         String
+  status          SwapRequestStatus @default(PENDING)
+  message         String?
+  createdAt       DateTime          @default(now())
+  decidedBy       String?
+  decidedAt       DateTime?
+
+  team            Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  requestedBy     User  @relation("SwapRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  fromUser        User  @relation("SwapFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser          User  @relation("SwapToUser", fields: [toUserId], references: [id], onDelete: Cascade)
+  shift           Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  decidedByUser   User? @relation("SwapDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
+
+  @@index([teamId, status])
+  @@index([requestedByUserId])
+  @@map("swap_requests")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String?
+  type      String   // e.g., "SHIFT_CREATED", "SWAP_EXECUTED", "NOTE_CREATED"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([teamId, userId, read])
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id        String   @id @default(cuid())
+  teamId    String   @unique
+  emailEnabled Boolean @default(true)
+  smsEndpoint String? // placeholder for future SMS integration
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
