@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
+
+const VALID_ROLES = ['ADMIN', 'LEADER', 'EMPLOYEE'] as const
 
 export async function PUT(
   request: Request,
@@ -10,7 +11,7 @@ export async function PUT(
     const body = await request.json()
     const { role } = body
 
-    if (!role || !Object.values(UserRole).includes(role)) {
+    if (!role || !VALID_ROLES.includes(role as any)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 

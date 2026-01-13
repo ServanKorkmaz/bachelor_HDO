@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parse } from 'date-fns'
 
+// Helper to check if user can edit shifts (reuses canEditShifts logic)
+function canEditShifts(userRole: string | null): boolean {
+  return userRole === 'ADMIN' || userRole === 'LEADER'
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const userRole = request.headers.get('x-user-role')
+    if (!canEditShifts(userRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const { date, userId, shiftTypeId, startTime, endTime, comment } = body
 
@@ -77,6 +87,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const userRole = request.headers.get('x-user-role')
+    if (!canEditShifts(userRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const shift = await prisma.shift.findUnique({
       where: { id: params.id },
       include: { user: true },
