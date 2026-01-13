@@ -20,15 +20,28 @@ export function RoleSwitcher() {
   useEffect(() => {
     // Fetch users for role switching
     fetch('/api/users')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch users')
+        }
+        return res.json()
+      })
       .then(data => {
-        setUsers(data)
-        // Auto-select first user on mount if no user selected
-        if (!currentUser && data.length > 0) {
-          setCurrentUser(data[0])
+        // Ensure data is an array
+        if (Array.isArray(data)) {
+          setUsers(data)
+          // Auto-select first user on mount if no user selected
+          if (!currentUser && data.length > 0) {
+            setCurrentUser(data[0])
+          }
+        } else {
+          setUsers([])
         }
       })
-      .catch(console.error)
+      .catch(error => {
+        console.error('Error fetching users:', error)
+        setUsers([])
+      })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUserSelect = (user: MockUser) => {
@@ -51,7 +64,7 @@ export function RoleSwitcher() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Bytt rolle/bruker</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {users.map((user) => (
+        {Array.isArray(users) && users.map((user) => (
           <DropdownMenuItem
             key={user.id}
             onClick={() => handleUserSelect(user)}
