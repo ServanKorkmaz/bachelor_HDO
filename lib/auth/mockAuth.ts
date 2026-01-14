@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { UserRole } from '@prisma/client'
+
+export type UserRole = 'ADMIN' | 'LEADER' | 'EMPLOYEE'
 
 export interface MockUser {
   id: string

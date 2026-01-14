@@ -96,12 +96,13 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   }, [shift, date, shiftTypes])
 
   const handleSave = async () => {
-    if (!date || !selectedShiftTypeId || !selectedUserId) return
+    const shiftDate = shift ? shift.date : date
+    if (!shiftDate || !selectedShiftTypeId || !selectedUserId) return
 
     setIsSaving(true)
     try {
       const shiftData = {
-        date,
+        date: shiftDate,
         userId: selectedUserId,
         shiftTypeId: selectedShiftTypeId,
         startTime,
@@ -112,9 +113,16 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       const url = shift ? `/api/shifts/${shift.id}` : '/api/shifts'
       const method = shift ? 'PUT' : 'POST'
 
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (currentUser?.role) {
+        headers['x-user-role'] = currentUser.role
+      }
+
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(shiftData),
       })
 
@@ -138,8 +146,14 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     if (!confirm('Er du sikker på at du vil slette denne vakten?')) return
 
     try {
+      const headers: HeadersInit = {}
+      if (currentUser?.role) {
+        headers['x-user-role'] = currentUser.role
+      }
+
       const response = await fetch(`/api/shifts/${shift.id}`, {
         method: 'DELETE',
+        headers,
       })
 
       if (response.ok) {
@@ -174,14 +188,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label>Tidspunkt</Label>
-            {shift ? (
-              <div className="p-3 bg-muted rounded-md">
-                <div className="font-medium">{shift.shiftType.label}</div>
-                <div className="text-sm text-muted-foreground">
-                  {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
-                </div>
-              </div>
-            ) : canEditShifts() ? (
+            {canEditShifts() ? (
               <div className="space-y-2">
                 <Select value={selectedShiftTypeId} onValueChange={setSelectedShiftTypeId}>
                   <SelectTrigger>
@@ -214,14 +221,36 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
                   </div>
                 </div>
               </div>
+            ) : shift ? (
+              <div className="p-3 bg-muted rounded-md">
+                <div className="font-medium">{shift.shiftType.label}</div>
+                <div className="text-sm text-muted-foreground">
+                  {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
+                </div>
+              </div>
             ) : null}
           </div>
 
           <div className="grid gap-2">
             <Label>Hvem</Label>
-            <div className="p-3 bg-muted rounded-md">
-              {displayUser}
-            </div>
+            {!shift && currentUser?.role === 'ADMIN' && canEditShifts() ? (
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Velg ansatt" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="p-3 bg-muted rounded-md">
+                {displayUser}
+              </div>
+            )}
           </div>
 
           {canEditShifts() && (
@@ -235,7 +264,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
             </div>
           )}
 
-          {shift && shift.comment && (
+          {shift && shift.comment && !canEditShifts() && (
             <div className="grid gap-2">
               <Label>Kommentar</Label>
               <div className="p-3 bg-muted rounded-md text-sm">

@@ -7,18 +7,23 @@ import { formatHours, calculateShiftHours } from '@/lib/date-utils'
 import { ShiftModal } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
 
+interface ShiftType {
+  id: string
+  code: string
+  label: string
+  color: string
+  defaultStartTime: string
+  defaultEndTime: string
+  crossesMidnight: boolean
+}
+
 interface Shift {
   id: string
   userId: string
   date: string
   startDateTime: string
   endDateTime: string
-  shiftType: {
-    id: string
-    code: string
-    label: string
-    color: string
-  }
+  shiftType: ShiftType
   user: {
     id: string
     name: string
