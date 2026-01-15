@@ -1,4 +1,4 @@
-import { Navigation } from '@/components/Navigation'
+import { Navigation } from '@/components/layout/Navigation'
 import { Toaster } from '@/components/ui/toaster'
 
 export default function AppLayout({
