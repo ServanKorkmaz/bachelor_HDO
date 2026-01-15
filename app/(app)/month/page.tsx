@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
-import { ShiftModal } from '@/components/ShiftModal'
+import { ShiftModal } from '@/components/schedule/ShiftModal'
 
 export default function MonthPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())

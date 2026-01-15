@@ -107,10 +107,9 @@ bachelor_HDO/
 │   └── api/                # API-ruter
 ├── components/
 │   ├── ui/                 # shadcn/ui komponenter
-│   ├── WeekGrid.tsx        # Ukesgrid-komponent
-│   ├── ShiftModal.tsx      # Modal for vakt-detaljer
-│   ├── Navigation.tsx      # Navigasjonsbar
-│   └── RoleSwitcher.tsx    # Rollebytter
+│   ├── layout/             # Navigasjon og varsler
+│   ├── auth/               # Rollebytter og auth UI
+│   └── schedule/           # Vaktplan-komponenter
 ├── lib/
 │   ├── prisma.ts           # Prisma-klient
 │   ├── auth/               # Mock-autentisering

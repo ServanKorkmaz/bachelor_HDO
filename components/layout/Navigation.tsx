@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { RoleSwitcher } from './RoleSwitcher'
+import { RoleSwitcher } from '../auth/RoleSwitcher'
 import { NotificationsPanel } from './NotificationsPanel'
 import { cn } from '@/lib/utils'
 

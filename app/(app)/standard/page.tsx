@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { format, addWeeks, subWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { WeekGrid } from '@/components/WeekGrid'
+import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
