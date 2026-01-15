@@ -24,7 +24,7 @@ import { MockUser } from '@/lib/auth/mockAuth'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
-interface ShiftType {
+export interface ShiftType {
   id: string
   code: string
   label: string
@@ -34,7 +34,7 @@ interface ShiftType {
   crossesMidnight: boolean
 }
 
-interface Shift {
+export interface Shift {
   id: string
   userId: string
   date: string
@@ -96,12 +96,13 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   }, [shift, date, shiftTypes])
 
   const handleSave = async () => {
-    if (!date || !selectedShiftTypeId || !selectedUserId) return
+    const effectiveDate = shift?.date ?? date
+    if (!effectiveDate || !selectedShiftTypeId || !selectedUserId) return
 
     setIsSaving(true)
     try {
       const shiftData = {
-        date,
+        date: effectiveDate,
         userId: selectedUserId,
         shiftTypeId: selectedShiftTypeId,
         startTime,
