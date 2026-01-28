@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+/** Admin page for notification settings per team. */
 export default function SettingsPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')

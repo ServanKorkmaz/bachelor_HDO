@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/toast"
 import { useToast } from "@/components/ui/use-toast"
 
+/** Renders the toast stack using the shared toast store. */
 export function Toaster() {
   const { toasts } = useToast()
 

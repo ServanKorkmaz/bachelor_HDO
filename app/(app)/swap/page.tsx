@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+/** Shift swap request page with create/approve flows. */
 export default function SwapPage() {
   const [swapRequests, setSwapRequests] = useState<any[]>([])
   const [shifts, setShifts] = useState<any[]>([])

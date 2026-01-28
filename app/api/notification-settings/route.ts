@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** Get notification settings for a team, creating defaults if missing. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -32,6 +33,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** Upsert notification settings for a team. */
 export async function PUT(request: Request) {
   try {
     const body = await request.json()

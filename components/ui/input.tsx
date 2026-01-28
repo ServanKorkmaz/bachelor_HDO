@@ -2,9 +2,11 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/** Props for the shared Input component. */
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
+/** Shared input component with consistent styling. */
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (

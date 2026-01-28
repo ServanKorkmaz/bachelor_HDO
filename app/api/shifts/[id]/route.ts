@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parse } from 'date-fns'
 
+/** Update a shift by id and notify the affected user. */
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
@@ -72,6 +73,7 @@ export async function PUT(
   }
 }
 
+/** Delete a shift by id and notify the affected user. */
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }

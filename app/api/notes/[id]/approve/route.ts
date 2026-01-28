@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { NoteStatus } from '@prisma/client'
 
+/** Approve or reject a note by id and notify the creator. */
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
