@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
 import { ShiftModal } from '@/components/ShiftModal'
 
+/** Monthly calendar view of shifts with per-day summaries. */
 export default function MonthPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [shifts, setShifts] = useState<any[]>([])

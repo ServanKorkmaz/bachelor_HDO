@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List notes for a team, optionally within a date range. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** Create a note and notify the creator. */
 export async function POST(request: Request) {
   try {
     const body = await request.json()

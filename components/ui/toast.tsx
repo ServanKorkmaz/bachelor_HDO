@@ -5,8 +5,10 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** Root provider for toast notifications. */
 const ToastProvider = ToastPrimitives.Provider
 
+/** Container where toasts are rendered. */
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>
@@ -38,6 +40,7 @@ const toastVariants = cva(
   }
 )
 
+/** Toast root component with variant support. */
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
@@ -53,6 +56,7 @@ const Toast = React.forwardRef<
 })
 Toast.displayName = ToastPrimitives.Root.displayName
 
+/** Optional action button inside a toast. */
 const ToastAction = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Action>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Action>
@@ -68,6 +72,7 @@ const ToastAction = React.forwardRef<
 ))
 ToastAction.displayName = ToastPrimitives.Action.displayName
 
+/** Close button for a toast. */
 const ToastClose = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Close>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Close>
@@ -86,6 +91,7 @@ const ToastClose = React.forwardRef<
 ))
 ToastClose.displayName = ToastPrimitives.Close.displayName
 
+/** Title text within a toast. */
 const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
@@ -98,6 +104,7 @@ const ToastTitle = React.forwardRef<
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 
+/** Description text within a toast. */
 const ToastDescription = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Description>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Description>
@@ -110,8 +117,10 @@ const ToastDescription = React.forwardRef<
 ))
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
+/** Props for the Toast component. */
 type ToastProps = React.ComponentPropsWithoutRef<typeof Toast>
 
+/** Element type for custom toast actions. */
 type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List swap requests for a team. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** Create a swap request and notify the team. */
 export async function POST(request: Request) {
   try {
     const body = await request.json()

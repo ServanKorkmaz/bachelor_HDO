@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+/** Agenda view showing upcoming shifts and notes. */
 export default function AgendaPage() {
   const [shifts, setShifts] = useState<any[]>([])
   const [notes, setNotes] = useState<any[]>([])

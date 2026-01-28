@@ -8,6 +8,7 @@ import { WeekGrid } from '@/components/WeekGrid'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
+/** Standard weekly schedule view with team and user filters. */
 export default function StandardPlanPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [shifts, setShifts] = useState<any[]>([])
