@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parse, format } from 'date-fns'
 
+/** List shifts for a team, optionally filtered by date range or user. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
   }
 }
 
+/** Create a shift and emit a notification for the affected user. */
 export async function POST(request: Request) {
   try {
     const body = await request.json()

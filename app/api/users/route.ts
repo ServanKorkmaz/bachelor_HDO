@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List all users. */
 export async function GET() {
   try {
     const users = await prisma.user.findMany({

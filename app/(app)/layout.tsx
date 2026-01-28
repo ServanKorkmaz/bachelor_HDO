@@ -1,6 +1,7 @@
 import { Navigation } from '@/components/Navigation'
 import { Toaster } from '@/components/ui/toaster'
 
+/** Shared layout for authenticated app routes. */
 export default function AppLayout({
   children,
 }: {
