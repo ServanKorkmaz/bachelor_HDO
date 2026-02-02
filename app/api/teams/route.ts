@@ -19,10 +19,22 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { name } = body
+    const { name, currentUserId } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { role: true },
+    })
+
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
     const team = await prisma.team.create({

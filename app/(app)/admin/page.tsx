@@ -39,7 +39,7 @@ export default function AdminPage() {
         <Link href="/admin/settings">
           <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
             <Settings className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Innstillinger</h2>
+            <h2 className="text-lg font-semibold mb-1">Varslinger</h2>
             <p className="text-sm text-muted-foreground">Varslingsinnstillinger</p>
           </div>
         </Link>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
+const ALLOWED_ROLES = ['ADMIN', 'LEADER', 'EMPLOYEE'] as const
 
 /** Update a user's role by id. */
 export async function PUT(
@@ -9,9 +9,22 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { role } = body
+    const { role, currentUserId } = body
 
-    if (!role || !Object.values(UserRole).includes(role)) {
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { role: true },
+    })
+
+    if (!currentUser || currentUser.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
+    if (!role || !ALLOWED_ROLES.includes(role)) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
