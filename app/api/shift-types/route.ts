@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List all shift types. */
 export async function GET() {
   try {
     const shiftTypes = await prisma.shiftType.findMany({
@@ -14,6 +15,7 @@ export async function GET() {
   }
 }
 
+/** Create a new shift type. */
 export async function POST(request: Request) {
   try {
     const body = await request.json()

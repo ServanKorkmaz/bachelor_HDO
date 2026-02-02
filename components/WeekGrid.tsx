@@ -5,26 +5,8 @@ import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
 import { ShiftModal } from './ShiftModal'
+import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
-
-interface Shift {
-  id: string
-  userId: string
-  date: string
-  startDateTime: string
-  endDateTime: string
-  shiftType: {
-    id: string
-    code: string
-    label: string
-    color: string
-  }
-  user: {
-    id: string
-    name: string
-  }
-  comment?: string
-}
 
 interface WeekGridProps {
   weekDates: Date[]
@@ -33,6 +15,7 @@ interface WeekGridProps {
   currentUser: MockUser | null
 }
 
+/** Render the weekly schedule grid with per-user totals and shift editing. */
 export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProps) {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)

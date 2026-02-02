@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List all teams. */
 export async function GET() {
   try {
     const teams = await prisma.team.findMany({
@@ -14,6 +15,7 @@ export async function GET() {
   }
 }
 
+/** Create a team and default notification settings. */
 export async function POST(request: Request) {
   try {
     const body = await request.json()

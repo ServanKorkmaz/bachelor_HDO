@@ -5,9 +5,11 @@ import { format, addWeeks, subWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { WeekGrid } from '@/components/WeekGrid'
+import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
+/** Standard weekly schedule view with team and user filters. */
 export default function StandardPlanPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [shifts, setShifts] = useState<any[]>([])
@@ -15,7 +17,8 @@ export default function StandardPlanPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const { currentUser } = useAuth()
+  const { currentUser, canEditShifts } = useAuth()
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
   const weekDates = useMemo(() => getWeekDatesUtil(selectedDate), [selectedDate])
@@ -82,6 +85,11 @@ export default function StandardPlanPage() {
           <Button variant="outline" onClick={handleNextWeek} size="icon">
             <ChevronRight className="h-4 w-4" />
           </Button>
+          {canEditShifts() && selectedTeamId && (
+            <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
+              Bulk endring
+            </Button>
+          )}
         </div>
       </div>
 
@@ -130,6 +138,13 @@ export default function StandardPlanPage() {
         shifts={shifts}
         currentUser={currentUser}
       />
+
+      {isBulkModalOpen && selectedTeamId && (
+        <BulkShiftModal
+          teamId={selectedTeamId}
+          onClose={() => setIsBulkModalOpen(false)}
+        />
+      )}
     </div>
   )
 }

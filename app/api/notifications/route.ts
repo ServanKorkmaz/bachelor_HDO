@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** List notifications for a user or team. */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)

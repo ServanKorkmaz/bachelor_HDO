@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth/mockAuth'
 
+/** Notification bell with polling and mark-as-read handling. */
 export function NotificationsPanel() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)

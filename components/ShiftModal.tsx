@@ -24,7 +24,8 @@ import { MockUser } from '@/lib/auth/mockAuth'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
-interface ShiftType {
+/** Shift type metadata used for labeling and default times. */
+export interface ShiftType {
   id: string
   code: string
   label: string
@@ -34,7 +35,8 @@ interface ShiftType {
   crossesMidnight: boolean
 }
 
-interface Shift {
+/** Shift domain model used by the schedule UI. */
+export interface Shift {
   id: string
   userId: string
   date: string
@@ -56,6 +58,7 @@ interface ShiftModalProps {
   currentUser: MockUser | null
 }
 
+/** Modal for viewing, creating, or updating a single shift. */
 export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftModalProps) {
   const { canEditShifts } = useAuth()
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([])
@@ -96,12 +99,13 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   }, [shift, date, shiftTypes])
 
   const handleSave = async () => {
-    if (!date || !selectedShiftTypeId || !selectedUserId) return
+    const effectiveDate = shift?.date ?? date
+    if (!effectiveDate || !selectedShiftTypeId || !selectedUserId) return
 
     setIsSaving(true)
     try {
       const shiftData = {
-        date,
+        date: effectiveDate,
         userId: selectedUserId,
         shiftTypeId: selectedShiftTypeId,
         startTime,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** Reject a swap request by id and notify the requester. */
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

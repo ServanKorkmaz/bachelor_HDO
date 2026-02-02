@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { UserRole } from '@prisma/client'
 
+/** Update a user's role by id. */
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }

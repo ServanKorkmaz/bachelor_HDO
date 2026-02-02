@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
 
+/** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)

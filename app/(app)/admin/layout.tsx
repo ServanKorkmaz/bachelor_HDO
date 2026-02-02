@@ -1,3 +1,4 @@
+/** Layout wrapper for admin routes. */
 export default function AdminLayout({
   children,
 }: {

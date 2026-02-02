@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+/** Dropdown to switch the current mock user/role for demo purposes. */
 export function RoleSwitcher() {
   const { currentUser, setCurrentUser } = useAuth()
   const [users, setUsers] = useState<MockUser[]>([])

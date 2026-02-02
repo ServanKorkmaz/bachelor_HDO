@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+/** Admin page to manage user roles. */
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([])
   const [teams, setTeams] = useState<any[]>([])

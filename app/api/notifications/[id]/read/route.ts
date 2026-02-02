@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/** Mark a notification as read. */
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

@@ -1,4 +1,5 @@
 // Placeholder for future SMS endpoint integration
+/** Payload for sending an SMS notification. */
 export interface SmsNotification {
   to: string
   message: string
@@ -6,6 +7,7 @@ export interface SmsNotification {
   userId?: string
 }
 
+/** Send an SMS notification (stub implementation). */
 export async function sendSms(notification: SmsNotification): Promise<void> {
   // Stub implementation - placeholder for existing SMS endpoint integration
   console.log('📱 SMS notification (stub):', {

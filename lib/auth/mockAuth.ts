@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { UserRole } from '@prisma/client'
 
+/** Lightweight user shape used by the mock auth store. */
 export interface MockUser {
   id: string
   name: string
@@ -19,6 +20,7 @@ interface AuthState {
   canApproveSwaps: () => boolean
 }
 
+/** Mock auth store with role-based helpers for UI gating. */
 export const useAuth = create<AuthState>((set, get) => ({
   currentUser: null,
   setCurrentUser: (user) => set({ currentUser: user }),

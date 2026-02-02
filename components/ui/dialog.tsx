@@ -4,14 +4,19 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** Root dialog container. */
 const Dialog = DialogPrimitive.Root
 
+/** Element that opens the dialog. */
 const DialogTrigger = DialogPrimitive.Trigger
 
+/** Portal wrapper for dialog content. */
 const DialogPortal = DialogPrimitive.Portal
 
+/** Close control for the dialog. */
 const DialogClose = DialogPrimitive.Close
 
+/** Full-screen overlay behind the dialog. */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -27,6 +32,7 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/** Dialog content container with default styling. */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -51,6 +57,7 @@ const DialogContent = React.forwardRef<
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
+/** Header section for dialog titles and descriptions. */
 const DialogHeader = ({
   className,
   ...props
@@ -65,6 +72,7 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+/** Footer section for dialog actions. */
 const DialogFooter = ({
   className,
   ...props
@@ -79,6 +87,7 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = "DialogFooter"
 
+/** Dialog title text. */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -94,6 +103,7 @@ const DialogTitle = React.forwardRef<
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+/** Dialog description text. */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

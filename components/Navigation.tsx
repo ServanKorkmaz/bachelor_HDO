@@ -16,6 +16,7 @@ const navItems = [
   { href: '/admin', label: 'Admin', icon: Lock },
 ]
 
+/** Primary top navigation for the app pages. */
 export function Navigation() {
   const pathname = usePathname()
 

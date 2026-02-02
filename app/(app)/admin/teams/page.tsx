@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2 } from 'lucide-react'
 
+/** Admin page to create and remove teams. */
 export default function TeamsPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
