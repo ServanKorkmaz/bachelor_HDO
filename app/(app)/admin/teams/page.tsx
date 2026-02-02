@@ -13,9 +13,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2 } from 'lucide-react'
+import { useAuth } from '@/lib/auth/mockAuth'
 
 /** Admin page to create and remove teams. */
 export default function TeamsPage() {
+  const { currentUser, isAdmin } = useAuth()
   const [teams, setTeams] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
@@ -33,12 +35,16 @@ export default function TeamsPage() {
 
   const handleCreate = async () => {
     if (!newTeamName.trim()) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan opprette team')
+      return
+    }
 
     try {
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName }),
+        body: JSON.stringify({ name: newTeamName, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -55,11 +61,17 @@ export default function TeamsPage() {
   }
 
   const handleDelete = async (teamId: string) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan slette team')
+      return
+    }
     if (!confirm('Er du sikker på at du vil slette dette teamet?')) return
 
     try {
       const response = await fetch(`/api/teams/${teamId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -77,11 +89,20 @@ export default function TeamsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Team</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+        <Button
+          onClick={() => isAdmin() && setIsCreateModalOpen(true)}
+          disabled={!isAdmin()}
+          title={isAdmin() ? undefined : 'Kun admin kan opprette team'}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nytt team
         </Button>
       </div>
+      {!isAdmin() && (
+        <div className="text-sm text-muted-foreground">
+          Kun admin kan opprette eller slette team.
+        </div>
+      )}
 
       <div className="space-y-2">
         {teams.map(team => (
@@ -99,6 +120,8 @@ export default function TeamsPage() {
               variant="destructive"
               size="icon"
               onClick={() => handleDelete(team.id)}
+              disabled={!isAdmin()}
+              title={isAdmin() ? undefined : 'Kun admin kan slette team'}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

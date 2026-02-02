@@ -9,9 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAuth } from '@/lib/auth/mockAuth'
 
 /** Admin page to manage user roles. */
 export default function UsersPage() {
+  const { currentUser, isAdmin } = useAuth()
   const [users, setUsers] = useState<any[]>([])
   const [teams, setTeams] = useState<any[]>([])
 
@@ -28,11 +30,16 @@ export default function UsersPage() {
   }, [])
 
   const handleRoleChange = async (userId: string, newRole: string) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan endre roller')
+      return
+    }
+
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify({ role: newRole, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -53,6 +60,11 @@ export default function UsersPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-3xl font-bold">Brukere</h1>
+      {!isAdmin() && (
+        <div className="text-sm text-muted-foreground">
+          Kun admin kan endre roller.
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
@@ -73,6 +85,7 @@ export default function UsersPage() {
                   <Select
                     value={user.role}
                     onValueChange={(value) => handleRoleChange(user.id, value)}
+                    disabled={!isAdmin()}
                   >
                     <SelectTrigger className="w-[150px]">
                       <SelectValue />
