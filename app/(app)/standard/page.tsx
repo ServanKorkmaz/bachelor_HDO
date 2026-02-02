@@ -87,7 +87,7 @@ export default function StandardPlanPage() {
           </Button>
           {canEditShifts() && selectedTeamId && (
             <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
-              Bulk endring
+              Endre vakt
             </Button>
           )}
         </div>

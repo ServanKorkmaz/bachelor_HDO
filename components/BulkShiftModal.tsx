@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { format, subDays } from 'date-fns'
+import { format, parse, subDays } from 'date-fns'
+import { nb } from 'date-fns/locale/nb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,12 +60,217 @@ const MAX_ROWS = 200
 const SHIFT_LOOKBACK_DAYS = 30
 const SHIFT_LOOKAHEAD_DAYS = 90
 
+type ShiftFilter = 'upcoming' | 'past' | 'all'
+
+const parseDate = (value: string) => parse(value, 'yyyy-MM-dd', new Date())
+
+const formatShiftDate = (value: string) =>
+  format(parseDate(value), 'EEE dd.MM', { locale: nb })
+
+const formatShiftMonth = (value: string) =>
+  format(parseDate(value), 'MMMM yyyy', { locale: nb })
+
+interface EmployeeSelectProps {
+  users: UserSummary[]
+  value: string
+  onChange: (value: string) => void
+  isLoading: boolean
+  error: string | null
+}
+
+function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSelectProps) {
+  const [query, setQuery] = useState('')
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return users
+    return users.filter(user => user.name.toLowerCase().includes(normalized))
+  }, [query, users])
+
+  return (
+    <div className="grid gap-2">
+      <Label>Ansatt</Label>
+      <Input
+        placeholder="Søk ansatt..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <Select value={value} onValueChange={onChange} disabled={isLoading || !!error}>
+        <SelectTrigger>
+          <SelectValue placeholder={isLoading ? 'Laster ansatte...' : 'Velg ansatt'} />
+        </SelectTrigger>
+        <SelectContent>
+          {error && (
+            <div className="px-3 py-2 text-sm text-destructive">
+              Kunne ikke laste ansatte
+            </div>
+          )}
+          {!error && filtered.length === 0 && (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              Ingen treff
+            </div>
+          )}
+          {!error && filtered.map(user => (
+            <SelectItem key={user.id} value={user.id}>
+              {user.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+interface ShiftListItemProps {
+  shift: any
+  selected: boolean
+  onSelect: () => void
+}
+
+function ShiftListItem({ shift, selected, onSelect }: ShiftListItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-md border p-3 text-left transition-colors ${
+        selected ? 'border-primary bg-primary/10' : 'hover:bg-accent'
+      }`}
+      aria-pressed={selected}
+    >
+      <div className="font-medium text-sm">{formatShiftDate(shift.date)}</div>
+      <div className="text-xs text-muted-foreground">
+        {shift.shiftType?.label || 'Vakt'} · {format(new Date(shift.startDateTime), 'HH:mm')}–
+        {format(new Date(shift.endDateTime), 'HH:mm')}
+      </div>
+    </button>
+  )
+}
+
+interface EmployeeShiftPickerProps {
+  shifts: any[]
+  selectedShiftId?: string
+  onSelect: (shiftId: string) => void
+  isLoading: boolean
+  error: string | null
+}
+
+function EmployeeShiftPicker({
+  shifts,
+  selectedShiftId,
+  onSelect,
+  isLoading,
+  error,
+}: EmployeeShiftPickerProps) {
+  const [filter, setFilter] = useState<ShiftFilter>('upcoming')
+  const [query, setQuery] = useState('')
+  const today = format(new Date(), 'yyyy-MM-dd')
+
+  const filtered = useMemo(() => {
+    let list = shifts
+    if (filter === 'upcoming') {
+      list = list.filter(shift => shift.date >= today)
+      list = list.sort((a, b) => a.date.localeCompare(b.date))
+    } else if (filter === 'past') {
+      list = list.filter(shift => shift.date < today)
+      list = list.sort((a, b) => b.date.localeCompare(a.date))
+    } else {
+      list = list.sort((a, b) => a.date.localeCompare(b.date))
+    }
+
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return list
+    return list.filter(shift => {
+      const label = shift.shiftType?.label?.toLowerCase() || ''
+      return shift.date.includes(normalized) || label.includes(normalized)
+    })
+  }, [filter, query, shifts, today])
+
+  const grouped = useMemo(() => {
+    const groups = new Map<string, any[]>()
+    filtered.forEach(shift => {
+      const month = formatShiftMonth(shift.date)
+      if (!groups.has(month)) {
+        groups.set(month, [])
+      }
+      groups.get(month)!.push(shift)
+    })
+    return Array.from(groups.entries())
+  }, [filtered])
+
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFilter('upcoming')}
+          className={filter === 'upcoming' ? 'bg-accent' : ''}
+        >
+          Kommende
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFilter('past')}
+          className={filter === 'past' ? 'bg-accent' : ''}
+        >
+          Tidligere
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFilter('all')}
+          className={filter === 'all' ? 'bg-accent' : ''}
+        >
+          Alle
+        </Button>
+        <Input
+          placeholder="Søk dato eller vakttype..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="sm:max-w-[260px]"
+        />
+      </div>
+
+      <div className="max-h-64 overflow-y-auto rounded-md border p-3">
+        {isLoading && (
+          <div className="text-sm text-muted-foreground">Laster vakter...</div>
+        )}
+        {error && (
+          <div className="text-sm text-destructive">Kunne ikke laste vakter</div>
+        )}
+        {!isLoading && !error && filtered.length === 0 && (
+          <div className="text-sm text-muted-foreground">
+            Ingen vakter i valgt filter
+          </div>
+        )}
+        {!isLoading && !error && grouped.map(([month, monthShifts]) => (
+          <div key={month} className="mb-3">
+            <div className="mb-2 text-xs font-semibold text-muted-foreground">{month}</div>
+            <div className="grid gap-2">
+              {monthShifts.map(shift => (
+                <ShiftListItem
+                  key={shift.id}
+                  shift={shift}
+                  selected={shift.id === selectedShiftId}
+                  onSelect={() => onSelect(shift.id)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** Modal for bulk create/update/delete of shifts across users and dates. */
 export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const { currentUser } = useAuth()
   const [action, setAction] = useState<BulkAction>('create')
   const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([])
   const [users, setUsers] = useState<UserSummary[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [usersError, setUsersError] = useState<string | null>(null)
   const [rows, setRows] = useState<BulkShiftRow[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [result, setResult] = useState<{
@@ -72,8 +278,12 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     failures: Array<{ userId: string; date: string; error: string }>
   } | null>(null)
   const [teamShifts, setTeamShifts] = useState<any[]>([])
+  const [shiftsLoading, setShiftsLoading] = useState(false)
+  const [shiftsError, setShiftsError] = useState<string | null>(null)
 
   useEffect(() => {
+    setUsersLoading(true)
+    setUsersError(null)
     fetch('/api/shift-types')
       .then(res => res.json())
       .then(data => {
@@ -84,11 +294,19 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     fetch('/api/users')
       .then(res => res.json())
       .then(data => setUsers(data))
-      .catch(console.error)
+      .catch((error) => {
+        console.error(error)
+        setUsersError('Kunne ikke laste ansatte')
+      })
+      .finally(() => {
+        setUsersLoading(false)
+      })
   }, [])
 
   useEffect(() => {
     if (!teamId) return
+    setShiftsLoading(true)
+    setShiftsError(null)
     const today = new Date()
     const dateFrom = format(subDays(today, SHIFT_LOOKBACK_DAYS), 'yyyy-MM-dd')
     const dateTo = format(new Date(today.getTime() + SHIFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
@@ -96,7 +314,13 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     fetch(`/api/shifts?teamId=${teamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
       .then(res => res.json())
       .then(data => setTeamShifts(data))
-      .catch(console.error)
+      .catch((error) => {
+        console.error(error)
+        setShiftsError('Kunne ikke laste vakter')
+      })
+      .finally(() => {
+        setShiftsLoading(false)
+      })
   }, [teamId])
 
   const defaultShiftType = useMemo(() => shiftTypes[0] || null, [shiftTypes])
@@ -112,18 +336,6 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const shiftsById = useMemo(
     () => new Map(teamShifts.map(shift => [shift.id, shift])),
     [teamShifts]
-  )
-  const shiftsForDropdown = useMemo(
-    () => teamShifts.map(shift => ({
-      id: shift.id,
-      userId: shift.userId,
-      date: shift.date,
-      shiftTypeId: shift.shiftTypeId,
-      startTime: format(new Date(shift.startDateTime), 'HH:mm'),
-      endTime: format(new Date(shift.endDateTime), 'HH:mm'),
-      label: `${userNameById.get(shift.userId) || 'Ukjent'} · ${shift.date} · ${shift.shiftType?.label || 'Vakt'} (${format(new Date(shift.startDateTime), 'HH:mm')}-${format(new Date(shift.endDateTime), 'HH:mm')})`,
-    })),
-    [teamShifts, userNameById]
   )
   const shiftsPerDate = useMemo(() => {
     const map = new Map<string, number>()
@@ -298,28 +510,21 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
               const capacity = teamUsers.length
               const available = capacity ? Math.max(0, capacity - (scheduledCount || 0)) : null
 
+              const employeeShifts = row.userId
+                ? teamShifts.filter(shift => shift.userId === row.userId)
+                : []
+
               return (
                 <div key={row.id} className="rounded-md border p-3">
                   {isCreate && (
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label>Ansatt</Label>
-                        <Select
-                          value={row.userId}
-                          onValueChange={(value) => updateRow(row.id, { userId: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Velg ansatt" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teamUsers.map(user => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <EmployeeSelect
+                        users={teamUsers}
+                        value={row.userId}
+                        onChange={(value) => updateRow(row.id, { userId: value })}
+                        isLoading={usersLoading}
+                        error={usersError}
+                      />
                       <div className="grid gap-2">
                         <Label>Dato</Label>
                         <Input
@@ -337,43 +542,55 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                   )}
 
                   {!isCreate && (
-                    <div className="grid gap-2">
-                      <Label>Oppsatt vakt</Label>
-                      <Select
-                        value={row.shiftId || ''}
-                        onValueChange={(value) => {
-                          const shift = shiftsById.get(value)
-                          if (!shift) {
-                            updateRow(row.id, { shiftId: value })
-                            return
-                          }
+                    <div className="grid gap-3">
+                      <EmployeeSelect
+                        users={teamUsers}
+                        value={row.userId}
+                        onChange={(value) => {
                           updateRow(row.id, {
-                            shiftId: value,
-                            userId: shift.userId,
-                            date: shift.date,
-                            shiftTypeId: shift.shiftTypeId,
-                            startTime: format(new Date(shift.startDateTime), 'HH:mm'),
-                            endTime: format(new Date(shift.endDateTime), 'HH:mm'),
-                            comment: shift.comment || '',
+                            userId: value,
+                            shiftId: undefined,
+                            date: '',
+                            shiftTypeId: defaultShiftType?.id || '',
+                            startTime: defaultShiftType?.defaultStartTime || '',
+                            endTime: defaultShiftType?.defaultEndTime || '',
+                            comment: '',
                             useCustomTime: false,
                           })
                         }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Velg vakt" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {shiftsForDropdown.map(shift => (
-                            <SelectItem key={shift.id} value={shift.id}>
-                              {shift.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        isLoading={usersLoading}
+                        error={usersError}
+                      />
+                      {row.userId ? (
+                        <EmployeeShiftPicker
+                          shifts={employeeShifts}
+                          selectedShiftId={row.shiftId}
+                          onSelect={(value) => {
+                            const shift = shiftsById.get(value)
+                            if (!shift) return
+                            updateRow(row.id, {
+                              shiftId: value,
+                              userId: shift.userId,
+                              date: shift.date,
+                              shiftTypeId: shift.shiftTypeId,
+                              startTime: format(new Date(shift.startDateTime), 'HH:mm'),
+                              endTime: format(new Date(shift.endDateTime), 'HH:mm'),
+                              comment: shift.comment || '',
+                              useCustomTime: false,
+                            })
+                          }}
+                          isLoading={shiftsLoading}
+                          error={shiftsError}
+                        />
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Velg ansatt for å se vakter.
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {(isCreate || isUpdate) && (
+                  {(isCreate || (isUpdate && row.shiftId)) && (
                     <div className="mt-3 grid gap-2">
                       <Label>Vakt</Label>
                       <Select
@@ -402,7 +619,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || isUpdate) && (
+                  {(isCreate || (isUpdate && row.shiftId)) && (
                     <div className="mt-3 grid gap-2">
                       <div className="flex items-center gap-2">
                         <input
@@ -435,7 +652,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || isUpdate) && (
+                  {(isCreate || (isUpdate && row.shiftId)) && (
                     <div className="mt-3 grid gap-2">
                       <Label>Kommentar (valgfritt)</Label>
                       <Input
