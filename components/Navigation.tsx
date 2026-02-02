@@ -13,7 +13,7 @@ const navItems = [
   { href: '/month', label: 'Måned', icon: CalendarDays },
   { href: '/agenda', label: 'Agenda', icon: List },
   { href: '/swap', label: 'Vaktbytter', icon: RefreshCw },
-  { href: '/admin', label: 'Admin', icon: Lock },
+  { href: '/admin', label: 'Innstillinger', icon: Lock },
 ]
 
 /** Primary top navigation for the app pages. */
