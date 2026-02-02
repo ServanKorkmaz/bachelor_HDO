@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { UserRole } from '@prisma/client'
+
+export type UserRole = 'ADMIN' | 'LEADER' | 'EMPLOYEE'
 
 /** Lightweight user shape used by the mock auth store. */
 export interface MockUser {

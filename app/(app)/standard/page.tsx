@@ -26,20 +26,42 @@ export default function StandardPlanPage() {
   useEffect(() => {
     // Fetch teams
     fetch('/api/teams')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch teams')
+        }
+        return res.json()
+      })
       .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
+        if (Array.isArray(data)) {
+          setTeams(data)
+          if (data.length > 0 && !selectedTeamId) {
+            setSelectedTeamId(data[0].id)
+          }
+        } else {
+          setTeams([])
         }
       })
-      .catch(console.error)
+      .catch(error => {
+        console.error('Error fetching teams:', error)
+        setTeams([])
+      })
 
     // Fetch users
     fetch('/api/users')
-      .then(res => res.json())
-      .then(data => setUsers(data))
-      .catch(console.error)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch users')
+        }
+        return res.json()
+      })
+      .then(data => {
+        setUsers(Array.isArray(data) ? data : [])
+      })
+      .catch(error => {
+        console.error('Error fetching users:', error)
+        setUsers([])
+      })
   }, [])
 
   useEffect(() => {
@@ -49,9 +71,19 @@ export default function StandardPlanPage() {
     const endDate = format(weekDates[6], 'yyyy-MM-dd')
 
     fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
-      .then(res => res.json())
-      .then(data => setShifts(data))
-      .catch(console.error)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch shifts')
+        }
+        return res.json()
+      })
+      .then(data => {
+        setShifts(Array.isArray(data) ? data : [])
+      })
+      .catch(error => {
+        console.error('Error fetching shifts:', error)
+        setShifts([])
+      })
   }, [selectedTeamId, weekStart, weekDates])
 
   const handlePrevWeek = () => {
@@ -112,7 +144,7 @@ export default function StandardPlanPage() {
             className="px-3 py-1 rounded-md border bg-background text-foreground"
           >
             <option value="">Alle</option>
-            {users.map(u => (
+            {Array.isArray(users) && users.map(u => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
           </select>
@@ -125,7 +157,7 @@ export default function StandardPlanPage() {
             onChange={(e) => setSelectedTeamId(e.target.value)}
             className="px-3 py-1 rounded-md border bg-background text-foreground"
           >
-            {teams.map(t => (
+            {Array.isArray(teams) && teams.map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>

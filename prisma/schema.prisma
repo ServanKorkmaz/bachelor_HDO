@@ -10,30 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  ADMIN
-  LEADER
-  EMPLOYEE
-}
-
-enum NoteType {
-  GENERAL
-  ABSENCE
-  SICKNESS
-}
-
-enum NoteStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum SwapRequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  EXECUTED
-}
+// Enums removed - SQLite doesn't support enums, using String instead
 
 model Team {
   id        String   @id @default(cuid())
@@ -55,7 +32,7 @@ model User {
   id        String   @id @default(cuid())
   name      String
   email     String   @unique
-  role      UserRole @default(EMPLOYEE)
+  role      String @default("EMPLOYEE")
   teamId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -114,8 +91,8 @@ model Note {
   id          String     @id @default(cuid())
   teamId      String
   createdByUserId String
-  type        NoteType
-  status      NoteStatus @default(PENDING)
+  type        String
+  status      String @default("PENDING")
   title       String?
   body        String
   dateFrom    String     // YYYY-MM-DD format
@@ -138,7 +115,7 @@ model SwapRequest {
   fromUserId      String
   toUserId        String
   shiftId         String
-  status          SwapRequestStatus @default(PENDING)
+  status          String @default("PENDING")
   message         String?
   createdAt       DateTime          @default(now())
   decidedBy       String?

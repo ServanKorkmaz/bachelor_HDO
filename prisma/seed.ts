@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, NoteType, NoteStatus, SwapRequestStatus } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { addDays, parse, format } from 'date-fns'
 
 const prisma = new PrismaClient()
@@ -116,7 +116,7 @@ async function main() {
       data: {
         name: 'Admin User',
         email: 'admin@hdo.no',
-        role: UserRole.ADMIN,
+        role: 'ADMIN',
         teamId: team.id,
       },
     }),
@@ -124,7 +124,7 @@ async function main() {
       data: {
         name: 'Leader User',
         email: 'leader@hdo.no',
-        role: UserRole.LEADER,
+        role: 'LEADER',
         teamId: team.id,
       },
     }),
@@ -132,7 +132,7 @@ async function main() {
       data: {
         name: 'Jan Thomas Kristiansen',
         email: 'jan.thomas.kristiansen@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -140,7 +140,7 @@ async function main() {
       data: {
         name: 'Erik Heyerdahl',
         email: 'erik.heyerdahl@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -148,7 +148,7 @@ async function main() {
       data: {
         name: 'Stian Jørgensen',
         email: 'stian.jorgensen@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -156,7 +156,7 @@ async function main() {
       data: {
         name: 'Gerardas Zozulia',
         email: 'gerardas.zozulia@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -164,7 +164,7 @@ async function main() {
       data: {
         name: 'Sara Luggenes',
         email: 'sara.luggenes@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -172,7 +172,7 @@ async function main() {
       data: {
         name: 'Alexander Stenersen',
         email: 'alexander.stenersen@hdo.no',
-        role: UserRole.EMPLOYEE,
+        role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
@@ -182,7 +182,7 @@ async function main() {
 
   // Seed shifts for 2 weeks starting from 2026-01-05 (Monday, week 2)
   const weekStart = parse('2026-01-05', 'yyyy-MM-dd', new Date())
-  const employees = users.filter(u => u.role === UserRole.EMPLOYEE)
+  const employees = users.filter(u => u.role === 'EMPLOYEE')
 
   // Week 1 shifts (Jan Thomas Kristiansen pattern)
   const week1Employee = employees[0] // Jan Thomas Kristiansen
@@ -336,8 +336,8 @@ async function main() {
     data: {
       teamId: team.id,
       createdByUserId: employees[0].id,
-      type: NoteType.GENERAL,
-      status: NoteStatus.APPROVED,
+      type: 'GENERAL',
+      status: 'APPROVED',
       title: 'Viktig informasjon',
       body: 'Denne uken har ikke noen beskjeder.',
       dateFrom: '2026-01-05',
@@ -350,8 +350,8 @@ async function main() {
     data: {
       teamId: team.id,
       createdByUserId: employees[1].id,
-      type: NoteType.ABSENCE,
-      status: NoteStatus.PENDING,
+      type: 'ABSENCE',
+      status: 'PENDING',
       title: 'Forespørsel om fravær',
       body: 'Ønsker å ta fri 15-16 januar',
       dateFrom: '2026-01-15',

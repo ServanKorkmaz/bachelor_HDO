@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { NoteStatus } from '@prisma/client'
+
+const VALID_NOTE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
 
 /** Approve or reject a note by id and notify the creator. */
 export async function POST(
@@ -11,7 +12,7 @@ export async function POST(
     const body = await request.json()
     const { status } = body
 
-    if (!status || !Object.values(NoteStatus).includes(status)) {
+    if (!status || !VALID_NOTE_STATUSES.includes(status as any)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 

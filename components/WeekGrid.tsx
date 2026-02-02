@@ -7,7 +7,6 @@ import { formatHours, calculateShiftHours } from '@/lib/date-utils'
 import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
-
 interface WeekGridProps {
   weekDates: Date[]
   users: any[]
