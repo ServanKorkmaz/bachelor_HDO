@@ -1,6 +1,4 @@
-import { prisma } from '@/lib/prisma'
-
-/** Payload for sending and storing an email notification. */
+/** Payload for sending an email notification. (In-app notification is created by the API route.) */
 export interface EmailNotification {
   to: string
   subject: string
@@ -10,24 +8,12 @@ export interface EmailNotification {
   type: string
 }
 
-/** Send an email notification (stubbed) and persist it in the database. */
+/** Send an email notification (stubbed – logs to console; wire to real provider later). */
 export async function sendEmail(notification: EmailNotification): Promise<void> {
-  // Stub implementation - logs to console and stores in Notification table
   console.log('📧 Email notification:', {
     to: notification.to,
     subject: notification.subject,
     body: notification.body,
-  })
-
-  // Store notification in database
-  await prisma.notification.create({
-    data: {
-      teamId: notification.teamId,
-      userId: notification.userId,
-      type: notification.type,
-      title: notification.subject,
-      message: notification.body,
-    },
   })
 }
 

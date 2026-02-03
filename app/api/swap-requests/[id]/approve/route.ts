@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
 /** Approve a swap request by id and notify the requester. */
 export async function POST(
@@ -38,15 +39,24 @@ export async function POST(
     })
 
     // Create notification
+    const title = 'Vaktbytteforespørsel godkjent'
+    const message = 'Din forespørsel om vaktbytte er godkjent'
     await prisma.notification.create({
       data: {
         teamId: swapRequest.teamId,
         userId: swapRequest.requestedByUserId,
         type: 'SWAP_APPROVED',
-        title: 'Vaktbytteforespørsel godkjent',
-        message: `Din forespørsel om vaktbytte er godkjent`,
+        title,
+        message,
       },
     })
+    deliverNotificationToChannels({
+      userId: swapRequest.requestedByUserId,
+      teamId: swapRequest.teamId,
+      type: 'SWAP_APPROVED',
+      title,
+      message,
+    }).catch(console.error)
 
     return NextResponse.json(updated)
   } catch (error) {

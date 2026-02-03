@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
 const VALID_NOTE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
 
@@ -29,16 +30,24 @@ export async function POST(
       },
     })
 
-    // Create notification
+    const notifTitle = `Notat ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`
+    const notifMessage = `Ditt notat "${note.title || note.type}" er ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`
     await prisma.notification.create({
       data: {
         teamId: note.teamId,
         userId: note.createdByUserId,
         type: 'NOTE_STATUS_CHANGED',
-        title: `Notat ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`,
-        message: `Ditt notat "${note.title || note.type}" er ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`,
+        title: notifTitle,
+        message: notifMessage,
       },
     })
+    deliverNotificationToChannels({
+      userId: note.createdByUserId,
+      teamId: note.teamId,
+      type: 'NOTE_STATUS_CHANGED',
+      title: notifTitle,
+      message: notifMessage,
+    }).catch(console.error)
 
     return NextResponse.json(note)
   } catch (error) {

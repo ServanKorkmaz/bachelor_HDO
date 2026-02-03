@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
 /** List notes for a team, optionally within a date range. */
 export async function GET(request: Request) {
@@ -79,16 +80,24 @@ export async function POST(request: Request) {
       },
     })
 
-    // Create notification
+    const notifTitle = 'Notat opprettet'
+    const notifMessage = `Nytt notat opprettet: ${title || type}`
     await prisma.notification.create({
       data: {
         teamId,
         userId: createdByUserId,
         type: 'NOTE_CREATED',
-        title: 'Notat opprettet',
-        message: `Nytt notat opprettet: ${title || type}`,
+        title: notifTitle,
+        message: notifMessage,
       },
     })
+    deliverNotificationToChannels({
+      userId: createdByUserId,
+      teamId,
+      type: 'NOTE_CREATED',
+      title: notifTitle,
+      message: notifMessage,
+    }).catch(console.error)
 
     return NextResponse.json(note)
   } catch (error) {

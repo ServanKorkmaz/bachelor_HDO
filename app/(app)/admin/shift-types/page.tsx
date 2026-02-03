@@ -14,6 +14,20 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
 
+/** Simple predefined colors for shift types (no color palette). */
+const PRESET_COLORS = [
+  { name: 'Svart', hex: '#000000' },
+  { name: 'Hvit', hex: '#ffffff' },
+  { name: 'Rød', hex: '#dc2626' },
+  { name: 'Grønn', hex: '#16a34a' },
+  { name: 'Blå', hex: '#2563eb' },
+  { name: 'Gul', hex: '#ca8a04' },
+  { name: 'Oransje', hex: '#ea580c' },
+  { name: 'Grå', hex: '#6b7280' },
+  { name: 'Lilla', hex: '#7c3aed' },
+  { name: 'Turkis', hex: '#0d9488' },
+] as const
+
 /** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
@@ -211,11 +225,25 @@ export default function ShiftTypesPage() {
             </div>
             <div className="space-y-2">
               <Label>Farge</Label>
-              <Input
-                type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              />
+              <div className="flex flex-wrap gap-2">
+                {PRESET_COLORS.map(({ name, hex }) => (
+                  <button
+                    key={hex}
+                    type="button"
+                    title={name}
+                    onClick={() => setFormData({ ...formData, color: hex })}
+                    className={`h-9 w-9 rounded-md border-2 transition-shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+                      formData.color.toLowerCase() === hex.toLowerCase()
+                        ? 'border-primary ring-2 ring-primary/30'
+                        : 'border-border hover:border-muted-foreground/50'
+                    }`}
+                    style={{ backgroundColor: hex }}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Valgt: {PRESET_COLORS.find(c => c.hex.toLowerCase() === formData.color.toLowerCase())?.name ?? formData.color}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">

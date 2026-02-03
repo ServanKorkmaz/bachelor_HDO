@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
 /** Execute an approved swap request and notify both users. */
 export async function POST(
@@ -45,15 +46,17 @@ export async function POST(
       },
     })
 
-    // Create notifications
+    const fromTitle = 'Vaktbytte utført'
+    const fromMessage = `Vaktbytte utført: ${swapRequest.toUser.name} har overtatt vakten`
+    const toMessage = `Du har overtatt vakten fra ${swapRequest.fromUser.name}`
     await Promise.all([
       prisma.notification.create({
         data: {
           teamId: swapRequest.teamId,
           userId: swapRequest.fromUserId,
           type: 'SWAP_EXECUTED',
-          title: 'Vaktbytte utført',
-          message: `Vaktbytte utført: ${swapRequest.toUser.name} har overtatt vakten`,
+          title: fromTitle,
+          message: fromMessage,
         },
       }),
       prisma.notification.create({
@@ -61,11 +64,25 @@ export async function POST(
           teamId: swapRequest.teamId,
           userId: swapRequest.toUserId,
           type: 'SWAP_EXECUTED',
-          title: 'Vaktbytte utført',
-          message: `Du har overtatt vakten fra ${swapRequest.fromUser.name}`,
+          title: fromTitle,
+          message: toMessage,
         },
       }),
     ])
+    deliverNotificationToChannels({
+      userId: swapRequest.fromUserId,
+      teamId: swapRequest.teamId,
+      type: 'SWAP_EXECUTED',
+      title: fromTitle,
+      message: fromMessage,
+    }).catch(console.error)
+    deliverNotificationToChannels({
+      userId: swapRequest.toUserId,
+      teamId: swapRequest.teamId,
+      type: 'SWAP_EXECUTED',
+      title: fromTitle,
+      message: toMessage,
+    }).catch(console.error)
 
     return NextResponse.json(updated)
   } catch (error) {
