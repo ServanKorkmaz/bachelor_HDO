@@ -19,6 +19,7 @@ model Team {
   updatedAt DateTime @updatedAt
 
   users                User[]
+  memberships          TeamMembership[]
   shifts               Shift[]
   notes                Note[]
   swapRequests         SwapRequest[]
@@ -29,15 +30,19 @@ model Team {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      String @default("EMPLOYEE")
-  teamId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  role        String    @default("EMPLOYEE")
+  teamId      String
+  azureOid    String?   @unique
+  status      String    @default("active")
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   team              Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamMemberships   TeamMembership[]
   shifts            Shift[]
   notesCreated      Note[]          @relation("NoteCreator")
   swapRequestsMade  SwapRequest[]   @relation("SwapRequester")
@@ -45,6 +50,7 @@ model User {
   swapRequestsTo    SwapRequest[]   @relation("SwapToUser")
   swapRequestsDecided SwapRequest[] @relation("SwapDecider")
   notifications     Notification[]
+  notificationPreference UserNotificationPreference?
 
   @@map("users")
 }
@@ -163,3 +169,55 @@ model NotificationSettings {
   @@map("notification_settings")
 }
 
+// Per-user preferences: which notification types to receive and via email/sms/both.
+model UserNotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  shiftChangesEmail Boolean @default(true)
+  shiftChangesSms   Boolean @default(false)
+  swapEmail Boolean @default(true)
+  swapSms   Boolean @default(false)
+  noteEmail Boolean @default(true)
+  noteSms   Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notification_preferences")
+}
+
+// Team-scoped membership: role per team (leader/employee). User can have multiple teams.
+model TeamMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      String   // LEADER | EMPLOYEE
+  status    String   @default("active") // active | inactive
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([userId])
+  @@index([teamId])
+  @@map("team_memberships")
+}
+
+// Audit log for admin actions (user/membership changes).
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String
+  action       String
+  entityType   String
+  entityId     String
+  beforeJson   String?
+  afterJson    String?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_logs")
+}

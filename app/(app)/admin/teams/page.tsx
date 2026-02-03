@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Users } from 'lucide-react'
 import { useAuth } from '@/lib/auth/mockAuth'
 
 /** Admin page to create and remove teams. */
@@ -108,7 +109,7 @@ export default function TeamsPage() {
         {teams.map(team => (
           <div
             key={team.id}
-            className="p-4 bg-card rounded-lg border flex items-center justify-between"
+            className="p-4 bg-card rounded-lg border flex items-center justify-between gap-4"
           >
             <div>
               <div className="font-medium">{team.name}</div>
@@ -116,15 +117,23 @@ export default function TeamsPage() {
                 Opprettet {new Date(team.createdAt).toLocaleDateString('no-NO')}
               </div>
             </div>
-            <Button
-              variant="destructive"
-              size="icon"
-              onClick={() => handleDelete(team.id)}
-              disabled={!isAdmin()}
-              title={isAdmin() ? undefined : 'Kun admin kan slette team'}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/admin/users?teamId=${team.id}`}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Se ansatte
+                </Link>
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={() => handleDelete(team.id)}
+                disabled={!isAdmin()}
+                title={isAdmin() ? undefined : 'Kun admin kan slette team'}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>

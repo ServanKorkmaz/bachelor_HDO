@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { parse } from 'date-fns'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
 type BulkAction = 'create' | 'update' | 'delete'
 
@@ -162,16 +163,12 @@ export async function POST(request: Request) {
           },
         })
 
+        const title = 'Vakt opprettet'
+        const message = `Ny vakt opprettet for ${date}`
         await prisma.notification.create({
-          data: {
-            teamId,
-            userId,
-            type: 'SHIFT_CREATED',
-            title: 'Vakt opprettet',
-            message: `Ny vakt opprettet for ${date}`,
-          },
+          data: { teamId, userId, type: 'SHIFT_CREATED', title, message },
         })
-
+        deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_CREATED', title, message }).catch(console.error)
         return { status: 'success', userId, date, shiftId: created.id }
       }
 
@@ -196,16 +193,12 @@ export async function POST(request: Request) {
           },
         })
 
+        const updTitle = 'Vakt oppdatert'
+        const updMessage = `Vakt oppdatert for ${date}`
         await prisma.notification.create({
-          data: {
-            teamId,
-            userId,
-            type: 'SHIFT_UPDATED',
-            title: 'Vakt oppdatert',
-            message: `Vakt oppdatert for ${date}`,
-          },
+          data: { teamId, userId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage },
         })
-
+        deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage }).catch(console.error)
         return { status: 'success', userId, date, shiftId: updated.id }
       }
 
@@ -214,16 +207,12 @@ export async function POST(request: Request) {
       }
 
       await prisma.shift.delete({ where: { id: existingShift.id } })
+      const delTitle = 'Vakt slettet'
+      const delMessage = `Vakt slettet for ${date}`
       await prisma.notification.create({
-        data: {
-          teamId,
-          userId,
-          type: 'SHIFT_DELETED',
-          title: 'Vakt slettet',
-          message: `Vakt slettet for ${date}`,
-        },
+        data: { teamId, userId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage },
       })
-
+      deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage }).catch(console.error)
       return { status: 'success', userId, date, shiftId: existingShift.id }
     }
 
@@ -237,9 +226,17 @@ export async function POST(request: Request) {
         }
         const value = result.value
         if (value.status === 'success') {
-          successes.push({ userId: value.userId, date: value.date, shiftId: value.shiftId })
+          successes.push({
+            userId: value.userId ?? '',
+            date: value.date ?? '',
+            shiftId: value.shiftId ?? '',
+          })
         } else {
-          failures.push({ userId: value.userId, date: value.date, error: value.error })
+          failures.push({
+            userId: value.userId ?? '',
+            date: value.date ?? '',
+            error: value.error ?? '',
+          })
         }
       })
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { parse, format } from 'date-fns'
 
 /** List shifts for a team, optionally filtered by date range or user. */
@@ -113,16 +114,18 @@ export async function POST(request: Request) {
       },
     })
 
-    // Create notification
+    const title = 'Vakt opprettet'
+    const message = `Ny vakt opprettet for ${shift.user.name} på ${date}`
     await prisma.notification.create({
       data: {
         teamId: finalTeamId,
         userId,
         type: 'SHIFT_CREATED',
-        title: 'Vakt opprettet',
-        message: `Ny vakt opprettet for ${shift.user.name} på ${date}`,
+        title,
+        message,
       },
     })
+    deliverNotificationToChannels({ userId, teamId: finalTeamId, type: 'SHIFT_CREATED', title, message }).catch(console.error)
 
     return NextResponse.json(shift)
   } catch (error) {
