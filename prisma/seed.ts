@@ -6,12 +6,15 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Starting seed...')
 
-  // Clean existing data
+  // Clean existing data (order: audit log, then memberships, then rest; users/teams cascade to memberships)
+  await prisma.auditLog.deleteMany()
+  await prisma.teamMembership.deleteMany()
   await prisma.notification.deleteMany()
   await prisma.swapRequest.deleteMany()
   await prisma.note.deleteMany()
   await prisma.shift.deleteMany()
   await prisma.shiftType.deleteMany()
+  await prisma.userNotificationPreference.deleteMany()
   await prisma.user.deleteMany()
   await prisma.notificationSettings.deleteMany()
   await prisma.team.deleteMany()
@@ -179,6 +182,23 @@ async function main() {
   ])
 
   console.log('✅ Created users:', users.length)
+
+  // Backfill team memberships so Admin Users page shows one team/role per user
+  for (const user of users) {
+    await prisma.teamMembership.upsert({
+      where: {
+        userId_teamId: { userId: user.id, teamId: user.teamId },
+      },
+      create: {
+        userId: user.id,
+        teamId: user.teamId,
+        role: user.role === 'ADMIN' ? 'LEADER' : user.role,
+        status: 'active',
+      },
+      update: {},
+    })
+  }
+  console.log('✅ Backfilled team memberships')
 
   // Seed shifts for 2 weeks starting from 2026-01-05 (Monday, week 2)
   const weekStart = parse('2026-01-05', 'yyyy-MM-dd', new Date())

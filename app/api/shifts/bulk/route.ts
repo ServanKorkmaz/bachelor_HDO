@@ -226,9 +226,17 @@ export async function POST(request: Request) {
         }
         const value = result.value
         if (value.status === 'success') {
-          successes.push({ userId: value.userId, date: value.date, shiftId: value.shiftId })
+          successes.push({
+            userId: value.userId ?? '',
+            date: value.date ?? '',
+            shiftId: value.shiftId ?? '',
+          })
         } else {
-          failures.push({ userId: value.userId, date: value.date, error: value.error })
+          failures.push({
+            userId: value.userId ?? '',
+            date: value.date ?? '',
+            error: value.error ?? '',
+          })
         }
       })
     }

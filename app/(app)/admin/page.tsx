@@ -23,8 +23,8 @@ export default function AdminPage() {
         <Link href="/admin/users">
           <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
             <Users className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Brukere</h2>
-            <p className="text-sm text-muted-foreground">Administrer brukere og roller</p>
+            <h2 className="text-lg font-semibold mb-1">Brukere og tilgang</h2>
+            <p className="text-sm text-muted-foreground">Legg til brukere, roller, team og aktiver/deaktiver</p>
           </div>
         </Link>
 
