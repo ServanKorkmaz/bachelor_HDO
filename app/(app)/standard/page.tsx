@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { format, addWeeks, subWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +10,12 @@ import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 
-/** Standard weekly schedule view with team and user filters. */
+const TEAM_ID_PARAM = 'teamId'
+
+/** Standard weekly schedule view with team and user filters. Valgt team persisteres i URL så det overlever refresh. */
 export default function StandardPlanPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [shifts, setShifts] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
@@ -30,13 +35,20 @@ export default function StandardPlanPage() {
         return res.json()
       })
       .then(data => {
-        if (Array.isArray(data)) {
-          setTeams(data)
-          if (data.length > 0 && !selectedTeamId) {
-            setSelectedTeamId(data[0].id)
-          }
-        } else {
+        if (!Array.isArray(data)) {
           setTeams([])
+          return
+        }
+        setTeams(data)
+        if (data.length === 0) return
+        const fromUrl = searchParams.get(TEAM_ID_PARAM)
+        const validId = fromUrl && data.some((t: { id: string }) => t.id === fromUrl) ? fromUrl : null
+        const nextId = validId ?? data[0].id
+        setSelectedTeamId(nextId)
+        if (!validId || fromUrl !== nextId) {
+          const params = new URLSearchParams(searchParams.toString())
+          params.set(TEAM_ID_PARAM, nextId)
+          router.replace(`/standard?${params.toString()}`, { scroll: false })
         }
       })
       .catch(error => {
@@ -153,7 +165,13 @@ export default function StandardPlanPage() {
           <label className="text-sm font-medium">Plan:</label>
           <select
             value={selectedTeamId}
-            onChange={(e) => setSelectedTeamId(e.target.value)}
+            onChange={(e) => {
+              const id = e.target.value
+              setSelectedTeamId(id)
+              const params = new URLSearchParams(searchParams.toString())
+              params.set(TEAM_ID_PARAM, id)
+              router.replace(`/standard?${params.toString()}`, { scroll: false })
+            }}
             className="px-3 py-1 rounded-md border bg-background text-foreground"
           >
             {Array.isArray(teams) && teams.map(t => (
