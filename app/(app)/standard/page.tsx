@@ -24,12 +24,9 @@ export default function StandardPlanPage() {
   const weekDates = useMemo(() => getWeekDatesUtil(selectedDate), [selectedDate])
 
   useEffect(() => {
-    // Fetch teams
     fetch('/api/teams')
       .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch teams')
-        }
+        if (!res.ok) throw new Error('Failed to fetch teams')
         return res.json()
       })
       .then(data => {
@@ -46,23 +43,25 @@ export default function StandardPlanPage() {
         console.error('Error fetching teams:', error)
         setTeams([])
       })
+  }, [])
 
-    // Fetch users
-    fetch('/api/users')
+  // Hent kun ansatte som tilhører valgt team (via TeamMembership)
+  useEffect(() => {
+    if (!selectedTeamId) {
+      setUsers([])
+      return
+    }
+    fetch(`/api/users?teamId=${selectedTeamId}`)
       .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch users')
-        }
+        if (!res.ok) throw new Error('Failed to fetch users')
         return res.json()
       })
-      .then(data => {
-        setUsers(Array.isArray(data) ? data : [])
-      })
+      .then(data => setUsers(Array.isArray(data) ? data : []))
       .catch(error => {
         console.error('Error fetching users:', error)
         setUsers([])
       })
-  }, [])
+  }, [selectedTeamId])
 
   useEffect(() => {
     if (!selectedTeamId) return

@@ -1,10 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-/** List all users. */
-export async function GET() {
+/** List users. Optional teamId: only users with active TeamMembership in that team. */
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const teamId = searchParams.get('teamId')
+
     const users = await prisma.user.findMany({
+      where: teamId
+        ? {
+            OR: [
+              { teamMemberships: { some: { teamId, status: 'active' } } },
+              { teamId }, // fallback: brukere med teamId før TeamMembership
+            ],
+          }
+        : undefined,
       orderBy: { name: 'asc' },
     })
 
