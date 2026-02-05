@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
-import { createAuditLog } from '@/lib/admin/audit'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { addMemberSchema } from '@/lib/admin/schemas'
 
 /** POST /api/admin/teams/:teamId/members - Add user to team. Admin only. */
@@ -63,8 +63,8 @@ export async function POST(
         })
         await createAuditLog(tx, {
           actorUserId: actorId,
-          action: 'MEMBER_ADDED',
-          entityType: 'team_membership',
+          action: AUDIT_ACTION.MEMBER_ADDED,
+          entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
           entityId: existing.id,
           afterJson,
         })
@@ -81,8 +81,8 @@ export async function POST(
       })
       await createAuditLog(tx, {
         actorUserId: actorId,
-        action: 'MEMBER_ADDED',
-        entityType: 'team_membership',
+        action: AUDIT_ACTION.MEMBER_ADDED,
+        entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: m.id,
         afterJson,
       })
@@ -97,3 +97,4 @@ export async function POST(
     )
   }
 }
+

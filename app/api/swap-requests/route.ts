@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 
 /** List swap requests for a team. */
 export async function GET(request: Request) {
@@ -70,51 +71,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
 
-    const swapRequest = await prisma.swapRequest.create({
-      data: {
-        teamId,
-        requestedByUserId,
-        fromUserId: shift.userId,
-        toUserId,
-        shiftId,
-        status: 'PENDING',
-        message: message || null,
-      },
-      include: {
-        requestedBy: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const swapRequest = await prisma.$transaction(async (tx) => {
+      const sr = await tx.swapRequest.create({
+        data: {
+          teamId,
+          requestedByUserId,
+          fromUserId: shift.userId,
+          toUserId,
+          shiftId,
+          status: 'PENDING',
+          message: message || null,
         },
-        fromUser: {
-          select: {
-            id: true,
-            name: true,
-          },
+        include: {
+          requestedBy: { select: { id: true, name: true } },
+          fromUser: { select: { id: true, name: true } },
+          toUser: { select: { id: true, name: true } },
+          shift: { include: { shiftType: true } },
         },
-        toUser: {
-          select: {
-            id: true,
-            name: true,
-          },
+      })
+      await tx.notification.create({
+        data: {
+          teamId,
+          type: 'SWAP_REQUESTED',
+          title: 'Ny vaktbytteforespørsel',
+          message: `${sr.requestedBy.name} har forespurt vaktbytte`,
         },
-        shift: {
-          include: {
-            shiftType: true,
-          },
-        },
-      },
-    })
-
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        teamId,
-        type: 'SWAP_REQUESTED',
-        title: 'Ny vaktbytteforespørsel',
-        message: `${swapRequest.requestedBy.name} har forespurt vaktbytte`,
-      },
+      })
+      const afterJson = JSON.stringify({
+        fromUserId: sr.fromUserId,
+        toUserId: sr.toUserId,
+        shiftId: sr.shiftId,
+        shiftDate: sr.shift.date,
+      })
+      await createAuditLog(tx, {
+        actorUserId: requestedByUserId,
+        action: AUDIT_ACTION.SWAP_REQUESTED,
+        entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
+        entityId: sr.id,
+        afterJson,
+      })
+      return sr
     })
 
     return NextResponse.json(swapRequest)

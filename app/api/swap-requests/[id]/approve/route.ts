@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 
 /** Approve a swap request by id and notify the requester. */
 export async function POST(
@@ -8,12 +10,18 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+    }
+
     const swapRequest = await prisma.swapRequest.findUnique({
       where: { id: params.id },
       include: {
         requestedBy: true,
         fromUser: true,
         toUser: true,
+        shift: true,
       },
     })
 
@@ -28,28 +36,45 @@ export async function POST(
       )
     }
 
-    // TODO: Get current user from auth context
-    const updated = await prisma.swapRequest.update({
-      where: { id: params.id },
-      data: {
-        status: 'APPROVED',
-        // decidedBy: currentUserId, // TODO: Add when auth is implemented
-        decidedAt: new Date(),
-      },
-    })
-
-    // Create notification
     const title = 'Vaktbytteforespørsel godkjent'
     const message = 'Din forespørsel om vaktbytte er godkjent'
-    await prisma.notification.create({
-      data: {
-        teamId: swapRequest.teamId,
-        userId: swapRequest.requestedByUserId,
-        type: 'SWAP_APPROVED',
-        title,
-        message,
-      },
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.swapRequest.update({
+        where: { id: params.id },
+        data: {
+          status: 'APPROVED',
+          decidedBy: currentUserId,
+          decidedAt: new Date(),
+        },
+      })
+      await tx.notification.create({
+        data: {
+          teamId: swapRequest.teamId,
+          userId: swapRequest.requestedByUserId,
+          type: 'SWAP_APPROVED',
+          title,
+          message,
+        },
+      })
+      await createAuditLog(tx, {
+        actorUserId: currentUserId,
+        action: AUDIT_ACTION.SWAP_APPROVED,
+        entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
+        entityId: params.id,
+        beforeJson: JSON.stringify({ status: 'PENDING' }),
+        afterJson: JSON.stringify({
+          status: 'APPROVED',
+          decidedBy: currentUserId,
+          fromUserId: swapRequest.fromUserId,
+          toUserId: swapRequest.toUserId,
+          shiftId: swapRequest.shiftId,
+          shiftDate: swapRequest.shift.date,
+        }),
+      })
+      return u
     })
+
     deliverNotificationToChannels({
       userId: swapRequest.requestedByUserId,
       teamId: swapRequest.teamId,

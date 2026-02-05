@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 
 /** Execute an approved swap request and notify both users. */
 export async function POST(
@@ -8,6 +10,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+    }
+
     const swapRequest = await prisma.swapRequest.findUnique({
       where: { id: params.id },
       include: {
@@ -29,28 +36,23 @@ export async function POST(
       )
     }
 
-    // Update the shift to swap the user
-    await prisma.shift.update({
-      where: { id: swapRequest.shiftId },
-      data: {
-        userId: swapRequest.toUserId,
-      },
-    })
-
-    // Update swap request status
-    const updated = await prisma.swapRequest.update({
-      where: { id: params.id },
-      data: {
-        status: 'EXECUTED',
-        decidedAt: new Date(),
-      },
-    })
-
     const fromTitle = 'Vaktbytte utført'
     const fromMessage = `Vaktbytte utført: ${swapRequest.toUser.name} har overtatt vakten`
     const toMessage = `Du har overtatt vakten fra ${swapRequest.fromUser.name}`
-    await Promise.all([
-      prisma.notification.create({
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.shift.update({
+        where: { id: swapRequest.shiftId },
+        data: { userId: swapRequest.toUserId },
+      })
+      const u = await tx.swapRequest.update({
+        where: { id: params.id },
+        data: {
+          status: 'EXECUTED',
+          decidedAt: new Date(),
+        },
+      })
+      await tx.notification.create({
         data: {
           teamId: swapRequest.teamId,
           userId: swapRequest.fromUserId,
@@ -58,8 +60,8 @@ export async function POST(
           title: fromTitle,
           message: fromMessage,
         },
-      }),
-      prisma.notification.create({
+      })
+      await tx.notification.create({
         data: {
           teamId: swapRequest.teamId,
           userId: swapRequest.toUserId,
@@ -67,8 +69,24 @@ export async function POST(
           title: fromTitle,
           message: toMessage,
         },
-      }),
-    ])
+      })
+      await createAuditLog(tx, {
+        actorUserId: currentUserId,
+        action: AUDIT_ACTION.SWAP_EXECUTED,
+        entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
+        entityId: params.id,
+        beforeJson: JSON.stringify({ status: 'APPROVED' }),
+        afterJson: JSON.stringify({
+          status: 'EXECUTED',
+          fromUserId: swapRequest.fromUserId,
+          toUserId: swapRequest.toUserId,
+          shiftId: swapRequest.shiftId,
+          shiftDate: swapRequest.shift.date,
+        }),
+      })
+      return u
+    })
+
     deliverNotificationToChannels({
       userId: swapRequest.fromUserId,
       teamId: swapRequest.teamId,

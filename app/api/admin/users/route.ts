@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
-import { createAuditLog } from '@/lib/admin/audit'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { createUserSchema } from '@/lib/admin/schemas'
 
 /** GET /api/admin/users - List users with optional filters (teamId, q, status). Admin only. */
@@ -118,8 +118,8 @@ export async function POST(request: Request) {
       })
       await createAuditLog(tx, {
         actorUserId: actorId,
-        action: 'USER_CREATED',
-        entityType: 'user',
+        action: AUDIT_ACTION.USER_CREATED,
+        entityType: AUDIT_ENTITY_TYPE.USER,
         entityId: user.id,
         afterJson: JSON.stringify({ name, email, teamId, role }),
       })
@@ -135,3 +135,4 @@ export async function POST(request: Request) {
     )
   }
 }
+

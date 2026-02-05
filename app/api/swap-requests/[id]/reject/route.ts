@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 
 /** Reject a swap request by id and notify the requester. */
 export async function POST(
@@ -8,8 +10,14 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
+    }
+
     const swapRequest = await prisma.swapRequest.findUnique({
       where: { id: params.id },
+      include: { shift: true },
     })
 
     if (!swapRequest) {
@@ -23,26 +31,45 @@ export async function POST(
       )
     }
 
-    const updated = await prisma.swapRequest.update({
-      where: { id: params.id },
-      data: {
-        status: 'REJECTED',
-        decidedAt: new Date(),
-      },
-    })
-
-    // Create notification
     const title = 'Vaktbytteforespørsel avvist'
     const message = 'Din forespørsel om vaktbytte er avvist'
-    await prisma.notification.create({
-      data: {
-        teamId: swapRequest.teamId,
-        userId: swapRequest.requestedByUserId,
-        type: 'SWAP_REJECTED',
-        title,
-        message,
-      },
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.swapRequest.update({
+        where: { id: params.id },
+        data: {
+          status: 'REJECTED',
+          decidedBy: currentUserId,
+          decidedAt: new Date(),
+        },
+      })
+      await tx.notification.create({
+        data: {
+          teamId: swapRequest.teamId,
+          userId: swapRequest.requestedByUserId,
+          type: 'SWAP_REJECTED',
+          title,
+          message,
+        },
+      })
+      await createAuditLog(tx, {
+        actorUserId: currentUserId,
+        action: AUDIT_ACTION.SWAP_REJECTED,
+        entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
+        entityId: params.id,
+        beforeJson: JSON.stringify({ status: 'PENDING' }),
+        afterJson: JSON.stringify({
+          status: 'REJECTED',
+          decidedBy: currentUserId,
+          fromUserId: swapRequest.fromUserId,
+          toUserId: swapRequest.toUserId,
+          shiftId: swapRequest.shiftId,
+          shiftDate: swapRequest.shift.date,
+        }),
+      })
+      return u
     })
+
     deliverNotificationToChannels({
       userId: swapRequest.requestedByUserId,
       teamId: swapRequest.teamId,
