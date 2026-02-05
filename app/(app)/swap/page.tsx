@@ -34,6 +34,7 @@ export default function SwapPage() {
   const [selectedShiftId, setSelectedShiftId] = useState<string>('')
   const [selectedToUserId, setSelectedToUserId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
+  const [colleagueShifts, setColleagueShifts] = useState<any[]>([])
   const { currentUser, canApproveSwaps } = useAuth()
 
   useEffect(() => {
@@ -46,12 +47,19 @@ export default function SwapPage() {
         }
       })
       .catch(console.error)
-
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => setUsers(data))
-      .catch(console.error)
   }, [])
+
+  // Brukere i valgt team (for «Bytt med») – bruk teamId så TeamMembership inkluderes
+  useEffect(() => {
+    if (!selectedTeamId) {
+      setUsers([])
+      return
+    }
+    fetch(`/api/users?teamId=${selectedTeamId}`)
+      .then(res => res.json())
+      .then(data => setUsers(Array.isArray(data) ? data : []))
+      .catch(() => setUsers([]))
+  }, [selectedTeamId])
 
   useEffect(() => {
     if (!selectedTeamId) return
@@ -61,15 +69,42 @@ export default function SwapPage() {
       .then(data => setSwapRequests(data))
       .catch(console.error)
 
-    const today = format(new Date(), 'yyyy-MM-dd')
+    // Fra start av uken (mandag) til 30 dager frem – slik at egne vakter i inneværende uke vises
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() + mondayOffset)
+    const dateFrom = format(weekStart, 'yyyy-MM-dd')
     const futureDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
+    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${futureDate}`)
       .then(res => res.json())
-      .then(data => setShifts(data))
-      .catch(console.error)
+      .then(data => setShifts(Array.isArray(data) ? data : []))
+      .catch(() => setShifts([]))
   }, [selectedTeamId])
 
-  const myShifts = shifts.filter((s: any) => s.userId === currentUser?.id)
+  const myShifts = shifts.filter(
+    (s: any) => (s.userId ?? s.user?.id) === currentUser?.id
+  )
+
+  // Hent valgt kollegas vakter når «Bytt med» er satt (samme periode som egne vakter)
+  useEffect(() => {
+    if (!selectedTeamId || !selectedToUserId) {
+      setColleagueShifts([])
+      return
+    }
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() + mondayOffset)
+    const dateFrom = format(weekStart, 'yyyy-MM-dd')
+    const futureDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${futureDate}&userId=${selectedToUserId}`)
+      .then(res => res.json())
+      .then(data => setColleagueShifts(Array.isArray(data) ? data : []))
+      .catch(() => setColleagueShifts([]))
+  }, [selectedTeamId, selectedToUserId])
 
   const handleCreateRequest = async () => {
     if (!selectedShiftId || !selectedToUserId || !currentUser) return
@@ -107,9 +142,12 @@ export default function SwapPage() {
   }
 
   const handleApprove = async (requestId: string) => {
+    if (!currentUser?.id) return
     try {
       const response = await fetch(`/api/swap-requests/${requestId}/approve`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -128,9 +166,12 @@ export default function SwapPage() {
   }
 
   const handleReject = async (requestId: string) => {
+    if (!currentUser?.id) return
     try {
       const response = await fetch(`/api/swap-requests/${requestId}/reject`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -149,11 +190,14 @@ export default function SwapPage() {
   }
 
   const handleExecute = async (requestId: string) => {
+    if (!currentUser?.id) return
     if (!confirm('Er du sikker på at du vil utføre dette vaktbyttet?')) return
 
     try {
       const response = await fetch(`/api/swap-requests/${requestId}/execute`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -179,6 +223,9 @@ export default function SwapPage() {
 
   const pendingRequests = swapRequests.filter((r: any) => r.status === 'PENDING')
   const otherRequests = swapRequests.filter((r: any) => r.status !== 'PENDING')
+  const myRequests = swapRequests.filter(
+    (r: any) => r.requestedByUserId === currentUser?.id
+  )
 
   return (
     <div className="space-y-4">
@@ -257,10 +304,12 @@ export default function SwapPage() {
           {canApproveSwaps() ? 'Alle forespørsler' : 'Mine forespørsler'}
         </h2>
         <div className="space-y-2">
-          {otherRequests.length === 0 ? (
-            <p className="text-muted-foreground">Ingen forespørsler</p>
+          {(canApproveSwaps() ? otherRequests : myRequests).length === 0 ? (
+            <p className="text-muted-foreground">
+              {canApproveSwaps() ? 'Ingen forespørsler' : 'Ingen forespørsler'}
+            </p>
           ) : (
-            otherRequests.map((request: any) => (
+            (canApproveSwaps() ? otherRequests : myRequests).map((request: any) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -275,9 +324,10 @@ export default function SwapPage() {
                         request.status === 'APPROVED' ? 'bg-green-500/20 text-green-500' :
                         request.status === 'REJECTED' ? 'bg-red-500/20 text-red-500' :
                         request.status === 'EXECUTED' ? 'bg-blue-500/20 text-blue-500' :
-                        'bg-orange-500/20 text-orange-500'
+                        request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-500' :
+                        'bg-muted text-muted-foreground'
                       }`}>
-                        {request.status}
+                        {request.status === 'PENDING' ? 'Venter' : request.status}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground mb-2">
@@ -337,7 +387,7 @@ export default function SwapPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {users
-                    .filter((u: any) => u.id !== currentUser?.id && u.teamId === selectedTeamId)
+                    .filter((u: any) => u.id !== currentUser?.id)
                     .map((user: any) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}
@@ -346,6 +396,26 @@ export default function SwapPage() {
                 </SelectContent>
               </Select>
             </div>
+            {selectedToUserId && (
+              <div className="space-y-2">
+                <Label>
+                  {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'Valgt person'} sine vakter i perioden
+                </Label>
+                <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                  {colleagueShifts.length === 0 ? (
+                    <p className="text-muted-foreground">Ingen vakter i perioden</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {colleagueShifts.map((shift: any) => (
+                        <li key={shift.id}>
+                          {formatDateDisplay(shift.date)} – {shift.shiftType?.label ?? 'Vakt'} ({formatTime(shift.startDateTime)}–{formatTime(shift.endDateTime)})
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Melding (valgfritt)</Label>
               <Input

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
-import { createAuditLog } from '@/lib/admin/audit'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchMembershipSchema } from '@/lib/admin/schemas'
 
 /** PATCH /api/admin/teams/:teamId/members/:membershipId - Update role/status. Admin only. */
@@ -56,8 +56,8 @@ export async function PATCH(
       })
       await createAuditLog(tx, {
         actorUserId: actorId,
-        action: 'MEMBERSHIP_UPDATED',
-        entityType: 'team_membership',
+        action: AUDIT_ACTION.MEMBERSHIP_UPDATED,
+        entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: membershipId,
         beforeJson,
         afterJson: JSON.stringify(updateData),
@@ -108,8 +108,8 @@ export async function DELETE(
       })
       await createAuditLog(tx, {
         actorUserId: actorId,
-        action: 'MEMBER_REMOVED',
-        entityType: 'team_membership',
+        action: AUDIT_ACTION.MEMBER_REMOVED,
+        entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: membershipId,
         beforeJson,
         afterJson,
@@ -125,3 +125,4 @@ export async function DELETE(
     )
   }
 }
+

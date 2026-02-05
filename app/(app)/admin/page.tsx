@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Users, Calendar, Settings, Building2 } from 'lucide-react'
+import { Users, Calendar, Settings, Building2, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /** Admin landing page with links to management sections. */
@@ -41,6 +41,14 @@ export default function AdminPage() {
             <Settings className="h-8 w-8 mb-2" />
             <h2 className="text-lg font-semibold mb-1">Varslinger</h2>
             <p className="text-sm text-muted-foreground">Varslingsinnstillinger</p>
+          </div>
+        </Link>
+
+        <Link href="/admin/audit">
+          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
+            <FileText className="h-8 w-8 mb-2" />
+            <h2 className="text-lg font-semibold mb-1">Revisjonslogg</h2>
+            <p className="text-sm text-muted-foreground">Se hvem som endret brukere og tilgang</p>
           </div>
         </Link>
       </div>

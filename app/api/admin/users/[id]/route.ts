@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
-import { createAuditLog } from '@/lib/admin/audit'
+import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchUserStatusSchema } from '@/lib/admin/schemas'
 
 /** PATCH /api/admin/users/:id - Activate/deactivate user. Admin only. Soft only; writes audit log. */
@@ -50,8 +50,8 @@ export async function PATCH(
       })
       await createAuditLog(tx, {
         actorUserId: actorId,
-        action: 'USER_STATUS_CHANGED',
-        entityType: 'user',
+        action: AUDIT_ACTION.USER_STATUS_CHANGED,
+        entityType: AUDIT_ENTITY_TYPE.USER,
         entityId: userId,
         beforeJson,
         afterJson,
@@ -68,3 +68,4 @@ export async function PATCH(
     )
   }
 }
+

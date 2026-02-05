@@ -1,3 +1,23 @@
+/** Entity types for audit log. Use these instead of string literals. */
+export const AUDIT_ENTITY_TYPE = {
+  USER: 'user',
+  TEAM_MEMBERSHIP: 'team_membership',
+  SWAP_REQUEST: 'swap_request',
+} as const
+
+/** Actions for audit log. Use these instead of string literals. */
+export const AUDIT_ACTION = {
+  USER_CREATED: 'USER_CREATED',
+  USER_STATUS_CHANGED: 'USER_STATUS_CHANGED',
+  MEMBER_ADDED: 'MEMBER_ADDED',
+  MEMBERSHIP_UPDATED: 'MEMBERSHIP_UPDATED',
+  MEMBER_REMOVED: 'MEMBER_REMOVED',
+  SWAP_REQUESTED: 'SWAP_REQUESTED',
+  SWAP_APPROVED: 'SWAP_APPROVED',
+  SWAP_REJECTED: 'SWAP_REJECTED',
+  SWAP_EXECUTED: 'SWAP_EXECUTED',
+} as const
+
 export interface AuditEntry {
   actorUserId: string
   action: string
@@ -24,3 +44,4 @@ export async function createAuditLog(
     },
   })
 }
+
