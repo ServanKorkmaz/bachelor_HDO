@@ -45,6 +45,15 @@ function toRelative(filePath: string) {
   return normalizePath(path.relative(repoRoot, filePath))
 }
 
+function isUiComponent(filePath: string) {
+  return normalizePath(filePath).includes("/components/ui/")
+}
+
+function isAppRouteFile(filePath: string) {
+  const normalized = normalizePath(filePath)
+  return normalized.includes("/app/") && !normalized.includes("/app/api/")
+}
+
 function resolveImport(spec: string, fromFile: string, appRoot: string) {
   let basePath: string | null = null
   if (spec.startsWith("./") || spec.startsWith("../")) {
@@ -330,6 +339,7 @@ function main() {
       const resolved = resolveImport(spec, current, appRoot)
       if (!resolved) continue
       if (!resolved.endsWith(".tsx")) continue
+      if (isUiComponent(resolved)) continue
       addEdge(componentEdges, current, resolved)
       enqueueForTraversal(resolved)
     }
@@ -350,9 +360,11 @@ function main() {
     for (const apiPath of apiPaths) {
       const match = selectBestApiMatch(apiPath, apiPatterns)
       if (match) {
-        addEdge(apiEdges, file, match.filePath)
-        apiNodes.add(match.filePath)
-        uiNodes.add(file)
+        if (isAppRouteFile(file) && !isUiComponent(file)) {
+          addEdge(apiEdges, file, match.filePath)
+          apiNodes.add(match.filePath)
+          uiNodes.add(file)
+        }
       }
     }
   }

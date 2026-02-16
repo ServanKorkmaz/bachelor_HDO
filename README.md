@@ -15,109 +15,91 @@ flowchart TD
     N7["app/(app)/month/page.tsx"]
     N8["app/(app)/standard/page.tsx"]
     N9["app/(app)/swap/page.tsx"]
-    N10["components/auth/RoleSwitcher.tsx"]
-    N11["components/BulkShiftModal.tsx"]
-    N12["components/layout/NotificationsPanel.tsx"]
-    N13["components/schedule/ShiftModal.tsx"]
-    N14["components/ShiftModal.tsx"]
   end
   subgraph "API Routes"
-    N15["app/api/admin/audit/route.ts"]
-    N16["app/api/admin/users/route.ts"]
-    N17["app/api/teams/route.ts"]
-    N18["app/api/notification-settings/route.ts"]
-    N19["app/api/users/[id]/notification-preferences/route.ts"]
-    N20["app/api/shift-types/[id]/route.ts"]
-    N21["app/api/shift-types/route.ts"]
-    N22["app/api/teams/[id]/route.ts"]
-    N23["app/api/admin/teams/[teamId]/members/route.ts"]
-    N24["app/api/admin/teams/[teamId]/members/[membershipId]/route.ts"]
-    N25["app/api/admin/users/[id]/route.ts"]
-    N26["app/api/shifts/route.ts"]
-    N27["app/api/notes/route.ts"]
-    N28["app/api/users/route.ts"]
-    N29["app/api/swap-requests/route.ts"]
-    N30["app/api/swap-requests/[id]/approve/route.ts"]
-    N31["app/api/swap-requests/[id]/reject/route.ts"]
-    N32["app/api/swap-requests/[id]/execute/route.ts"]
-    N33["app/api/shifts/bulk/route.ts"]
-    N34["app/api/notifications/route.ts"]
-    N35["app/api/notifications/[id]/read/route.ts"]
-    N36["app/api/notes/[id]/approve/route.ts"]
-    N37["app/api/shifts/[id]/route.ts"]
-    N38["app/api/users/[id]/route.ts"]
+    N10["app/api/admin/audit/route.ts"]
+    N11["app/api/admin/users/route.ts"]
+    N12["app/api/teams/route.ts"]
+    N13["app/api/notification-settings/route.ts"]
+    N14["app/api/users/[id]/notification-preferences/route.ts"]
+    N15["app/api/shift-types/[id]/route.ts"]
+    N16["app/api/shift-types/route.ts"]
+    N17["app/api/teams/[id]/route.ts"]
+    N18["app/api/admin/teams/[teamId]/members/route.ts"]
+    N19["app/api/admin/teams/[teamId]/members/[membershipId]/route.ts"]
+    N20["app/api/admin/users/[id]/route.ts"]
+    N21["app/api/shifts/route.ts"]
+    N22["app/api/notes/route.ts"]
+    N23["app/api/users/route.ts"]
+    N24["app/api/swap-requests/route.ts"]
+    N25["app/api/swap-requests/[id]/approve/route.ts"]
+    N26["app/api/swap-requests/[id]/reject/route.ts"]
+    N27["app/api/swap-requests/[id]/execute/route.ts"]
+    N28["app/api/notes/[id]/approve/route.ts"]
+    N29["app/api/notifications/route.ts"]
+    N30["app/api/notifications/[id]/read/route.ts"]
+    N31["app/api/shifts/bulk/route.ts"]
+    N32["app/api/shifts/[id]/route.ts"]
+    N33["app/api/users/[id]/route.ts"]
   end
   subgraph "Data Access"
-    N39["lib/prisma.ts"]
+    N34["lib/prisma.ts"]
   end
-  N1 --> N15
-  N1 --> N16
-  N1 --> N17
-  N2 --> N18
-  N2 --> N19
-  N2 --> N17
-  N3 --> N20
-  N3 --> N21
-  N4 --> N22
+  N1 --> N10
+  N1 --> N11
+  N1 --> N12
+  N2 --> N13
+  N2 --> N14
+  N2 --> N12
+  N3 --> N15
+  N3 --> N16
   N4 --> N17
-  N5 --> N16
-  N5 --> N23
-  N5 --> N24
-  N5 --> N25
-  N5 --> N17
-  N6 --> N26
-  N6 --> N27
-  N6 --> N17
-  N6 --> N28
-  N7 --> N26
-  N7 --> N17
-  N8 --> N28
-  N8 --> N26
-  N8 --> N17
-  N9 --> N28
-  N9 --> N29
+  N4 --> N12
+  N5 --> N11
+  N5 --> N18
+  N5 --> N19
+  N5 --> N20
+  N5 --> N12
+  N6 --> N21
+  N6 --> N22
+  N6 --> N12
+  N6 --> N23
+  N7 --> N21
+  N7 --> N12
+  N8 --> N23
+  N8 --> N21
+  N8 --> N12
+  N9 --> N23
+  N9 --> N24
+  N9 --> N21
+  N9 --> N25
   N9 --> N26
-  N9 --> N30
-  N9 --> N31
-  N9 --> N32
-  N9 --> N17
-  N10 --> N28
-  N11 --> N26
-  N11 --> N21
-  N11 --> N28
-  N11 --> N33
+  N9 --> N27
+  N9 --> N12
+  N10 --> N34
+  N18 --> N34
+  N19 --> N34
+  N11 --> N34
+  N20 --> N34
+  N22 --> N34
+  N28 --> N34
+  N13 --> N34
+  N29 --> N34
+  N30 --> N34
+  N16 --> N34
+  N15 --> N34
+  N31 --> N34
+  N21 --> N34
+  N32 --> N34
+  N24 --> N34
+  N25 --> N34
+  N27 --> N34
+  N26 --> N34
   N12 --> N34
-  N12 --> N35
-  N13 --> N33
-  N13 --> N21
-  N13 --> N28
-  N14 --> N33
-  N14 --> N21
-  N14 --> N28
-  N15 --> N39
-  N23 --> N39
-  N24 --> N39
-  N16 --> N39
-  N25 --> N39
-  N27 --> N39
-  N36 --> N39
-  N18 --> N39
-  N34 --> N39
-  N35 --> N39
-  N21 --> N39
-  N20 --> N39
-  N33 --> N39
-  N26 --> N39
-  N37 --> N39
-  N29 --> N39
-  N30 --> N39
-  N32 --> N39
-  N31 --> N39
-  N17 --> N39
-  N22 --> N39
-  N28 --> N39
-  N19 --> N39
-  N38 --> N39
+  N17 --> N34
+  N23 --> N34
+  N14 --> N34
+  N33 --> N34
 ```
 
 ## Component Hierarchy
@@ -142,20 +124,12 @@ graph TD
   N16["app/(app)/standard/page.tsx"]
   N17["app/(app)/swap/page.tsx"]
   N18["app/page.tsx"]
-  N19["components/ui/button.tsx"]
-  N20["components/ui/dialog.tsx"]
-  N21["components/ui/select.tsx"]
-  N22["components/ui/input.tsx"]
-  N23["components/ui/label.tsx"]
-  N24["components/schedule/WeekGrid.tsx"]
-  N25["components/BulkShiftModal.tsx"]
-  N26["components/schedule/ShiftModal.tsx"]
-  N27["components/layout/Navigation.tsx"]
-  N28["components/ui/toaster.tsx"]
-  N29["components/ui/toast.tsx"]
-  N30["components/auth/RoleSwitcher.tsx"]
-  N31["components/layout/NotificationsPanel.tsx"]
-  N32["components/ui/dropdown-menu.tsx"]
+  N19["components/schedule/WeekGrid.tsx"]
+  N20["components/BulkShiftModal.tsx"]
+  N21["components/schedule/ShiftModal.tsx"]
+  N22["components/layout/Navigation.tsx"]
+  N23["components/auth/RoleSwitcher.tsx"]
+  N24["components/layout/NotificationsPanel.tsx"]
   N2 --> N1
   N4 --> N2
   N2 --> N3
@@ -173,59 +147,13 @@ graph TD
   N2 --> N16
   N2 --> N17
   N4 --> N18
-  N17 --> N19
-  N17 --> N20
-  N17 --> N21
-  N17 --> N22
-  N17 --> N23
   N16 --> N19
-  N16 --> N24
-  N16 --> N25
-  N25 --> N19
-  N25 --> N22
-  N25 --> N23
-  N25 --> N20
-  N25 --> N21
-  N24 --> N26
-  N26 --> N20
-  N26 --> N19
-  N26 --> N22
-  N26 --> N23
-  N26 --> N21
-  N12 --> N19
-  N12 --> N26
-  N11 --> N19
-  N11 --> N21
-  N10 --> N19
-  N10 --> N22
-  N10 --> N23
-  N10 --> N20
-  N10 --> N21
-  N9 --> N19
-  N9 --> N22
-  N9 --> N23
-  N9 --> N20
-  N8 --> N19
-  N8 --> N22
-  N8 --> N23
-  N8 --> N20
-  N7 --> N19
-  N7 --> N22
-  N7 --> N23
-  N7 --> N21
-  N6 --> N19
-  N5 --> N19
-  N5 --> N21
-  N2 --> N27
-  N2 --> N28
-  N28 --> N29
-  N27 --> N19
-  N27 --> N30
-  N27 --> N31
-  N31 --> N19
-  N31 --> N20
-  N30 --> N32
-  N30 --> N19
+  N16 --> N20
+  N19 --> N21
+  N12 --> N21
+  N2 --> N22
+  N22 --> N23
+  N22 --> N24
 ```
 <!-- AUTO-GENERATED-ARCHITECTURE-END -->
 
