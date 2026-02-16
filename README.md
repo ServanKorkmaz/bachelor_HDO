@@ -24,6 +24,12 @@ En moderne web-basert vaktplanleggingssystem (turnusplan) for Helsetjenestens dr
 4. **Vaktbytter** - Ansatte kan be om vaktbytter, ledere kan godkjenne/utføre
 5. **Admin** - Administrasjon av team, brukere, vakttyper og innstillinger
 
+### Avanserte funksjoner
+
+6. **Bulk vaktendringer** - Masseredigering av vakter for flere brukere og datoer
+7. **Varslingssystem** - E-post og SMS-varsler med brukerpreferanser
+8. **Revisjonslogg** - Sporbarhet av endringer i brukere, tilgang og vaktbytter
+
 ### Roller
 
 - **Admin**: Kan administrere team, brukere, vakttyper
@@ -35,6 +41,15 @@ En moderne web-basert vaktplanleggingssystem (turnusplan) for Helsetjenestens dr
 - Ansatte kan opprette notater for fravær eller sykdom
 - Disse markeres som "pending" og må godkjennes av leder
 - Leder kan godkjenne eller avvise forespørsler
+
+### Varslingssystem
+
+Systemet støtter varsler via e-post og SMS (SMS er placeholder):
+
+- **Team-innstillinger**: Aktiver/deaktiver e-postvarsler per team
+- **Brukerpreferanser**: Individuelle preferanser for hvilke varsler brukeren vil motta
+- **Varseltyper**: Vaktendringer, vaktbytter, notater (fravær/sykdom)
+- **Varselpanel**: Viser uleste varsler i navigasjonsbaren med automatisk polling
 
 ## Installasjon og oppsett
 
@@ -92,6 +107,8 @@ Seed-scriptet oppretter:
 3. **Be om vaktbytte**: Gå til "Vaktbytter" som ansatt og opprett en forespørsel
 4. **Godkjenn vaktbytte**: Bytt til Leader-rolle og godkjenn/utfør vaktbytter
 5. **Administrer**: Gå til "Admin" for å administrere team, brukere og vakttyper
+6. **Se revisjonslogg**: Gå til "Admin" og åpne "Revisjonslogg"
+7. **Varsler**: Åpne varselpanelet og marker varsler som lest
 
 ## Prosjektstruktur
 
@@ -112,13 +129,44 @@ bachelor_HDO/
 │   └── schedule/           # Vaktplan-komponenter
 ├── lib/
 │   ├── prisma.ts           # Prisma-klient
-│   ├── auth/               # Mock-autentisering
+│   ├── auth/               # Autentisering og autorisasjon
+│   │   ├── requireAdmin.ts # Admin-sjekk
+│   │   └── getCurrentUserId.ts
+│   ├── admin/              # Admin-verktøy
+│   │   ├── audit.ts        # Revisjonslogg
+│   │   └── schemas.ts      # Valideringsskjemaer
 │   ├── date-utils.ts       # Dato-hjelpefunksjoner
-│   └── notifications/      # Varslingsfunksjoner
+│   └── notifications/      # Varslingssystem
+│       ├── deliver.ts      # Multi-kanal levering
+│       ├── sendEmail.ts    # E-post-sender
+│       └── sendSms.ts      # SMS-sender (stub)
+├── scripts/
+│   └── generate-overview-pdf.js  # PDF-generering
 └── prisma/
     ├── schema.prisma       # Database-skjema
     └── seed.ts             # Seed-script
 ```
+
+## API Endpoints
+
+### Bulk-operasjoner
+
+- `POST /api/shifts/bulk` - Bulk create/update/delete shifts
+
+### Admin
+
+- `GET /api/admin/audit` - Hent revisjonslogg
+- `GET|POST /api/admin/users` - Administrer brukere
+- `PATCH /api/admin/users/[id]` - Oppdater bruker
+- `POST /api/admin/teams/[teamId]/members` - Legg til teammedlemmer
+- `PATCH|DELETE /api/admin/teams/[teamId]/members/[membershipId]` - Oppdater/fjern medlem
+
+### Varsler og innstillinger
+
+- `GET /api/notifications` - Hent varsler
+- `POST /api/notifications/[id]/read` - Marker varsel som lest
+- `GET|PUT /api/notification-settings` - Team-varslingsinnstillinger
+- `GET|PUT /api/users/[id]/notification-preferences` - Brukerpreferanser
 
 ## Database
 
@@ -133,6 +181,9 @@ Systemet bruker SQLite for MVP, men kan enkelt byttes til Postgres ved å endre 
 - **Note**: Notater (generelle, fravær, sykdom) med status
 - **SwapRequest**: Vaktbytteforespørsler med status
 - **Notification**: Varsler for brukere
+- **AuditLog**: Revisjonslogg for endringer
+- **NotificationSettings**: Varslingsinnstillinger per team
+- **UserNotificationPreference**: Brukerpreferanser for varsler
 
 ## Videre utvikling
 
@@ -140,8 +191,8 @@ Systemet bruker SQLite for MVP, men kan enkelt byttes til Postgres ved å endre 
 
 1. **Azure AD-integrasjon**: Erstatt mock-auth med ekte Azure AD (Entra ID)
 2. **Postgres-migrering**: Bytt fra SQLite til Postgres for produksjon
-3. **E-postvarsler**: Implementer ekte e-post-sending
-4. **SMS-integrasjon**: Integrer med eksisterende SMS-endpoint
+3. **Forbedrede e-postvarsler**: Bedre maler og leveringslogg
+4. **SMS-integrasjon**: Koble til eksisterende SMS-endpoint
 5. **Avansert planlegging**: Automatisk vaktplanlegging, konfliktdeteksjon
 6. **Mobilapp**: React Native-app for mobil
 
