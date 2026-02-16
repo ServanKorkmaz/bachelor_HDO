@@ -9,8 +9,7 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio",
-    "docs:architecture": "tsx scripts/generate-architecture-docs.ts"
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "next": "^14.2.0",
