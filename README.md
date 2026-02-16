@@ -4,43 +4,71 @@
 ## Application Architecture
 
 ```mermaid
-flowchart TD
+graph TB
   subgraph "UI (App Router)"
-    N1["app/(app)/admin/audit/page.tsx"]
-    N2["app/(app)/admin/settings/page.tsx"]
-    N3["app/(app)/admin/shift-types/page.tsx"]
-    N4["app/(app)/admin/teams/page.tsx"]
-    N5["app/(app)/admin/users/page.tsx"]
-    N6["app/(app)/agenda/page.tsx"]
-    N7["app/(app)/month/page.tsx"]
-    N8["app/(app)/standard/page.tsx"]
-    N9["app/(app)/swap/page.tsx"]
+    subgraph "admin"
+      N1["app/(app)/admin/audit/page.tsx"]
+      N2["app/(app)/admin/settings/page.tsx"]
+      N3["app/(app)/admin/shift-types/page.tsx"]
+      N4["app/(app)/admin/teams/page.tsx"]
+      N5["app/(app)/admin/users/page.tsx"]
+    end
+    subgraph "agenda"
+      N6["app/(app)/agenda/page.tsx"]
+    end
+    subgraph "month"
+      N7["app/(app)/month/page.tsx"]
+    end
+    subgraph "standard"
+      N8["app/(app)/standard/page.tsx"]
+    end
+    subgraph "swap"
+      N9["app/(app)/swap/page.tsx"]
+    end
   end
   subgraph "API Routes"
-    N10["app/api/admin/audit/route.ts"]
-    N11["app/api/admin/users/route.ts"]
-    N12["app/api/teams/route.ts"]
-    N13["app/api/notification-settings/route.ts"]
-    N14["app/api/users/[id]/notification-preferences/route.ts"]
-    N15["app/api/shift-types/[id]/route.ts"]
-    N16["app/api/shift-types/route.ts"]
-    N17["app/api/teams/[id]/route.ts"]
-    N18["app/api/admin/teams/[teamId]/members/route.ts"]
-    N19["app/api/admin/teams/[teamId]/members/[membershipId]/route.ts"]
-    N20["app/api/admin/users/[id]/route.ts"]
-    N21["app/api/shifts/route.ts"]
-    N22["app/api/notes/route.ts"]
-    N23["app/api/users/route.ts"]
-    N24["app/api/swap-requests/route.ts"]
-    N25["app/api/swap-requests/[id]/approve/route.ts"]
-    N26["app/api/swap-requests/[id]/reject/route.ts"]
-    N27["app/api/swap-requests/[id]/execute/route.ts"]
-    N28["app/api/notes/[id]/approve/route.ts"]
-    N29["app/api/notifications/route.ts"]
-    N30["app/api/notifications/[id]/read/route.ts"]
-    N31["app/api/shifts/bulk/route.ts"]
-    N32["app/api/shifts/[id]/route.ts"]
-    N33["app/api/users/[id]/route.ts"]
+    subgraph "admin"
+      N10["app/api/admin/audit/route.ts"]
+      N11["app/api/admin/users/route.ts"]
+      N18["app/api/admin/teams/[teamId]/members/route.ts"]
+      N19["app/api/admin/teams/[teamId]/members/[membershipId]/route.ts"]
+      N20["app/api/admin/users/[id]/route.ts"]
+    end
+    subgraph "teams"
+      N12["app/api/teams/route.ts"]
+      N17["app/api/teams/[id]/route.ts"]
+    end
+    subgraph "notification-settings"
+      N13["app/api/notification-settings/route.ts"]
+    end
+    subgraph "users"
+      N14["app/api/users/[id]/notification-preferences/route.ts"]
+      N23["app/api/users/route.ts"]
+      N33["app/api/users/[id]/route.ts"]
+    end
+    subgraph "shift-types"
+      N15["app/api/shift-types/[id]/route.ts"]
+      N16["app/api/shift-types/route.ts"]
+    end
+    subgraph "shifts"
+      N21["app/api/shifts/route.ts"]
+      N31["app/api/shifts/bulk/route.ts"]
+      N32["app/api/shifts/[id]/route.ts"]
+    end
+    subgraph "notes"
+      N22["app/api/notes/route.ts"]
+      N28["app/api/notes/[id]/approve/route.ts"]
+    end
+    subgraph "swap-requests"
+      N24["app/api/swap-requests/route.ts"]
+      N25["app/api/swap-requests/[id]/approve/route.ts"]
+      N26["app/api/swap-requests/[id]/reject/route.ts"]
+      N27["app/api/swap-requests/[id]/execute/route.ts"]
+    end
+    subgraph "notifications"
+      N29["app/api/notifications/route.ts"]
+      N30["app/api/notifications/[id]/read/route.ts"]
+    end
   end
   subgraph "Data Access"
     N34["lib/prisma.ts"]
@@ -100,6 +128,7 @@ flowchart TD
   N23 --> N34
   N14 --> N34
   N33 --> N34
+  style N34 fill:#38bdf8,color:#0f172a
 ```
 
 ## Component Hierarchy
@@ -154,6 +183,8 @@ graph TD
   N2 --> N22
   N22 --> N23
   N22 --> N24
+  style N4 fill:#FF6B35,color:#111827
+  style N18 fill:#FF6B35,color:#111827
 ```
 <!-- AUTO-GENERATED-ARCHITECTURE-END -->
 

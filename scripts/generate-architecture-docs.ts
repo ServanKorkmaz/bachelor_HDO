@@ -244,6 +244,26 @@ function renderEdges(edges: Array<[string, string]>, idMap: Map<string, string>)
   })
 }
 
+function getAppRouteGroupLabel(filePath: string, appDir: string) {
+  const rel = normalizePath(path.relative(appDir, filePath))
+  const parts = rel.split("/").filter(Boolean)
+  const trimmed = parts.filter((part) => !(part.startsWith("(") && part.endsWith(")")))
+  const appIndex = trimmed.indexOf("app")
+  const routeParts = appIndex === -1 ? trimmed : trimmed.slice(appIndex + 1)
+  if (routeParts.length === 0) return "root"
+  return routeParts[0].replace(/\[(.+)\]/, "$1")
+}
+
+function getApiRouteGroupLabel(filePath: string, appDir: string) {
+  const rel = normalizePath(path.relative(appDir, filePath))
+  const parts = rel.split("/").filter(Boolean)
+  const apiIndex = parts.indexOf("api")
+  if (apiIndex === -1) return "api"
+  const routeParts = parts.slice(apiIndex + 1)
+  if (routeParts.length === 0) return "api"
+  return routeParts[0].replace(/\[(.+)\]/, "$1")
+}
+
 function main() {
   const allFiles = walk(repoRoot)
   const appRoot = findNextAppRoot(allFiles)
@@ -401,18 +421,38 @@ function main() {
 
   const architectureEdges = [...apiEdges, ...prismaEdges].map((edge) => edge.split("::") as [string, string])
 
-  const architectureDiagramLines: string[] = ["flowchart TD"]
+  const architectureDiagramLines: string[] = ["graph TB"]
   if (architectureUiNodes.length > 0) {
     architectureDiagramLines.push(`  subgraph "UI (App Router)"`)
-    for (const node of buildMermaidNodes(architectureUiNodes, idMap, labels)) {
-      architectureDiagramLines.push(`    ${node}`)
+    const groupedUiNodes = new Map<string, string[]>()
+    for (const file of architectureUiNodes) {
+      const group = getAppRouteGroupLabel(file, appDir)
+      if (!groupedUiNodes.has(group)) groupedUiNodes.set(group, [])
+      groupedUiNodes.get(group)?.push(file)
+    }
+    for (const [group, files] of groupedUiNodes) {
+      architectureDiagramLines.push(`    subgraph "${group}"`)
+      for (const node of buildMermaidNodes(files, idMap, labels)) {
+        architectureDiagramLines.push(`      ${node}`)
+      }
+      architectureDiagramLines.push("    end")
     }
     architectureDiagramLines.push("  end")
   }
   if (architectureApiNodes.length > 0) {
     architectureDiagramLines.push(`  subgraph "API Routes"`)
-    for (const node of buildMermaidNodes(architectureApiNodes, idMap, labels)) {
-      architectureDiagramLines.push(`    ${node}`)
+    const groupedApiNodes = new Map<string, string[]>()
+    for (const file of architectureApiNodes) {
+      const group = getApiRouteGroupLabel(file, appDir)
+      if (!groupedApiNodes.has(group)) groupedApiNodes.set(group, [])
+      groupedApiNodes.get(group)?.push(file)
+    }
+    for (const [group, files] of groupedApiNodes) {
+      architectureDiagramLines.push(`    subgraph "${group}"`)
+      for (const node of buildMermaidNodes(files, idMap, labels)) {
+        architectureDiagramLines.push(`      ${node}`)
+      }
+      architectureDiagramLines.push("    end")
     }
     architectureDiagramLines.push("  end")
   }
@@ -425,6 +465,12 @@ function main() {
   }
   for (const edge of renderEdges(architectureEdges, idMap)) {
     architectureDiagramLines.push(`  ${edge}`)
+  }
+  if (architecturePrismaNodes.length > 0) {
+    const prismaId = idMap.get(architecturePrismaNodes[0])
+    if (prismaId) {
+      architectureDiagramLines.push(`  style ${prismaId} fill:#38bdf8,color:#0f172a`)
+    }
   }
 
   const componentIdMap = new Map<string, string>()
@@ -445,6 +491,16 @@ function main() {
   )
   for (const edge of renderEdges(allHierarchyEdges, componentIdMap)) {
     hierarchyDiagramLines.push(`  ${edge}`)
+  }
+  const rootLayoutPath = path.join(appRoot, "app", "layout.tsx")
+  const rootPagePath = path.join(appRoot, "app", "page.tsx")
+  const rootLayoutId = componentIdMap.get(rootLayoutPath)
+  const rootPageId = componentIdMap.get(rootPagePath)
+  if (rootLayoutId) {
+    hierarchyDiagramLines.push(`  style ${rootLayoutId} fill:#FF6B35,color:#111827`)
+  }
+  if (rootPageId) {
+    hierarchyDiagramLines.push(`  style ${rootPageId} fill:#FF6B35,color:#111827`)
   }
 
   const architectureDiagram = architectureDiagramLines.join("\n")
