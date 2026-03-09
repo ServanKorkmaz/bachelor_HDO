@@ -9,7 +9,7 @@ import { NotificationsPanel } from './layout/NotificationsPanel'
 import { cn } from '../lib/utils'
 
 const navItems = [
-  { href: '/standard', label: 'Standard plan', icon: Calendar },
+  { href: '/standard', label: 'Standardplan', icon: Calendar },
   { href: '/month', label: 'Måned', icon: CalendarDays },
   { href: '/agenda', label: 'Agenda', icon: List },
   { href: '/swap', label: 'Vaktbytter', icon: RefreshCw },

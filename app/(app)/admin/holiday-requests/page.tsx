@@ -43,8 +43,8 @@ export default function AdminHolidayRequestsPage() {
     fetchItems()
   }, [fetchItems])
 
-  if (!currentUser) return <div>Please log in</div>
-  if (!isAdmin() && !currentUser) return <div>No access</div>
+  if (!currentUser) return <div>Vennligst logg inn</div>
+  if (!isAdmin() && !currentUser) return <div>Ingen tilgang</div>
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
     try {
@@ -69,26 +69,26 @@ export default function AdminHolidayRequestsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Holiday / Absence requests</h1>
-          <p className="text-sm text-muted-foreground">Review and approve or reject requests from users.</p>
+          <h1 className="text-3xl font-bold">Ferie- og fraværsforespørsler</h1>
+          <p className="text-sm text-muted-foreground">Gå gjennom og godkjenn eller avvis forespørsler fra brukere.</p>
         </div>
       </div>
 
       {loading ? (
-        <div>Loading…</div>
+        <div>Laster…</div>
       ) : items.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">No requests found.</div>
+        <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Ingen forespørsler funnet.</div>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-muted/50">
-                <th className="border-b border-border p-3 text-left text-sm font-medium">User</th>
+                <th className="border-b border-border p-3 text-left text-sm font-medium">Bruker</th>
                 <th className="border-b border-border p-3 text-left text-sm font-medium">Type</th>
-                <th className="border-b border-border p-3 text-left text-sm font-medium">Dates</th>
-                <th className="border-b border-border p-3 text-left text-sm font-medium">Message</th>
+                <th className="border-b border-border p-3 text-left text-sm font-medium">Datoer</th>
+                <th className="border-b border-border p-3 text-left text-sm font-medium">Melding</th>
                 <th className="border-b border-border p-3 text-left text-sm font-medium">Status</th>
-                <th className="border-b border-border p-3 text-right text-sm font-medium">Actions</th>
+                <th className="border-b border-border p-3 text-right text-sm font-medium">Handlinger</th>
               </tr>
             </thead>
             <tbody>
@@ -103,8 +103,8 @@ export default function AdminHolidayRequestsPage() {
                     <div className="flex justify-end gap-2">
                       {r.status === 'PENDING' && (
                         <>
-                          <Button onClick={() => handleDecision(r.id, 'APPROVE')}>Approve</Button>
-                          <Button variant="destructive" onClick={() => handleDecision(r.id, 'REJECT')}>Reject</Button>
+                          <Button onClick={() => handleDecision(r.id, 'APPROVE')}>Godkjenn</Button>
+                          <Button variant="destructive" onClick={() => handleDecision(r.id, 'REJECT')}>Avvis</Button>
                         </>
                       )}
                     </div>

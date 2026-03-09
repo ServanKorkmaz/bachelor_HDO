@@ -20,7 +20,7 @@ export default function NewHolidayRequestPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (!currentUser) return <div>Please log in to request absence</div>
+  if (!currentUser) return <div>Vennligst logg inn for å sende fraværsforespørsel</div>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
