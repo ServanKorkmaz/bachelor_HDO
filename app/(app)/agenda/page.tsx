@@ -20,7 +20,7 @@ export default function AgendaPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
-  const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const [selectedUserId, setSelectedUserId] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
   const { currentUser } = useAuth()
 
@@ -63,7 +63,7 @@ export default function AgendaPage() {
   const filteredShifts = useMemo(() => {
     let filtered = shifts
 
-    if (selectedUserId) {
+    if (selectedUserId && selectedUserId !== 'all') {
       filtered = filtered.filter((s: any) => s.userId === selectedUserId)
     }
 
@@ -81,7 +81,7 @@ export default function AgendaPage() {
       filtered = filtered.filter((n: any) => n.type === selectedType)
     }
 
-    if (selectedUserId) {
+    if (selectedUserId && selectedUserId !== 'all') {
       filtered = filtered.filter((n: any) => n.createdByUserId === selectedUserId)
     }
 
@@ -116,7 +116,7 @@ export default function AgendaPage() {
               <SelectValue placeholder="Alle" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Alle</SelectItem>
+              <SelectItem value="all">Alle</SelectItem>
               {users.map(u => (
                 <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
               ))}
