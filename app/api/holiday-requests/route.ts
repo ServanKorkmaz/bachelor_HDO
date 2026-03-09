@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/admin/audit'
+import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 
 /** List holiday / absence requests for a team. */
 export async function GET(request: Request) {
@@ -32,13 +33,26 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { teamId, userId, type, dateFrom, dateTo, message } = body
+    const { teamId: teamIdBody, userId: userIdBody, type, dateFrom, dateTo, message } = body
+
+    // Prefer authenticated user when available
+    const currentUserId = await getCurrentUserId(request)
+    let userId = userIdBody
+    let teamId = teamIdBody
+
+    if (currentUserId) {
+      // If a current user is provided, override userId and derive teamId from DB
+      const u = await prisma.user.findUnique({ where: { id: currentUserId } })
+      if (!u) return NextResponse.json({ error: 'Current user not found' }, { status: 404 })
+      userId = u.id
+      teamId = u.teamId
+    }
 
     if (!teamId || !userId || !type || !dateFrom) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-  const created = await prisma.$transaction(async (tx: any) => {
+    const created = await prisma.$transaction(async (tx: any) => {
       const hr = await tx.holidayRequest.create({
         data: {
           teamId,
@@ -57,8 +71,8 @@ export async function POST(request: Request) {
           teamId,
           userId: null,
           type: 'HOLIDAY_REQUESTED',
-          title: 'New holiday/absence request',
-          message: `${hr.user.name} submitted a ${type.toLowerCase()} request`,
+          title: 'Ny fraværsforespørsel',
+          message: `${hr.user.name} sendte inn en forespørsel om ${type.toLowerCase()}`,
         },
       })
 

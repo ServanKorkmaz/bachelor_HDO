@@ -41,7 +41,7 @@ export default function NewHolidayRequestPage() {
 
       const res = await fetch('/api/holiday-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
         body: JSON.stringify(payload),
       })
 

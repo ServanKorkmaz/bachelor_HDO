@@ -22,10 +22,16 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const { id } = params
     const body = await request.json()
-    const { action, decidedByUserId } = body // action: 'APPROVE' | 'REJECT'
+    const { action } = body // action: 'APPROVE' | 'REJECT'
 
-    if (!action || !decidedByUserId) {
+    if (!action) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    // Prefer authenticated approver
+    const currentUserId = await (await import('@/lib/auth/getCurrentUserId')).getCurrentUserId(request)
+    if (!currentUserId) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
     }
 
     const updated = await prisma.$transaction(async (tx: any) => {
@@ -36,7 +42,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
       const res = await tx.holidayRequest.update({
         where: { id },
-        data: { status: newStatus, decidedBy: decidedByUserId, decidedAt: new Date() },
+        data: { status: newStatus, decidedBy: currentUserId, decidedAt: new Date() },
         include: { user: { select: { id: true, name: true } } },
       })
 
@@ -45,13 +51,13 @@ export async function PATCH(request: Request, { params }: { params: { id: string
           teamId: res.teamId,
           userId: res.userId,
           type: 'HOLIDAY_DECIDED',
-          title: `Request ${newStatus.toLowerCase()}`,
-          message: `Your ${res.type.toLowerCase()} request was ${newStatus.toLowerCase()}`,
+          title: `Forespørsel ${newStatus.toLowerCase()}`,
+          message: `Din ${res.type.toLowerCase()}-forespørsel ble ${newStatus.toLowerCase()}`,
         },
       })
 
       await createAuditLog(tx, {
-        actorUserId: decidedByUserId,
+        actorUserId: currentUserId,
         action: action === 'APPROVE' ? 'HOLIDAY_APPROVED' : 'HOLIDAY_REJECTED',
         entityType: 'holiday_request',
         entityId: id,

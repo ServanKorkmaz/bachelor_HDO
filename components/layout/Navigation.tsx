@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut } from 'lucide-react'
+import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut, UserMinus } from 'lucide-react'
 import { Button } from '../ui/button'
 import { RoleSwitcher } from '../auth/RoleSwitcher'
 import { NotificationsPanel } from './NotificationsPanel'
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/month', label: 'Måned', icon: CalendarDays },
   { href: '/agenda', label: 'Agenda', icon: List },
   { href: '/swap', label: 'Vaktbytter', icon: RefreshCw },
+  { href: '/holiday-requests', label: 'Fravær', icon: UserMinus },
   { href: '/admin', label: 'Innstillinger', icon: Lock },
 ]
 
