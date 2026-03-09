@@ -51,6 +51,14 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">Se hvem som endret brukere og tilgang</p>
           </div>
         </Link>
+        
+        <Link href="/admin/holiday-requests">
+          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
+            <Calendar className="h-8 w-8 mb-2" />
+            <h2 className="text-lg font-semibold mb-1">Fravær og ferie</h2>
+            <p className="text-sm text-muted-foreground">Se og godkjenn ferie- og fraværsforespørsler</p>
+          </div>
+        </Link>
       </div>
     </div>
   )

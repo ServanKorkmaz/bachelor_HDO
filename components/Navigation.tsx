@@ -13,6 +13,7 @@ const navItems = [
   { href: '/month', label: 'Måned', icon: CalendarDays },
   { href: '/agenda', label: 'Agenda', icon: List },
   { href: '/swap', label: 'Vaktbytter', icon: RefreshCw },
+  { href: '/holiday-requests/new', label: 'Be om fravær', icon: CalendarDays },
   { href: '/admin', label: 'Innstillinger', icon: Lock },
 ]
 
