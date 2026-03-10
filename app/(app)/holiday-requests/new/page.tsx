@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { dateNDaysAgoString, todayStringInTimeZone } from '@/lib/date-utils'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Select, SelectItem } from '@/components/ui/select'
+import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 
 export default function NewHolidayRequestPage() {
@@ -20,6 +21,10 @@ export default function NewHolidayRequestPage() {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Compute date boundaries
+  const todayStr = useMemo(() => todayStringInTimeZone(), [])
+  const sicknessMinStr = useMemo(() => dateNDaysAgoString(30), [])
+
   if (!currentUser) return <div>Vennligst logg inn for å sende fraværsforespørsel</div>
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +32,35 @@ export default function NewHolidayRequestPage() {
     if (!dateFrom) {
       toast({ title: 'Validering', description: 'Velg startdato', variant: 'destructive' })
       return
+    }
+    // Basic validations: dateFrom not in past for non-sickness; sickness allowed up to 30 days back
+    const from = new Date(dateFrom)
+    from.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (type !== 'SICKNESS' && from < today) {
+      toast({ title: 'Validering', description: 'Startdato kan ikke være i fortiden for ferie/fravær', variant: 'destructive' })
+      return
+    }
+
+    if (type === 'SICKNESS') {
+      const earliest = new Date()
+      earliest.setHours(0, 0, 0, 0)
+      earliest.setDate(earliest.getDate() - 30)
+      if (from < earliest) {
+        toast({ title: 'Validering', description: 'Sykdom kan kun registreres opptil 30 dager tilbake i tid', variant: 'destructive' })
+        return
+      }
+    }
+
+    if (dateTo) {
+      const to = new Date(dateTo)
+      to.setHours(0, 0, 0, 0)
+      if (to < from) {
+        toast({ title: 'Validering', description: 'Sluttdato kan ikke være før startdato', variant: 'destructive' })
+        return
+      }
     }
     setLoading(true)
     try {
@@ -67,20 +101,36 @@ export default function NewHolidayRequestPage() {
         <div>
           <Label>Type</Label>
           <Select value={type} onValueChange={(v: string) => setType(v)}>
-            <SelectItem value="HOLIDAY">Ferie</SelectItem>
-            <SelectItem value="ABSENCE">Fravær</SelectItem>
-            <SelectItem value="SICKNESS">Sykdom</SelectItem>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="HOLIDAY">Ferie</SelectItem>
+              <SelectItem value="ABSENCE">Fravær</SelectItem>
+              <SelectItem value="SICKNESS">Sykdom</SelectItem>
+            </SelectContent>
           </Select>
+          <p className="text-sm text-muted-foreground mt-2">Merk: For sykefravær kan du registrere inntil 30 dager tilbake. Leder kan be om dokumentasjon for retrospektive forespørsler.</p>
         </div>
 
         <div>
           <Label>Fra</Label>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            min={type === 'SICKNESS' ? sicknessMinStr : todayStr}
+          />
         </div>
 
         <div>
           <Label>Til (valgfritt)</Label>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            min={dateFrom || (type === 'SICKNESS' ? sicknessMinStr : todayStr)}
+          />
         </div>
 
         <div>

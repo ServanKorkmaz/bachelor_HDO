@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { holidayTypeToNorwegian } from '@/lib/i18n'
 
 const VALID_NOTE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
 
@@ -31,7 +32,8 @@ export async function POST(
     })
 
     const notifTitle = `Notat ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`
-    const notifMessage = `Ditt notat "${note.title || note.type}" er ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`
+  const typeNor = holidayTypeToNorwegian(note.type as string)
+  const notifMessage = `Ditt notat "${note.title || typeNor}" er ${status === 'APPROVED' ? 'godkjent' : 'avvist'}`
     await prisma.notification.create({
       data: {
         teamId: note.teamId,

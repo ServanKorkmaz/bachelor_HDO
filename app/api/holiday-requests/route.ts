@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/admin/audit'
+import { holidayTypeToNorwegian } from '@/lib/i18n'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 
 /** List holiday / absence requests for a team. */
@@ -52,6 +53,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    // Server-side date validations
+    // Use Norway timezone-aware date strings for comparisons (YYYY-MM-DD)
+    const { dateNDaysAgoString, todayStringInTimeZone } = await import('@/lib/date-utils')
+    const todayStr = todayStringInTimeZone()
+    const earliestSickness = dateNDaysAgoString(30)
+
+    if (type !== 'SICKNESS' && dateFrom < todayStr) {
+      return NextResponse.json({ error: 'Start date cannot be in the past for holiday/absence' }, { status: 400 })
+    }
+
+    if (type === 'SICKNESS' && dateFrom < earliestSickness) {
+      return NextResponse.json({ error: 'Sickness requests can only be submitted up to 30 days in the past' }, { status: 400 })
+    }
+
+    if (dateTo && dateTo < dateFrom) {
+      return NextResponse.json({ error: 'End date cannot be before start date' }, { status: 400 })
+    }
+
     const created = await prisma.$transaction(async (tx: any) => {
       const hr = await tx.holidayRequest.create({
         data: {
@@ -66,13 +85,14 @@ export async function POST(request: Request) {
         include: { user: { select: { id: true, name: true } } },
       })
 
+      const typeNor = holidayTypeToNorwegian(type)
       await tx.notification.create({
         data: {
           teamId,
           userId: null,
           type: 'HOLIDAY_REQUESTED',
           title: 'Ny fraværsforespørsel',
-          message: `${hr.user.name} sendte inn en forespørsel om ${type.toLowerCase()}`,
+          message: `${hr.user.name} sendte inn en forespørsel om ${typeNor}`,
         },
       })
 

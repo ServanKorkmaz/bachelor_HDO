@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from 'react'
+import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
@@ -95,10 +96,10 @@ export default function AdminHolidayRequestsPage() {
               {items.map((r) => (
                 <tr key={r.id} className="border-b border-border">
                   <td className="p-3">{r.user.name}</td>
-                  <td className="p-3">{r.type}</td>
+                  <td className="p-3">{holidayTypeToNorwegian(r.type)}</td>
                   <td className="p-3">{r.dateFrom}{r.dateTo ? ` — ${r.dateTo}` : ''}</td>
                   <td className="p-3">{r.message || '—'}</td>
-                  <td className="p-3">{r.status}</td>
+                  <td className="p-3">{statusToNorwegian(r.status)}</td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-2">
                       {r.status === 'PENDING' && (

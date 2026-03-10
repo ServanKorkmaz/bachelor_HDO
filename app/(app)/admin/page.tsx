@@ -52,13 +52,9 @@ export default function AdminPage() {
           </div>
         </Link>
         
-        <Link href="/admin/holiday-requests">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <Calendar className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Fravær og ferie</h2>
-            <p className="text-sm text-muted-foreground">Se og godkjenn ferie- og fraværsforespørsler</p>
-          </div>
-        </Link>
+        {/* Holiday requests are reachable from the main navigation for all users; remove
+            the duplicate admin-only card here to avoid confusion. Admins can still
+            review requests via the main menu's Fravær page which shows the admin view. */}
       </div>
     </div>
   )

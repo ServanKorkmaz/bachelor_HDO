@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/admin/audit'
+import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 
 /** Get a single holiday request or update its status (approve/reject). */
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -46,13 +47,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         include: { user: { select: { id: true, name: true } } },
       })
 
+      const typeNor = holidayTypeToNorwegian(res.type)
+      const statusNor = statusToNorwegian(newStatus)
       await tx.notification.create({
         data: {
           teamId: res.teamId,
           userId: res.userId,
           type: 'HOLIDAY_DECIDED',
-          title: `Forespørsel ${newStatus.toLowerCase()}`,
-          message: `Din ${res.type.toLowerCase()}-forespørsel ble ${newStatus.toLowerCase()}`,
+          title: `Forespørsel ${statusNor}`,
+          message: `Din ${typeNor}-forespørsel ble ${statusNor.toLowerCase()}`,
         },
       })
 
