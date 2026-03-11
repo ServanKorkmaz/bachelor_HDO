@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { holidayTypeToNorwegian } from '@/lib/i18n'
 
 /** Agenda view showing upcoming shifts and notes. */
 export default function AgendaPage() {
@@ -20,6 +21,7 @@ export default function AgendaPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [users, setUsers] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
+  // Use a non-empty sentinel for 'all' to satisfy Radix SelectItem requirements
   const [selectedUserId, setSelectedUserId] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
   const { currentUser } = useAuth()
@@ -191,7 +193,7 @@ export default function AgendaPage() {
                           note.type === 'SICKNESS' ? 'bg-red-500/20 text-red-500' :
                           'bg-blue-500/20 text-blue-500'
                         }`}>
-                          {note.type}
+                          {holidayTypeToNorwegian(note.type)}
                         </span>
                         {note.status === 'PENDING' && (
                           <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-500">

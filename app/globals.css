@@ -36,3 +36,22 @@
   }
 }
 
+/* Make native date input text and calendar icon visible on dark backgrounds.
+   The calendar picker indicator is a browser native glyph; on WebKit-based
+   browsers we can invert/brighten it so it appears white on dark themes. */
+input[type="date"] {
+  color: rgb(255 255 255 / 1); /* ensure typed date text is white */
+}
+
+/* WebKit (Chrome, Safari, Edge) calendar icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) grayscale(1) contrast(1) brightness(2);
+  opacity: 1; /* prevent dimming */
+}
+
+/* Firefox fallback: make the whole control use light foreground where supported */
+input[type="date"]::-moz-focus-inner {
+  color: rgb(255 255 255 / 1);
+}
+
+

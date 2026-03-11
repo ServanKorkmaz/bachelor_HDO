@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 export default function AdminPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Admin</h1>
+      <h1 className="text-3xl font-bold">Administrasjon</h1>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link href="/admin/teams">
@@ -51,6 +51,10 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">Se hvem som endret brukere og tilgang</p>
           </div>
         </Link>
+        
+        {/* Holiday requests are reachable from the main navigation for all users; remove
+            the duplicate admin-only card here to avoid confusion. Admins can still
+            review requests via the main menu's Fravær page which shows the admin view. */}
       </div>
     </div>
   )
