@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 
+export const dynamic = 'force-dynamic'
+
 /** List notes for a team, optionally within a date range. */
 export async function GET(request: Request) {
   try {

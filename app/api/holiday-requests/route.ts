@@ -4,6 +4,8 @@ import { createAuditLog } from '@/lib/admin/audit'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 
+export const dynamic = 'force-dynamic'
+
 /** List holiday / absence requests for a team. */
 export async function GET(request: Request) {
   try {

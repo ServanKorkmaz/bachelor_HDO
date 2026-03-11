@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 /** Get notification settings for a team, creating defaults if missing. */
 export async function GET(request: Request) {
   try {

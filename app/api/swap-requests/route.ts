@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 
+export const dynamic = 'force-dynamic'
+
 /** List swap requests for a team. */
 export async function GET(request: Request) {
   try {

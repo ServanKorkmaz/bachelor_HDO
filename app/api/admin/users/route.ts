@@ -4,6 +4,8 @@ import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { createUserSchema } from '@/lib/admin/schemas'
 
+export const dynamic = 'force-dynamic'
+
 /** GET /api/admin/users - List users with optional filters (teamId, q, status). Admin only. */
 export async function GET(request: Request) {
   const authResult: { currentUser?: { id: string; role: string } } = {}

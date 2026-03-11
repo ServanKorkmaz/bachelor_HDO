@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 
+export const dynamic = 'force-dynamic'
+
 /** GET /api/admin/audit - List audit log entries. Admin only. Optional entityType, entityId. */
 export async function GET(request: Request) {
   const authResult: { currentUser?: { id: string; role: string } } = {}

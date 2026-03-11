@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { parse, format } from 'date-fns'
 
+export const dynamic = 'force-dynamic'
+
 /** List shifts for a team, optionally filtered by date range or user. */
 export async function GET(request: Request) {
   try {
