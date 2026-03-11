@@ -29,8 +29,7 @@ export interface AuditEntry {
 
 /** Create one audit log entry. Call inside the same transaction as the data write. */
 export async function createAuditLog(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any,
+  tx: { auditLog: { create: (args: { data: AuditEntry }) => Promise<unknown> } },
   entry: AuditEntry
 ): Promise<void> {
   await tx.auditLog.create({
