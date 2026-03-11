@@ -200,8 +200,8 @@ async function main() {
   }
   console.log('✅ Backfilled team memberships')
 
-  // Seed shifts for 2 weeks starting from 2026-01-05 (Monday, week 2)
-  const weekStart = parse('2026-01-05', 'yyyy-MM-dd', new Date())
+  // Seed shifts for 4 weeks starting from 2026-03-09 (Monday, current week)
+  const weekStart = parse('2026-03-09', 'yyyy-MM-dd', new Date())
   const employees = users.filter(u => u.role === 'EMPLOYEE')
 
   // Week 1 shifts (Jan Thomas Kristiansen pattern)
