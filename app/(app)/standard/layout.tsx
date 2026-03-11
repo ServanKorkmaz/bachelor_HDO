@@ -1,11 +1,9 @@
 export const dynamic = 'force-dynamic'
 
-/** Layout wrapper for admin routes. */
-export default function AdminLayout({
+export default function StandardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return <>{children}</>
 }
-
