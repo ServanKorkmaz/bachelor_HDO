@@ -36,6 +36,27 @@ export function formatDayName(date: Date | string): string {
   return format(d, 'EEEE', { locale: nb })
 }
 
+/** Application timezone (Norway). */
+export const APP_TIMEZONE = 'Europe/Oslo'
+
+/** Format a Date to YYYY-MM-DD in the given IANA time zone. */
+export function formatDateInTimeZone(date: Date = new Date(), timeZone: string = APP_TIMEZONE): string {
+  // Use en-CA locale to get YYYY-MM-DD ordering
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(date)
+}
+
+/** Return a YYYY-MM-DD string for N days ago in the given time zone. */
+export function dateNDaysAgoString(n: number, timeZone: string = APP_TIMEZONE): string {
+  const msPerDay = 24 * 60 * 60 * 1000
+  const d = new Date(Date.now() - n * msPerDay)
+  return formatDateInTimeZone(d, timeZone)
+}
+
+/** Return today's date string (YYYY-MM-DD) in the given time zone. */
+export function todayStringInTimeZone(timeZone: string = APP_TIMEZONE): string {
+  return formatDateInTimeZone(new Date(), timeZone)
+}
+
 /** Get the start of the week (Monday) for the provided date. */
 export function getWeekStart(date: Date = new Date()): Date {
   return startOfWeek(date, { weekStartsOn: 1 }) // Monday
