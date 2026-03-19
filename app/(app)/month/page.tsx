@@ -43,8 +43,8 @@ export default function MonthPage() {
       .then(res => res.json())
       .then(data => {
         setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
+        if (data.length > 0) {
+          setSelectedTeamId(prev => prev || data[0].id)
         }
       })
       .catch(console.error)
@@ -174,7 +174,17 @@ export default function MonthPage() {
                         color: '#fff',
                       }}
                     >
-                      {shift.shiftType.label}
+                      <div className="font-medium">{shift.shiftType.label}</div>
+                      {shift.user?.name && (
+                        <div className="text-[11px] opacity-90 truncate">
+                          {shift.user.name}
+                        </div>
+                      )}
+                      {shift.comment && (
+                        <div className="text-xs opacity-90 mt-0.5 border-t border-white/30 pt-0.5">
+                          {shift.comment}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {dayShifts.length > 3 && (
