@@ -22,8 +22,12 @@ export default function StandardPlanPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const [visibleUserIds, setVisibleUserIds] = useState<string[]>([])
+  const [showVisibleUsersPanel, setShowVisibleUsersPanel] = useState(false)
+  const [visibleUsersSearch, setVisibleUsersSearch] = useState('')
   const { currentUser, canEditShifts } = useAuth()
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
+  const isAdmin = currentUser?.role === 'ADMIN'
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
   const weekDates = useMemo(() => getWeekDatesUtil(selectedDate), [selectedDate])
@@ -61,6 +65,7 @@ export default function StandardPlanPage() {
   useEffect(() => {
     if (!selectedTeamId) {
       setUsers([])
+      setVisibleUserIds([])
       return
     }
     fetch(`/api/users?teamId=${selectedTeamId}`)
@@ -74,6 +79,26 @@ export default function StandardPlanPage() {
         setUsers([])
       })
   }, [selectedTeamId])
+
+  useEffect(() => {
+    if (!Array.isArray(users) || users.length === 0) {
+      setVisibleUserIds([])
+      return
+    }
+
+    setVisibleUserIds(prev => {
+      const allowed = new Set(users.map(u => u.id))
+      const kept = prev.filter(id => allowed.has(id))
+      return kept.length > 0 ? kept : users.map(u => u.id)
+    })
+  }, [users])
+
+  useEffect(() => {
+    if (!selectedUserId) return
+    if (!users.some((u: any) => u.id === selectedUserId)) {
+      setSelectedUserId('')
+    }
+  }, [selectedUserId, users])
 
   useEffect(() => {
     if (!selectedTeamId) return
@@ -110,9 +135,29 @@ export default function StandardPlanPage() {
   }
 
   const filteredUsers = useMemo(() => {
-    if (!selectedUserId) return users
-    return users.filter(u => u.id === selectedUserId)
-  }, [users, selectedUserId])
+    const baseUsers = isAdmin
+      ? users.filter(u => visibleUserIds.includes(u.id))
+      : users
+
+    if (!selectedUserId) return baseUsers
+    return baseUsers.filter(u => u.id === selectedUserId)
+  }, [users, selectedUserId, isAdmin, visibleUserIds])
+
+  const toggleVisibleUser = (userId: string, checked: boolean) => {
+    setVisibleUserIds(prev => {
+      if (checked) {
+        if (prev.includes(userId)) return prev
+        return [...prev, userId]
+      }
+      return prev.filter(id => id !== userId)
+    })
+  }
+
+  const filteredVisibilityUsers = useMemo(() => {
+    const query = visibleUsersSearch.trim().toLowerCase()
+    if (!query) return users
+    return users.filter((u: any) => u.name.toLowerCase().includes(query))
+  }, [users, visibleUsersSearch])
 
   return (
     <div className="space-y-4">
@@ -179,6 +224,66 @@ export default function StandardPlanPage() {
             ))}
           </select>
         </div>
+
+        {isAdmin && (
+          <div className="w-full border-t border-border pt-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Synlige ansatte i tabellen:</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowVisibleUsersPanel(prev => !prev)}
+              >
+                {showVisibleUsersPanel ? 'Skjul panel' : 'Vis panel'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setVisibleUserIds(users.map((u: any) => u.id))}
+              >
+                Vis alle
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setVisibleUserIds([])}
+              >
+                Skjul alle
+              </Button>
+            </div>
+            {showVisibleUsersPanel && (
+              <div className="rounded-md border p-2">
+                <input
+                  type="text"
+                  value={visibleUsersSearch}
+                  onChange={(e) => setVisibleUsersSearch(e.target.value)}
+                  placeholder="Søk etter ansatt..."
+                  className="mb-2 w-full px-3 py-1 rounded-md border bg-background text-foreground"
+                />
+                <div className="max-h-36 overflow-y-auto">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredVisibilityUsers.map((u: any) => (
+                      <label key={u.id} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={visibleUserIds.includes(u.id)}
+                          onChange={(e) => toggleVisibleUser(u.id, e.target.checked)}
+                        />
+                        <span>{u.name}</span>
+                      </label>
+                    ))}
+                    {filteredVisibilityUsers.length === 0 && (
+                      <div className="text-sm text-muted-foreground">Ingen ansatte funnet</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <WeekGrid

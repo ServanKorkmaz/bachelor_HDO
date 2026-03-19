@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
-import { format, parse, subDays } from 'date-fns'
+import { eachDayOfInterval, format, parse } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,10 +57,17 @@ interface BulkShiftRow {
 }
 
 const MAX_ROWS = 200
-const SHIFT_LOOKBACK_DAYS = 30
-const SHIFT_LOOKAHEAD_DAYS = 90
-
 type ShiftFilter = 'upcoming' | 'past' | 'all'
+
+const WEEKDAY_OPTIONS = [
+  { value: 1, label: 'Man' },
+  { value: 2, label: 'Tir' },
+  { value: 3, label: 'Ons' },
+  { value: 4, label: 'Tor' },
+  { value: 5, label: 'Fre' },
+  { value: 6, label: 'Lør' },
+  { value: 7, label: 'Søn' },
+]
 
 const parseDate = (value: string) => parse(value, 'yyyy-MM-dd', new Date())
 
@@ -94,28 +101,29 @@ function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSe
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <Select value={value} onValueChange={onChange} disabled={isLoading || !!error}>
-        <SelectTrigger>
-          <SelectValue placeholder={isLoading ? 'Laster ansatte...' : 'Velg ansatt'} />
-        </SelectTrigger>
-        <SelectContent>
-          {error && (
-            <div className="px-3 py-2 text-sm text-destructive">
-              Kunne ikke laste ansatte
-            </div>
-          )}
-          {!error && filtered.length === 0 && (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              Ingen treff
-            </div>
-          )}
-          {!error && filtered.map(user => (
-            <SelectItem key={user.id} value={user.id}>
-              {user.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="max-h-40 overflow-y-auto rounded-md border p-1">
+        {isLoading && (
+          <div className="px-3 py-2 text-sm text-muted-foreground">Laster ansatte...</div>
+        )}
+        {error && (
+          <div className="px-3 py-2 text-sm text-destructive">Kunne ikke laste ansatte</div>
+        )}
+        {!isLoading && !error && filtered.length === 0 && (
+          <div className="px-3 py-2 text-sm text-muted-foreground">Ingen treff</div>
+        )}
+        {!isLoading && !error && filtered.map(user => (
+          <button
+            type="button"
+            key={user.id}
+            onClick={() => onChange(user.id)}
+            className={`w-full rounded px-3 py-2 text-left text-sm transition-colors ${
+              value === user.id ? 'bg-primary/15 font-medium' : 'hover:bg-accent'
+            }`}
+          >
+            {user.name}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -280,6 +288,21 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const [teamShifts, setTeamShifts] = useState<any[]>([])
   const [shiftsLoading, setShiftsLoading] = useState(false)
   const [shiftsError, setShiftsError] = useState<string | null>(null)
+  const [quickUserId, setQuickUserId] = useState('')
+  const [quickDateFrom, setQuickDateFrom] = useState('')
+  const [quickDateTo, setQuickDateTo] = useState('')
+  const [quickWeekdays, setQuickWeekdays] = useState<number[]>([1, 2, 3, 4, 5])
+  const [quickShiftTypeId, setQuickShiftTypeId] = useState('')
+  const [quickUseCustomTime, setQuickUseCustomTime] = useState(false)
+  const [quickStartTime, setQuickStartTime] = useState('')
+  const [quickEndTime, setQuickEndTime] = useState('')
+  const [quickComment, setQuickComment] = useState('')
+  const [quickDeleteUserId, setQuickDeleteUserId] = useState('')
+  const [quickDeleteDateFrom, setQuickDeleteDateFrom] = useState('')
+  const [quickDeleteDateTo, setQuickDeleteDateTo] = useState('')
+  const [quickDeleteSearch, setQuickDeleteSearch] = useState('')
+  const [selectedDeleteShiftIds, setSelectedDeleteShiftIds] = useState<string[]>([])
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   useEffect(() => {
     setUsersLoading(true)
@@ -307,11 +330,8 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     if (!teamId) return
     setShiftsLoading(true)
     setShiftsError(null)
-    const today = new Date()
-    const dateFrom = format(subDays(today, SHIFT_LOOKBACK_DAYS), 'yyyy-MM-dd')
-    const dateTo = format(new Date(today.getTime() + SHIFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
 
-    fetch(`/api/shifts?teamId=${teamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
+    fetch(`/api/shifts?teamId=${teamId}`)
       .then(res => res.json())
       .then(data => setTeamShifts(data))
       .catch((error) => {
@@ -374,6 +394,13 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   }, [defaultShiftType, rows.length])
 
   useEffect(() => {
+    if (!defaultShiftType) return
+    setQuickShiftTypeId(prev => prev || defaultShiftType.id)
+    setQuickStartTime(prev => prev || defaultShiftType.defaultStartTime)
+    setQuickEndTime(prev => prev || defaultShiftType.defaultEndTime)
+  }, [defaultShiftType])
+
+  useEffect(() => {
     if (shiftTypes.length > 0 && rows.length === 0) {
       setRows([createRow()])
     }
@@ -402,18 +429,132 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     setResult(null)
   }
 
+  const toggleQuickWeekday = (dayValue: number) => {
+    setQuickWeekdays(prev => {
+      if (prev.includes(dayValue)) {
+        return prev.filter(d => d !== dayValue)
+      }
+      return [...prev, dayValue].sort((a, b) => a - b)
+    })
+  }
+
+  const addQuickRows = () => {
+    if (!quickUserId || !quickDateFrom || !quickDateTo || !quickShiftTypeId) {
+      alert('Velg ansatt, datointervall og vakt før du genererer rader.')
+      return
+    }
+    if (quickWeekdays.length === 0) {
+      alert('Velg minst en ukedag.')
+      return
+    }
+
+    const fromDate = parseDate(quickDateFrom)
+    const toDate = parseDate(quickDateTo)
+    const start = fromDate <= toDate ? fromDate : toDate
+    const end = fromDate <= toDate ? toDate : fromDate
+
+    const dates = eachDayOfInterval({ start, end }).filter(date => {
+      const isoDay = date.getDay() === 0 ? 7 : date.getDay()
+      return quickWeekdays.includes(isoDay)
+    })
+
+    if (dates.length === 0) {
+      alert('Ingen datoer matcher valgt intervall og ukedager.')
+      return
+    }
+
+    const remaining = MAX_ROWS - rows.length
+    if (remaining <= 0) {
+      alert(`Maks ${MAX_ROWS} rader er nådd.`)
+      return
+    }
+
+    const rowsToAdd = dates.slice(0, remaining).map(date => ({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      shiftId: undefined,
+      userId: quickUserId,
+      date: format(date, 'yyyy-MM-dd'),
+      shiftTypeId: quickShiftTypeId,
+      startTime: quickStartTime,
+      endTime: quickEndTime,
+      comment: quickComment,
+      useCustomTime: quickUseCustomTime,
+    }))
+
+    setRows(prev => [...prev, ...rowsToAdd])
+    setResult(null)
+
+    if (rowsToAdd.length < dates.length) {
+      alert(`La til ${rowsToAdd.length} rader. Resten ble hoppet over pga maksgrense (${MAX_ROWS}).`)
+    }
+  }
+
+  const deleteCandidateShifts = useMemo(() => {
+    if (!quickDeleteUserId) return [] as any[]
+
+    const normalizedQuery = quickDeleteSearch.trim().toLowerCase()
+    const from = quickDeleteDateFrom || null
+    const to = quickDeleteDateTo || null
+
+    return teamShifts
+      .filter(shift => shift.userId === quickDeleteUserId)
+      .filter(shift => {
+        if (from && shift.date < from) return false
+        if (to && shift.date > to) return false
+        return true
+      })
+      .filter(shift => {
+        if (!normalizedQuery) return true
+        const label = shift.shiftType?.label?.toLowerCase() || ''
+        const comment = (shift.comment || '').toLowerCase()
+        return shift.date.includes(normalizedQuery) || label.includes(normalizedQuery) || comment.includes(normalizedQuery)
+      })
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [quickDeleteUserId, quickDeleteSearch, quickDeleteDateFrom, quickDeleteDateTo, teamShifts])
+
+  useEffect(() => {
+    setSelectedDeleteShiftIds([])
+  }, [quickDeleteUserId])
+
+  const toggleDeleteShiftSelection = (shiftId: string, checked: boolean) => {
+    setSelectedDeleteShiftIds(prev => {
+      if (checked) {
+        if (prev.includes(shiftId)) return prev
+        return [...prev, shiftId]
+      }
+      return prev.filter(id => id !== shiftId)
+    })
+    setResult(null)
+  }
+
   const canSubmit = () => {
     if (!currentUser) return false
-    if (!teamId || rows.length === 0 || rows.length > MAX_ROWS) return false
+    if (!teamId) return false
+
+    if (action === 'delete') {
+      return selectedDeleteShiftIds.length > 0
+    }
+
+    if (rows.length === 0 || rows.length > MAX_ROWS) return false
     return rows.every(row => {
       if (action === 'create' && (!row.userId || !row.date)) return false
       if (action !== 'create' && !row.shiftId) return false
-      if (action === 'delete') return Boolean(row.shiftId)
       return Boolean(row.shiftTypeId && row.startTime && row.endTime)
     })
   }
 
   const handleSave = async () => {
+    if (!canSubmit() || !currentUser) return
+
+    if (action === 'delete' && selectedDeleteShiftIds.length > 1) {
+      setIsDeleteConfirmOpen(true)
+      return
+    }
+
+    await executeSave()
+  }
+
+  const executeSave = async () => {
     if (!canSubmit() || !currentUser) return
 
     setIsSaving(true)
@@ -424,15 +565,24 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
         body: JSON.stringify({
           action,
           teamId,
-          items: rows.map(row => ({
-            shiftId: row.shiftId,
-            userId: row.userId,
-            date: row.date,
-            shiftTypeId: row.shiftTypeId || undefined,
-            startTime: row.startTime || undefined,
-            endTime: row.endTime || undefined,
-            comment: row.comment || undefined,
-          })),
+          items: action === 'delete'
+            ? selectedDeleteShiftIds.map(shiftId => {
+                const shift = shiftsById.get(shiftId)
+                return {
+                  shiftId,
+                  userId: shift?.userId || '',
+                  date: shift?.date || '',
+                }
+              })
+            : rows.map(row => ({
+                shiftId: row.shiftId,
+                userId: row.userId,
+                date: row.date,
+                shiftTypeId: row.shiftTypeId || undefined,
+                startTime: row.startTime || undefined,
+                endTime: row.endTime || undefined,
+                comment: row.comment || undefined,
+              })),
           currentUserId: currentUser.id,
         }),
       })
@@ -459,6 +609,12 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
       setIsSaving(false)
     }
   }
+
+  const deletePreviewDates = useMemo(() => {
+    if (action !== 'delete') return []
+    return [...new Set(selectedDeleteShiftIds.map(id => shiftsById.get(id)?.date).filter(Boolean) as string[])]
+      .sort((a, b) => a.localeCompare(b))
+  }, [action, selectedDeleteShiftIds, shiftsById])
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -487,25 +643,235 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
           <div className="flex items-center justify-between gap-2">
             <div className="text-sm text-muted-foreground">
-              {rows.length} rad(er) valgt
-              {rows.length > MAX_ROWS && ` (maks ${MAX_ROWS})`}
+              {action === 'delete' ? `${selectedDeleteShiftIds.length} vakt(er) markert for sletting` : `${rows.length} rad(er) valgt`}
+              {action !== 'delete' && rows.length > MAX_ROWS && ` (maks ${MAX_ROWS})`}
             </div>
-            <Button variant="outline" onClick={addRow} disabled={rows.length >= MAX_ROWS}>
-              Legg til rad
-            </Button>
+            {action !== 'delete' && (
+              <Button variant="outline" onClick={addRow} disabled={rows.length >= MAX_ROWS}>
+                Legg til rad
+              </Button>
+            )}
           </div>
 
-          {rows.length === 0 && (
+          {action === 'create' && (
+            <div className="rounded-md border p-3">
+              <div className="mb-3 text-sm font-medium">Hurtigopprett for flere datoer</div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <EmployeeSelect
+                  users={teamUsers}
+                  value={quickUserId}
+                  onChange={setQuickUserId}
+                  isLoading={usersLoading}
+                  error={usersError}
+                />
+
+                <div className="grid gap-2">
+                  <Label>Vakt</Label>
+                  <Select
+                    value={quickShiftTypeId}
+                    onValueChange={(value) => {
+                      const selected = shiftTypeById.get(value)
+                      setQuickShiftTypeId(value)
+                      if (!quickUseCustomTime) {
+                        setQuickStartTime(selected?.defaultStartTime || quickStartTime)
+                        setQuickEndTime(selected?.defaultEndTime || quickEndTime)
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Velg vakt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shiftTypes.map(st => (
+                        <SelectItem key={st.id} value={st.id}>
+                          {st.label} ({st.defaultStartTime}-{st.defaultEndTime})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Fra dato</Label>
+                  <Input type="date" value={quickDateFrom} onChange={(e) => setQuickDateFrom(e.target.value)} />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Til dato</Label>
+                  <Input type="date" value={quickDateTo} onChange={(e) => setQuickDateTo(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                <Label>Ukedager</Label>
+                <div className="flex flex-wrap gap-2">
+                  {WEEKDAY_OPTIONS.map(option => (
+                    <label key={option.value} className="flex items-center gap-1.5 rounded border px-2 py-1 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={quickWeekdays.includes(option.value)}
+                        onChange={() => toggleQuickWeekday(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={quickUseCustomTime}
+                    onChange={(e) => setQuickUseCustomTime(e.target.checked)}
+                  />
+                  Tilpass tid
+                </label>
+
+                {quickUseCustomTime && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="grid gap-2">
+                      <Label>Start</Label>
+                      <Input type="time" value={quickStartTime} onChange={(e) => setQuickStartTime(e.target.value)} />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>Slutt</Label>
+                      <Input type="time" value={quickEndTime} onChange={(e) => setQuickEndTime(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                <Label>Kommentar (valgfritt)</Label>
+                <Input value={quickComment} onChange={(e) => setQuickComment(e.target.value)} />
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <Button type="button" variant="outline" onClick={addQuickRows}>
+                  Generer rader
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {action === 'delete' && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+              <div className="mb-4 text-sm font-semibold text-destructive">Velg vakter som skal slettes</div>
+
+              <div className="space-y-4">
+                <EmployeeSelect
+                  users={teamUsers}
+                  value={quickDeleteUserId}
+                  onChange={setQuickDeleteUserId}
+                  isLoading={usersLoading}
+                  error={usersError}
+                />
+
+                <div className="space-y-2">
+                  <Label>Datoer</Label>
+                  <div className="space-y-2">
+                    <div className="grid gap-1">
+                      <span className="text-xs text-muted-foreground">Fra dato</span>
+                      <Input
+                        type="date"
+                        value={quickDeleteDateFrom}
+                        onChange={(e) => setQuickDeleteDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <span className="text-xs text-muted-foreground">Til dato</span>
+                      <Input
+                        type="date"
+                        value={quickDeleteDateTo}
+                        onChange={(e) => setQuickDeleteDateTo(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label className="text-xs">Søk i vakter (dato, vakttype eller kommentar)</Label>
+                  <Input
+                    value={quickDeleteSearch}
+                    onChange={(e) => setQuickDeleteSearch(e.target.value)}
+                    placeholder="Søk..."
+                  />
+                </div>
+
+                {quickDeleteUserId && (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedDeleteShiftIds(deleteCandidateShifts.map(shift => shift.id))}
+                      >
+                        Marker alle viste
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedDeleteShiftIds([])}
+                      >
+                        Fjern markering
+                      </Button>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto rounded-md border bg-background p-2">
+                      {deleteCandidateShifts.length === 0 && (
+                        <div className="px-2 py-1 text-sm text-muted-foreground">
+                          Ingen vakter funnet for valgt filter.
+                        </div>
+                      )}
+
+                      {deleteCandidateShifts.map((shift) => {
+                        const checked = selectedDeleteShiftIds.includes(shift.id)
+                        return (
+                          <label
+                            key={shift.id}
+                            className={`mb-1 flex cursor-pointer items-start gap-2 rounded border p-2 transition-colors ${
+                              checked ? 'border-destructive/60 bg-destructive/10' : 'hover:bg-accent'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={checked}
+                              onChange={(e) => toggleDeleteShiftSelection(shift.id, e.target.checked)}
+                            />
+                            <div className="text-sm">
+                              <div className="font-medium">
+                                {shift.date} · {shift.shiftType?.label || 'Vakt'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
+                                {shift.comment ? ` · ${shift.comment}` : ''}
+                              </div>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {action !== 'delete' && rows.length === 0 && (
             <div className="text-sm text-muted-foreground">
               Ingen rader lagt til ennå. Klikk “Legg til rad”.
             </div>
           )}
 
-          <div className="grid gap-3">
+          {action !== 'delete' && <div className="grid gap-3">
             {rows.map(row => {
               const isCreate = action === 'create'
               const isUpdate = action === 'update'
-              const isDelete = action === 'delete'
               const scheduledCount = row.date ? (shiftsPerDate.get(row.date) || 0) : null
               const capacity = teamUsers.length
               const available = capacity ? Math.max(0, capacity - (scheduledCount || 0)) : null
@@ -673,7 +1039,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                 </div>
               )
             })}
-          </div>
+          </div>}
 
           {result && result.failures.length > 0 && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
@@ -698,6 +1064,45 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bekreft sletting av flere vakter</DialogTitle>
+            <DialogDescription>
+              Du er i ferd med å slette {rows.length} vakter. Bekreft datoene under.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-48 overflow-y-auto rounded-md border p-2 text-sm">
+            {deletePreviewDates.map(date => (
+              <div key={date} className="py-0.5">
+                {date}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              disabled={isSaving}
+            >
+              Avbryt
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                setIsDeleteConfirmOpen(false)
+                await executeSave()
+              }}
+              disabled={isSaving}
+            >
+              Bekreft sletting
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
