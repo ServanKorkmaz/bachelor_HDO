@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { format, addWeeks, subWeeks } from 'date-fns'
+import { format, addWeeks, subWeeks, addDays, parseISO } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
-import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
+import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay } from '@/lib/date-utils'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -103,6 +103,24 @@ export default function StandardPlanPage() {
   useEffect(() => {
     if (!selectedTeamId) return
 
+    if (selectedUserId) {
+      fetch(`/api/shifts?teamId=${selectedTeamId}&userId=${selectedUserId}`)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch user shifts')
+          }
+          return res.json()
+        })
+        .then(data => {
+          setShifts(Array.isArray(data) ? data : [])
+        })
+        .catch(error => {
+          console.error('Error fetching user shifts:', error)
+          setShifts([])
+        })
+      return
+    }
+
     const startDate = format(weekStart, 'yyyy-MM-dd')
     const endDate = format(weekDates[6], 'yyyy-MM-dd')
 
@@ -120,7 +138,7 @@ export default function StandardPlanPage() {
         console.error('Error fetching shifts:', error)
         setShifts([])
       })
-  }, [selectedTeamId, weekStart, weekDates])
+  }, [selectedTeamId, selectedUserId, weekStart])
 
   const handlePrevWeek = () => {
     setSelectedDate(subWeeks(selectedDate, 1))
@@ -159,6 +177,77 @@ export default function StandardPlanPage() {
     return users.filter((u: any) => u.name.toLowerCase().includes(query))
   }, [users, visibleUsersSearch])
 
+  const selectedUser = useMemo(
+    () => users.find((u: any) => u.id === selectedUserId) || null,
+    [users, selectedUserId]
+  )
+
+  const selectedUserShifts = useMemo(
+    () => (selectedUserId ? shifts.filter((shift: any) => shift.userId === selectedUserId) : []),
+    [selectedUserId, shifts]
+  )
+
+  const employeeTimelineSections = useMemo(() => {
+    if (!selectedUserId) return [] as Array<
+      | { type: 'week'; weekStart: Date }
+      | { type: 'gap'; start: Date; end: Date }
+    >
+
+    if (selectedUserShifts.length === 0) {
+      return [{ type: 'week', weekStart }]
+    }
+
+    const lastShiftDate = selectedUserShifts.reduce((maxDate: string, shift: any) => {
+      if (!shift?.date) return maxDate
+      return shift.date > maxDate ? shift.date : maxDate
+    }, '0000-00-00')
+
+    if (!lastShiftDate || lastShiftDate === '0000-00-00') {
+      return [{ type: 'week', weekStart }]
+    }
+
+    const lastShiftWeekStart = getWeekStart(parseISO(lastShiftDate))
+    if (weekStart > lastShiftWeekStart) {
+      return [{ type: 'week', weekStart }]
+    }
+
+    const weeks: Array<{ weekStart: Date; hasShift: boolean }> = []
+    let cursor = weekStart
+    while (cursor <= lastShiftWeekStart) {
+      const weekStartStr = format(cursor, 'yyyy-MM-dd')
+      const weekEndStr = format(addDays(cursor, 6), 'yyyy-MM-dd')
+      const hasShift = selectedUserShifts.some(
+        (shift: any) => shift.date >= weekStartStr && shift.date <= weekEndStr
+      )
+
+      weeks.push({ weekStart: cursor, hasShift })
+      cursor = addWeeks(cursor, 1)
+    }
+
+    const sections: Array<
+      | { type: 'week'; weekStart: Date }
+      | { type: 'gap'; start: Date; end: Date }
+    > = []
+
+    let i = 0
+    while (i < weeks.length) {
+      if (weeks[i].hasShift) {
+        sections.push({ type: 'week', weekStart: weeks[i].weekStart })
+        i += 1
+        continue
+      }
+
+      const gapStart = weeks[i].weekStart
+      while (i < weeks.length && !weeks[i].hasShift) {
+        i += 1
+      }
+      const gapEnd = addDays(weeks[i - 1].weekStart, 6)
+      sections.push({ type: 'gap', start: gapStart, end: gapEnd })
+    }
+
+    return sections
+  }, [selectedUserId, selectedUserShifts, weekStart])
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -192,19 +281,16 @@ export default function StandardPlanPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Se oversikt for ansatt:</label>
-          <select
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="px-3 py-1 rounded-md border bg-background text-foreground"
-          >
-            <option value="">Alle</option>
-            {Array.isArray(users) && users.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
-        </div>
+        {selectedUserId && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setSelectedUserId('')}>
+              Tilbake til alle
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Viser oversikt for {selectedUser?.name || 'ansatt'}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Plan:</label>
@@ -286,12 +372,48 @@ export default function StandardPlanPage() {
         )}
       </div>
 
-      <WeekGrid
-        weekDates={weekDates}
-        users={filteredUsers}
-        shifts={shifts}
-        currentUser={currentUser}
-      />
+      {selectedUserId ? (
+        <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+          {employeeTimelineSections.map((section, index) => {
+            if (section.type === 'gap') {
+              return (
+                <div
+                  key={`gap-${format(section.start, 'yyyy-MM-dd')}-${index}`}
+                  className="rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground"
+                >
+                  Ingen vakter fra {formatDateDisplay(section.start)} til {formatDateDisplay(section.end)}
+                </div>
+              )
+            }
+
+            const sectionWeekDates = getWeekDatesUtil(section.weekStart)
+            const weekEnd = addDays(section.weekStart, 6)
+
+            return (
+              <div key={`week-${format(section.weekStart, 'yyyy-MM-dd')}-${index}`} className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Uke {formatDateDisplay(section.weekStart)} - {formatDateDisplay(weekEnd)}
+                </div>
+                <WeekGrid
+                  weekDates={sectionWeekDates}
+                  users={filteredUsers}
+                  shifts={selectedUserShifts}
+                  currentUser={currentUser}
+                  onUserNameClick={setSelectedUserId}
+                />
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <WeekGrid
+          weekDates={weekDates}
+          users={filteredUsers}
+          shifts={shifts}
+          currentUser={currentUser}
+          onUserNameClick={setSelectedUserId}
+        />
+      )}
 
       {isBulkModalOpen && selectedTeamId && (
         <BulkShiftModal
