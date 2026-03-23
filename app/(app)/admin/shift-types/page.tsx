@@ -27,8 +27,6 @@ export default function ShiftTypesPage() {
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
-  const [rowColors, setRowColors] = useState<Record<string, string>>({})
-  const [savingColorId, setSavingColorId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     code: '',
     label: '',
@@ -45,15 +43,7 @@ export default function ShiftTypesPage() {
   const fetchShiftTypes = () => {
     fetch('/api/shift-types')
       .then(res => res.json())
-      .then(data => {
-        setShiftTypes(data)
-        setRowColors(
-          data.reduce((acc: Record<string, string>, shiftType: any) => {
-            acc[shiftType.id] = normalizeHexColor(shiftType.color || '#000000')
-            return acc
-          }, {})
-        )
-      })
+      .then(data => setShiftTypes(data))
       .catch(console.error)
   }
 
@@ -159,41 +149,6 @@ export default function ShiftTypesPage() {
     })
   }
 
-  const handleInlineColorSave = async (shiftType: any) => {
-    if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan endre farger')
-      return
-    }
-    const color = normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')
-    setSavingColorId(shiftType.id)
-    try {
-      const response = await fetch(`/api/shift-types/${shiftType.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: shiftType.code,
-          label: shiftType.label,
-          color,
-          defaultStartTime: shiftType.defaultStartTime,
-          defaultEndTime: shiftType.defaultEndTime,
-          crossesMidnight: shiftType.crossesMidnight,
-          currentUserId: currentUser.id,
-        }),
-      })
-
-      if (response.ok) {
-        fetchShiftTypes()
-      } else {
-        alert('Kunne ikke oppdatere farge')
-      }
-    } catch (error) {
-      console.error('Error updating shift color:', error)
-      alert('Kunne ikke oppdatere farge')
-    } finally {
-      setSavingColorId(null)
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -229,37 +184,6 @@ export default function ShiftTypesPage() {
                 <div className="text-sm text-muted-foreground">
                   {shiftType.code} - {shiftType.defaultStartTime} til {shiftType.defaultEndTime}
                   {shiftType.crossesMidnight && ' (krysser midnatt)'}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Input
-                    type="color"
-                    value={normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')}
-                    onChange={(e) => setRowColors(prev => ({
-                      ...prev,
-                      [shiftType.id]: normalizeHexColor(e.target.value),
-                    }))}
-                    className="h-9 w-14 p-1"
-                    disabled={!isAdmin()}
-                    title={isAdmin() ? 'Velg farge' : 'Kun admin kan endre farger'}
-                  />
-                  <Input
-                    value={normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')}
-                    onChange={(e) => setRowColors(prev => ({
-                      ...prev,
-                      [shiftType.id]: normalizeHexColor(e.target.value),
-                    }))}
-                    className="h-9 w-28"
-                    disabled={!isAdmin()}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleInlineColorSave(shiftType)}
-                    disabled={!isAdmin() || savingColorId === shiftType.id}
-                    title={isAdmin() ? undefined : 'Kun admin kan endre farger'}
-                  >
-                    {savingColorId === shiftType.id ? 'Lagrer...' : 'Lagre farge'}
-                  </Button>
                 </div>
               </div>
             </div>
