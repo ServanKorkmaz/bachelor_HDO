@@ -13,26 +13,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
+import { useAuth } from '@/lib/auth/mockAuth'
 
-/** Simple predefined colors for shift types (no color palette). */
-const PRESET_COLORS = [
-  { name: 'Svart', hex: '#000000' },
-  { name: 'Hvit', hex: '#ffffff' },
-  { name: 'Rød', hex: '#dc2626' },
-  { name: 'Grønn', hex: '#16a34a' },
-  { name: 'Blå', hex: '#2563eb' },
-  { name: 'Gul', hex: '#ca8a04' },
-  { name: 'Oransje', hex: '#ea580c' },
-  { name: 'Grå', hex: '#6b7280' },
-  { name: 'Lilla', hex: '#7c3aed' },
-  { name: 'Turkis', hex: '#0d9488' },
-] as const
+function normalizeHexColor(value: string): string {
+  const trimmed = value.trim()
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+  return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash : '#000000'
+}
 
 /** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
+  const { currentUser, isAdmin } = useAuth()
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
+  const [rowColors, setRowColors] = useState<Record<string, string>>({})
+  const [savingColorId, setSavingColorId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     code: '',
     label: '',
@@ -49,18 +45,30 @@ export default function ShiftTypesPage() {
   const fetchShiftTypes = () => {
     fetch('/api/shift-types')
       .then(res => res.json())
-      .then(data => setShiftTypes(data))
+      .then(data => {
+        setShiftTypes(data)
+        setRowColors(
+          data.reduce((acc: Record<string, string>, shiftType: any) => {
+            acc[shiftType.id] = normalizeHexColor(shiftType.color || '#000000')
+            return acc
+          }, {})
+        )
+      })
       .catch(console.error)
   }
 
   const handleCreate = async () => {
     if (!formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan opprette vakttyper')
+      return
+    }
 
     try {
       const response = await fetch('/api/shift-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -78,12 +86,16 @@ export default function ShiftTypesPage() {
 
   const handleUpdate = async () => {
     if (!editingShiftType || !formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan oppdatere vakttyper')
+      return
+    }
 
     try {
       const response = await fetch(`/api/shift-types/${editingShiftType.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -100,11 +112,17 @@ export default function ShiftTypesPage() {
   }
 
   const handleDelete = async (shiftTypeId: string) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan slette vakttyper')
+      return
+    }
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
 
     try {
       const response = await fetch(`/api/shift-types/${shiftTypeId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -141,15 +159,59 @@ export default function ShiftTypesPage() {
     })
   }
 
+  const handleInlineColorSave = async (shiftType: any) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan endre farger')
+      return
+    }
+    const color = normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')
+    setSavingColorId(shiftType.id)
+    try {
+      const response = await fetch(`/api/shift-types/${shiftType.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: shiftType.code,
+          label: shiftType.label,
+          color,
+          defaultStartTime: shiftType.defaultStartTime,
+          defaultEndTime: shiftType.defaultEndTime,
+          crossesMidnight: shiftType.crossesMidnight,
+          currentUserId: currentUser.id,
+        }),
+      })
+
+      if (response.ok) {
+        fetchShiftTypes()
+      } else {
+        alert('Kunne ikke oppdatere farge')
+      }
+    } catch (error) {
+      console.error('Error updating shift color:', error)
+      alert('Kunne ikke oppdatere farge')
+    } finally {
+      setSavingColorId(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Vakttyper</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+        <Button
+          onClick={() => isAdmin() && setIsCreateModalOpen(true)}
+          disabled={!isAdmin()}
+          title={isAdmin() ? undefined : 'Kun admin kan opprette vakttyper'}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Ny vakttype
         </Button>
       </div>
+      {!isAdmin() && (
+        <div className="text-sm text-muted-foreground">
+          Kun admin kan opprette, endre eller slette vakttyper og farger.
+        </div>
+      )}
 
       <div className="space-y-2">
         {shiftTypes.map(shiftType => (
@@ -168,6 +230,37 @@ export default function ShiftTypesPage() {
                   {shiftType.code} - {shiftType.defaultStartTime} til {shiftType.defaultEndTime}
                   {shiftType.crossesMidnight && ' (krysser midnatt)'}
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Input
+                    type="color"
+                    value={normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')}
+                    onChange={(e) => setRowColors(prev => ({
+                      ...prev,
+                      [shiftType.id]: normalizeHexColor(e.target.value),
+                    }))}
+                    className="h-9 w-14 p-1"
+                    disabled={!isAdmin()}
+                    title={isAdmin() ? 'Velg farge' : 'Kun admin kan endre farger'}
+                  />
+                  <Input
+                    value={normalizeHexColor(rowColors[shiftType.id] || shiftType.color || '#000000')}
+                    onChange={(e) => setRowColors(prev => ({
+                      ...prev,
+                      [shiftType.id]: normalizeHexColor(e.target.value),
+                    }))}
+                    className="h-9 w-28"
+                    disabled={!isAdmin()}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleInlineColorSave(shiftType)}
+                    disabled={!isAdmin() || savingColorId === shiftType.id}
+                    title={isAdmin() ? undefined : 'Kun admin kan endre farger'}
+                  >
+                    {savingColorId === shiftType.id ? 'Lagrer...' : 'Lagre farge'}
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="flex gap-2">
@@ -175,6 +268,8 @@ export default function ShiftTypesPage() {
                 variant="outline"
                 size="icon"
                 onClick={() => openEditModal(shiftType)}
+                disabled={!isAdmin()}
+                title={isAdmin() ? undefined : 'Kun admin kan redigere'}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -182,6 +277,8 @@ export default function ShiftTypesPage() {
                 variant="destructive"
                 size="icon"
                 onClick={() => handleDelete(shiftType.id)}
+                disabled={!isAdmin()}
+                title={isAdmin() ? undefined : 'Kun admin kan slette'}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -225,24 +322,22 @@ export default function ShiftTypesPage() {
             </div>
             <div className="space-y-2">
               <Label>Farge</Label>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map(({ name, hex }) => (
-                  <button
-                    key={hex}
-                    type="button"
-                    title={name}
-                    onClick={() => setFormData({ ...formData, color: hex })}
-                    className={`h-9 w-9 rounded-md border-2 transition-shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-                      formData.color.toLowerCase() === hex.toLowerCase()
-                        ? 'border-primary ring-2 ring-primary/30'
-                        : 'border-border hover:border-muted-foreground/50'
-                    }`}
-                    style={{ backgroundColor: hex }}
-                  />
-                ))}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="color"
+                  value={normalizeHexColor(formData.color)}
+                  onChange={(e) => setFormData({ ...formData, color: normalizeHexColor(e.target.value) })}
+                  className="h-10 w-14 p-1"
+                />
+                <Input
+                  value={normalizeHexColor(formData.color)}
+                  onChange={(e) => setFormData({ ...formData, color: normalizeHexColor(e.target.value) })}
+                  placeholder="#000000"
+                  className="max-w-[140px]"
+                />
               </div>
               <p className="text-xs text-muted-foreground">
-                Valgt: {PRESET_COLORS.find(c => c.hex.toLowerCase() === formData.color.toLowerCase())?.name ?? formData.color}
+                Velg hvilken som helst farge for vakttypen.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -287,7 +382,7 @@ export default function ShiftTypesPage() {
             </Button>
             <Button
               onClick={editingShiftType ? handleUpdate : handleCreate}
-              disabled={!formData.code || !formData.label}
+              disabled={!formData.code || !formData.label || !isAdmin()}
             >
               {editingShiftType ? 'Oppdater' : 'Opprett'}
             </Button>

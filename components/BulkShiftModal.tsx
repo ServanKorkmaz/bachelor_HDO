@@ -144,10 +144,12 @@ function ShiftListItem({ shift, selected, onSelect }: ShiftListItemProps) {
       }`}
       aria-pressed={selected}
     >
-      <div className="font-medium text-sm">{formatShiftDate(shift.date)}</div>
-      <div className="text-xs text-muted-foreground">
-        {shift.shiftType?.label || 'Vakt'} · {format(new Date(shift.startDateTime), 'HH:mm')}–
-        {format(new Date(shift.endDateTime), 'HH:mm')}
+      <div className="text-sm font-medium leading-tight">{formatShiftDate(shift.date)}</div>
+      <div className="mt-1 text-xs leading-tight text-muted-foreground">
+        <div>{shift.shiftType?.label || 'Vakt'}</div>
+        <div>
+          {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
+        </div>
       </div>
     </button>
   )
@@ -666,40 +668,49 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                   error={usersError}
                 />
 
-                <div className="grid gap-2">
-                  <Label>Vakt</Label>
-                  <Select
-                    value={quickShiftTypeId}
-                    onValueChange={(value) => {
-                      const selected = shiftTypeById.get(value)
-                      setQuickShiftTypeId(value)
-                      if (!quickUseCustomTime) {
-                        setQuickStartTime(selected?.defaultStartTime || quickStartTime)
-                        setQuickEndTime(selected?.defaultEndTime || quickEndTime)
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Velg vakt" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {shiftTypes.map(st => (
-                        <SelectItem key={st.id} value={st.id}>
-                          {st.label} ({st.defaultStartTime}-{st.defaultEndTime})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label>Vakt</Label>
+                    <Select
+                      value={quickShiftTypeId}
+                      onValueChange={(value) => {
+                        const selected = shiftTypeById.get(value)
+                        setQuickShiftTypeId(value)
+                        if (!quickUseCustomTime) {
+                          setQuickStartTime(selected?.defaultStartTime || quickStartTime)
+                          setQuickEndTime(selected?.defaultEndTime || quickEndTime)
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Velg vakt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shiftTypes.map(st => (
+                          <SelectItem key={st.id} value={st.id}>
+                            {st.label} ({st.defaultStartTime}-{st.defaultEndTime})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {quickShiftTypeId && (
+                      <div className="text-xs text-muted-foreground">
+                        Valgt tid: {quickStartTime || '--:--'} - {quickEndTime || '--:--'}
+                      </div>
+                    )}
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label>Fra dato</Label>
-                  <Input type="date" value={quickDateFrom} onChange={(e) => setQuickDateFrom(e.target.value)} />
-                </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label>Fra dato</Label>
+                      <Input type="date" value={quickDateFrom} onChange={(e) => setQuickDateFrom(e.target.value)} />
+                    </div>
 
-                <div className="grid gap-2">
-                  <Label>Til dato</Label>
-                  <Input type="date" value={quickDateTo} onChange={(e) => setQuickDateTo(e.target.value)} />
+                    <div className="grid gap-2">
+                      <Label>Til dato</Label>
+                      <Input type="date" value={quickDateTo} onChange={(e) => setQuickDateTo(e.target.value)} />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -844,12 +855,13 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                               onChange={(e) => toggleDeleteShiftSelection(shift.id, e.target.checked)}
                             />
                             <div className="text-sm">
-                              <div className="font-medium">
-                                {shift.date} · {shift.shiftType?.label || 'Vakt'}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
-                                {shift.comment ? ` · ${shift.comment}` : ''}
+                              <div className="font-medium leading-tight">{shift.date}</div>
+                              <div className="mt-1 text-xs leading-tight text-muted-foreground">
+                                <div>{shift.shiftType?.label || 'Vakt'}</div>
+                                <div>
+                                  {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
+                                </div>
+                                {shift.comment && <div>{shift.comment}</div>}
                               </div>
                             </div>
                           </label>
@@ -903,6 +915,38 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                             Planlagt: {scheduledCount} / {capacity} · Ledig: {available}
                           </div>
                         )}
+
+                        <div className="mt-2 grid gap-2">
+                          <Label>Vakt</Label>
+                          <Select
+                            value={row.shiftTypeId}
+                            onValueChange={(value) => {
+                              const selected = shiftTypeById.get(value)
+                              updateRow(row.id, {
+                                shiftTypeId: value,
+                                startTime: selected?.defaultStartTime || row.startTime,
+                                endTime: selected?.defaultEndTime || row.endTime,
+                                useCustomTime: false,
+                              })
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Velg vakt" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {shiftTypes.map(st => (
+                                <SelectItem key={st.id} value={st.id}>
+                                  {st.label} ({st.defaultStartTime}-{st.defaultEndTime})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {row.shiftTypeId && (
+                            <div className="text-xs text-muted-foreground">
+                              Valgt tid: {row.startTime || '--:--'} - {row.endTime || '--:--'}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -956,7 +1000,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || (isUpdate && row.shiftId)) && (
+                  {(isUpdate && row.shiftId) && (
                     <div className="mt-3 grid gap-2">
                       <Label>Vakt</Label>
                       <Select
