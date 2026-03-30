@@ -37,7 +37,7 @@ export default function TeamsPage() {
   const handleCreate = async () => {
     if (!newTeamName.trim()) return
     if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan opprette team')
+      alert('Kun administrator kan opprette team')
       return
     }
 
@@ -63,7 +63,7 @@ export default function TeamsPage() {
 
   const handleDelete = async (teamId: string) => {
     if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan slette team')
+      alert('Kun administrator kan slette team')
       return
     }
     if (!confirm('Er du sikker på at du vil slette dette teamet?')) return
@@ -93,7 +93,7 @@ export default function TeamsPage() {
         <Button
           onClick={() => isAdmin() && setIsCreateModalOpen(true)}
           disabled={!isAdmin()}
-          title={isAdmin() ? undefined : 'Kun admin kan opprette team'}
+          title={isAdmin() ? undefined : 'Kun administrator kan opprette team'}
         >
           <Plus className="h-4 w-4 mr-2" />
           Nytt team
@@ -101,7 +101,7 @@ export default function TeamsPage() {
       </div>
       {!isAdmin() && (
         <div className="text-sm text-muted-foreground">
-          Kun admin kan opprette eller slette team.
+          Kun administrator kan opprette eller slette team.
         </div>
       )}
 
@@ -129,7 +129,7 @@ export default function TeamsPage() {
                 size="icon"
                 onClick={() => handleDelete(team.id)}
                 disabled={!isAdmin()}
-                title={isAdmin() ? undefined : 'Kun admin kan slette team'}
+                title={isAdmin() ? undefined : 'Kun administrator kan slette team'}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

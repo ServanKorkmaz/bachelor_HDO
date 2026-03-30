@@ -50,7 +50,7 @@ export default function ShiftTypesPage() {
   const handleCreate = async () => {
     if (!formData.code || !formData.label) return
     if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan opprette vakttyper')
+      alert('Kun administrator kan opprette vakttyper')
       return
     }
 
@@ -77,7 +77,7 @@ export default function ShiftTypesPage() {
   const handleUpdate = async () => {
     if (!editingShiftType || !formData.code || !formData.label) return
     if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan oppdatere vakttyper')
+      alert('Kun administrator kan oppdatere vakttyper')
       return
     }
 
@@ -103,7 +103,7 @@ export default function ShiftTypesPage() {
 
   const handleDelete = async (shiftTypeId: string) => {
     if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan slette vakttyper')
+      alert('Kun administrator kan slette vakttyper')
       return
     }
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
@@ -156,7 +156,7 @@ export default function ShiftTypesPage() {
         <Button
           onClick={() => isAdmin() && setIsCreateModalOpen(true)}
           disabled={!isAdmin()}
-          title={isAdmin() ? undefined : 'Kun admin kan opprette vakttyper'}
+          title={isAdmin() ? undefined : 'Kun administrator kan opprette vakttyper'}
         >
           <Plus className="h-4 w-4 mr-2" />
           Ny vakttype
@@ -164,7 +164,7 @@ export default function ShiftTypesPage() {
       </div>
       {!isAdmin() && (
         <div className="text-sm text-muted-foreground">
-          Kun admin kan opprette, endre eller slette vakttyper og farger.
+          Kun administrator kan opprette, endre eller slette vakttyper og farger.
         </div>
       )}
 
@@ -193,7 +193,7 @@ export default function ShiftTypesPage() {
                 size="icon"
                 onClick={() => openEditModal(shiftType)}
                 disabled={!isAdmin()}
-                title={isAdmin() ? undefined : 'Kun admin kan redigere'}
+                title={isAdmin() ? undefined : 'Kun administrator kan redigere'}
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -202,7 +202,7 @@ export default function ShiftTypesPage() {
                 size="icon"
                 onClick={() => handleDelete(shiftType.id)}
                 disabled={!isAdmin()}
-                title={isAdmin() ? undefined : 'Kun admin kan slette'}
+                title={isAdmin() ? undefined : 'Kun administrator kan slette'}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
