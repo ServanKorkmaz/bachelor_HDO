@@ -1,9 +1,5 @@
-"use client"
-
-import { useState } from 'react'
 import Link from 'next/link'
 import { Users, Calendar, Settings, Building2, FileText } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 
 /** Admin landing page with links to management sections. */
 export default function AdminPage() {
