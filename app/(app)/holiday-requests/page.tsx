@@ -24,6 +24,13 @@ export default function HolidayRequestsPage() {
   const [items, setItems] = useState<RequestRow[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Edit dialog state
+  const [editItem, setEditItem] = useState<RequestRow | null>(null)
+  const [editType, setEditType] = useState('')
+  const [editDateFrom, setEditDateFrom] = useState('')
+  const [editDateTo, setEditDateTo] = useState('')
+  const [editMessage, setEditMessage] = useState('')
+
   const fetchItems = useCallback(() => {
     if (!currentUser?.teamId) return
     setLoading(true)
@@ -117,6 +124,37 @@ export default function HolidayRequestsPage() {
     )
   }
 
+  // Employee view handlers
+  const handleDelete = async (id: string) => {
+    if (!confirm('Er du sikker på at du vil slette denne forespørselen?')) return
+    try {
+      const res = await fetch(`/api/holiday-requests/${id}?currentUserId=${currentUser.id}`, { method: 'DELETE' })
+      if (res.ok) { toast({ title: 'Slettet' }); fetchItems() }
+      else { const d = await res.json().catch(() => ({})); toast({ title: 'Feil', description: d.error || 'Kunne ikke slette', variant: 'destructive' }) }
+    } catch { toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' }) }
+  }
+
+  const openEdit = (r: RequestRow) => {
+    setEditItem(r)
+    setEditType(r.type)
+    setEditDateFrom(r.dateFrom)
+    setEditDateTo(r.dateTo ?? '')
+    setEditMessage(r.message ?? '')
+  }
+
+  const handleEdit = async () => {
+    if (!editItem || !currentUser) return
+    try {
+      const res = await fetch(`/api/holiday-requests/${editItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
+        body: JSON.stringify({ type: editType, dateFrom: editDateFrom, dateTo: editDateTo || null, message: editMessage || null }),
+      })
+      if (res.ok) { toast({ title: 'Oppdatert' }); setEditItem(null); fetchItems() }
+      else { const d = await res.json().catch(() => ({})); toast({ title: 'Feil', description: d.error || 'Kunne ikke oppdatere', variant: 'destructive' }) }
+    } catch { toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' }) }
+  }
+
   // Employee view: button to create request + list of own requests
   const own = items.filter((it) => it.user?.id === currentUser.id)
 
@@ -147,6 +185,7 @@ export default function HolidayRequestsPage() {
                 <th className="border-b border-border p-3 text-left text-sm font-medium">Datoer</th>
                 <th className="border-b border-border p-3 text-left text-sm font-medium">Melding</th>
                 <th className="border-b border-border p-3 text-left text-sm font-medium">Status</th>
+                <th className="border-b border-border p-3 text-right text-sm font-medium">Handlinger</th>
               </tr>
             </thead>
             <tbody>
@@ -156,10 +195,76 @@ export default function HolidayRequestsPage() {
                   <td className="p-3">{r.dateFrom}{r.dateTo ? ` — ${r.dateTo}` : ''}</td>
                   <td className="p-3">{r.message || '—'}</td>
                   <td className="p-3">{statusToNorwegian(r.status)}</td>
+                  <td className="p-3 text-right">
+                    {r.status === 'PENDING' && (
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(r)}>Endre</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Slett</Button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg space-y-4">
+            <h2 className="text-xl font-semibold">Endre forespørsel</h2>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Type</label>
+              <select
+                value={editType}
+                onChange={(e) => setEditType(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="HOLIDAY">Ferie</option>
+                <option value="OTHER">Fravær</option>
+                <option value="SICK">Sykdom</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fra dato</label>
+              <input
+                type="date"
+                value={editDateFrom}
+                onChange={(e) => setEditDateFrom(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Til dato (valgfritt)</label>
+              <input
+                type="date"
+                value={editDateTo}
+                onChange={(e) => setEditDateTo(e.target.value)}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Melding (valgfritt)</label>
+              <textarea
+                value={editMessage}
+                onChange={(e) => setEditMessage(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                placeholder="Skriv melding..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditItem(null)}>Avbryt</Button>
+              <Button onClick={handleEdit} disabled={!editType || !editDateFrom}>Lagre</Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

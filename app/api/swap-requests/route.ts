@@ -81,7 +81,7 @@ export async function POST(request: Request) {
           fromUserId: shift.userId,
           toUserId,
           shiftId,
-          status: 'PENDING',
+          status: 'AWAITING_ACCEPTANCE',
           message: message || null,
         },
         include: {
@@ -94,9 +94,10 @@ export async function POST(request: Request) {
       await tx.notification.create({
         data: {
           teamId,
+          userId: toUserId,  // notify B specifically
           type: 'SWAP_REQUESTED',
-          title: 'Ny vaktbytteforespørsel',
-          message: `${sr.requestedBy.name} har forespurt vaktbytte`,
+          title: 'Vaktbytteforespørsel',
+          message: `${sr.requestedBy.name} ønsker å bytte vakt med deg`,
         },
       })
       const afterJson = JSON.stringify({

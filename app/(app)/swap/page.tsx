@@ -189,6 +189,41 @@ export default function SwapPage() {
     }
   }
 
+  const handleCancel = async (requestId: string) => {
+    if (!confirm('Er du sikker på at du vil avbryte denne forespørselen?')) return
+    try {
+      const res = await fetch(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
+      } else { alert('Kunne ikke avbryte forespørsel') }
+    } catch { alert('Kunne ikke avbryte forespørsel') }
+  }
+
+  const handleAccept = async (requestId: string) => {
+    try {
+      const res = await fetch(`/api/swap-requests/${requestId}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser?.id ?? '' },
+      })
+      if (res.ok) {
+        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
+      } else { alert('Kunne ikke godta forespørsel') }
+    } catch { alert('Nettverksfeil') }
+  }
+
+  const handleDecline = async (requestId: string) => {
+    if (!confirm('Er du sikker på at du vil avslå denne forespørselen?')) return
+    try {
+      const res = await fetch(`/api/swap-requests/${requestId}/decline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser?.id ?? '' },
+      })
+      if (res.ok) {
+        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
+      } else { alert('Kunne ikke avslå forespørsel') }
+    } catch { alert('Nettverksfeil') }
+  }
+
   const handleExecute = async (requestId: string) => {
     if (!currentUser?.id) return
     if (!confirm('Er du sikker på at du vil utføre dette vaktbyttet?')) return
@@ -222,9 +257,13 @@ export default function SwapPage() {
   }
 
   const pendingRequests = swapRequests.filter((r: any) => r.status === 'PENDING')
-  const otherRequests = swapRequests.filter((r: any) => r.status !== 'PENDING')
+  const awaitingRequests = swapRequests.filter((r: any) => r.status === 'AWAITING_ACCEPTANCE')
+  const otherRequests = swapRequests.filter((r: any) => r.status !== 'PENDING' && r.status !== 'AWAITING_ACCEPTANCE')
   const myRequests = swapRequests.filter(
     (r: any) => r.requestedByUserId === currentUser?.id
+  )
+  const incomingRequests = swapRequests.filter(
+    (r: any) => r.toUserId === currentUser?.id && r.status === 'AWAITING_ACCEPTANCE'
   )
 
   return (
@@ -252,6 +291,40 @@ export default function SwapPage() {
           </select>
         </div>
       </div>
+
+      {canApproveSwaps() && awaitingRequests.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Venter på kollegas svar</h2>
+          <div className="space-y-2">
+            {awaitingRequests.map((request: any) => (
+              <div
+                key={request.id}
+                className="p-4 bg-card rounded-lg border"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium mb-2">
+                      {request.fromUser.name} → {request.toUser.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      {formatDateDisplay(request.shift.date)} - {request.shift.shiftType.label}
+                    </div>
+                    {request.message && (
+                      <div className="text-sm mb-2">{request.message}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Forespurt av {request.requestedBy.name} - {format(new Date(request.createdAt), 'dd.MM.yyyy HH:mm')}
+                    </div>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 font-medium whitespace-nowrap">
+                    Venter svar fra {request.toUser.name}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {canApproveSwaps() && pendingRequests.length > 0 && (
         <section>
@@ -299,6 +372,52 @@ export default function SwapPage() {
         </section>
       )}
 
+      {!canApproveSwaps() && incomingRequests.length > 0 && (
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Inngående forespørsler</h2>
+          <div className="space-y-2">
+            {incomingRequests.map((request: any) => (
+              <div
+                key={request.id}
+                className="p-4 bg-card rounded-lg border"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium mb-2">
+                      {request.fromUser.name} → {request.toUser.name}
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      {formatDateDisplay(request.shift.date)} - {request.shift.shiftType.label}
+                    </div>
+                    {request.message && (
+                      <div className="text-sm mb-2">{request.message}</div>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Forespurt av {request.requestedBy.name} - {format(new Date(request.createdAt), 'dd.MM.yyyy HH:mm')}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDecline(request.id)}
+                    >
+                      Avslå
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleAccept(request.id)}
+                    >
+                      Godta
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section>
         <h2 className="text-xl font-semibold mb-4">
           {canApproveSwaps() ? 'Alle forespørsler' : 'Mine forespørsler'}
@@ -325,9 +444,14 @@ export default function SwapPage() {
                         request.status === 'REJECTED' ? 'bg-red-500/20 text-red-500' :
                         request.status === 'EXECUTED' ? 'bg-blue-500/20 text-blue-500' :
                         request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-500' :
+                        request.status === 'AWAITING_ACCEPTANCE' ? 'bg-amber-100 text-amber-700' :
                         'bg-muted text-muted-foreground'
                       }`}>
-                        {request.status === 'PENDING' ? 'Venter' : request.status}
+                        {request.status === 'PENDING' ? 'Venter på leder' :
+                         request.status === 'AWAITING_ACCEPTANCE' ? 'Venter svar' :
+                         request.status === 'APPROVED' ? 'Godkjent' :
+                         request.status === 'REJECTED' ? 'Avslått' :
+                         request.status}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground mb-2">
@@ -340,14 +464,26 @@ export default function SwapPage() {
                       {format(new Date(request.createdAt), 'dd.MM.yyyy HH:mm')}
                     </div>
                   </div>
-                  {canApproveSwaps() && request.status === 'APPROVED' && (
-                    <Button
-                      size="sm"
-                      onClick={() => handleExecute(request.id)}
-                    >
-                      Utfør bytte
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {canApproveSwaps() && request.status === 'APPROVED' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleExecute(request.id)}
+                      >
+                        Utfør bytte
+                      </Button>
+                    )}
+                    {!canApproveSwaps() && request.requestedByUserId === currentUser?.id &&
+                      (request.status === 'PENDING' || request.status === 'AWAITING_ACCEPTANCE') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCancel(request.id)}
+                      >
+                        Avbryt
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
