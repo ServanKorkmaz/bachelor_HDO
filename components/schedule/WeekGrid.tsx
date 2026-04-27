@@ -12,10 +12,12 @@ interface WeekGridProps {
   users: any[]
   shifts: Shift[]
   currentUser: MockUser | null
+  highlightedUserId?: string
+  onSelectUser?: (userId: string) => void
 }
 
 /** Render the weekly schedule grid with per-user totals and shift editing. */
-export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProps) {
+export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUserId, onSelectUser }: WeekGridProps) {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -89,8 +91,14 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td className="border border-border p-2 bg-muted sticky left-0 z-10 font-medium">
-                  {user.name}
+                <td className={`border border-border p-2 bg-muted sticky left-0 z-10 font-medium ${highlightedUserId === user.id ? 'bg-primary/10' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectUser?.(user.id)}
+                    className="w-full text-left hover:text-primary transition-colors"
+                  >
+                    {user.name}
+                  </button>
                 </td>
                 {weekDates.map((date) => {
                   const dateStr = format(date, 'yyyy-MM-dd')
