@@ -1,0 +1,9 @@
+{
+  "entryPointStrategy": "expand",
+  "entryPoints": ["lib"],
+  "out": "docs",
+  "name": "HDO Turnusplan – API Documentation",
+  "includeVersion": true,
+  "skipErrorChecking": true,
+  "exclude": ["**/*.test.ts", "**/node_modules/**"]
+}
