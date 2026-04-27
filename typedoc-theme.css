@@ -1,0 +1,175 @@
+/* HDO theme for TypeDoc.
+   OS mode   = HDO navy (same hue as the web app, slightly lighter).
+   Light mode = TypeDoc default white + HDO blue accents.
+   Dark mode  = slate-blue dim (not pitch-black). */
+
+/* ── OS / system default: HDO navy ──────────────────────────────────── */
+:root {
+  --color-background:           #0d1e3b;
+  --color-background-secondary: #112548;
+  --color-accent:               #1a3560;
+  --color-active-menu-item:     #1e4080;
+  --color-text:                 #e2e8f0;
+  --color-text-aside:           #8b9eb8;
+  --color-link:                 #60a5fa;
+  --color-focus-outline:        #60a5fa;
+  --color-icon-text:            #e2e8f0;
+  --color-icon-background:      #112548;
+  --color-ts:                   #60a5fa;
+  --color-ts-function:          #60a5fa;
+  --color-ts-variable:          #60a5fa;
+  --color-ts-interface:         #a78bfa;
+  --color-ts-enum:              #34d399;
+  --color-ts-class:             #f472b6;
+  --color-ts-namespace:         #fb923c;
+}
+
+/* ── OS mode: fix selected nav item text so it stays readable ────────── */
+:root .tsd-navigation a.current,
+:root .tsd-navigation a[aria-current] {
+  background-color: #1e4080;
+  color: #e2e8f0 !important;
+}
+
+/* ── OS mode: tables ─────────────────────────────────────────────────── */
+:root table { width: 100%; border-collapse: collapse; }
+:root th {
+  background: #1a3560;
+  color: #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #1a3560;
+}
+:root td {
+  background: #112548;
+  color: #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #1a3560;
+}
+:root tr:nth-child(even) td { background: #0d1e3b; }
+
+/* ── OS mode: code blocks ────────────────────────────────────────────── */
+:root pre,
+:root code {
+  background: #081429 !important;
+  border: 1px solid #1a3560;
+  border-radius: 6px;
+}
+
+/* ── OS + dark: neutral shell/bash colours (no red for npm words) ────── */
+:root pre .hljs-built_in,
+html[data-theme="dark"] pre .hljs-built_in,
+:root pre .hljs-keyword,
+html[data-theme="dark"] pre .hljs-keyword      { color: #e2e8f0; }
+:root pre .hljs-string,
+html[data-theme="dark"] pre .hljs-string       { color: #9ecbff; }
+:root pre .hljs-comment,
+html[data-theme="dark"] pre .hljs-comment      { color: #6a8ea8; font-style: italic; }
+:root pre .hljs-variable,
+html[data-theme="dark"] pre .hljs-variable,
+:root pre .hljs-params,
+html[data-theme="dark"] pre .hljs-params       { color: #e2e8f0; }
+:root pre .hljs-title,
+html[data-theme="dark"] pre .hljs-title,
+:root pre .hljs-name,
+html[data-theme="dark"] pre .hljs-name         { color: #e2e8f0; }
+
+/* ── Light mode: TypeDoc default + HDO blue accents ─────────────────── */
+html[data-theme="light"] {
+  --color-background:           #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-accent:               #e2eaf6;
+  --color-active-menu-item:     #dbeafe;
+  --color-text:                 #1e293b;
+  --color-text-aside:           #64748b;
+  --color-link:                 #2563eb;
+  --color-focus-outline:        #2563eb;
+  --color-icon-text:            #1e293b;
+  --color-icon-background:      #f1f5f9;
+  --color-ts:                   #1d4ed8;
+  --color-ts-function:          #1d4ed8;
+  --color-ts-variable:          #1d4ed8;
+  --color-ts-interface:         #7c3aed;
+  --color-ts-enum:              #059669;
+  --color-ts-class:             #db2777;
+  --color-ts-namespace:         #ea580c;
+}
+
+/* ── Light mode: fix selected nav item ───────────────────────────────── */
+html[data-theme="light"] .tsd-navigation a.current,
+html[data-theme="light"] .tsd-navigation a[aria-current] {
+  background-color: #dbeafe;
+  color: #1e3a8a !important;
+}
+
+/* ── Light mode: tables and code blocks ─────────────────────────────── */
+html[data-theme="light"] table { width: 100%; border-collapse: collapse; }
+html[data-theme="light"] th {
+  background: #e2eaf6;
+  color: #1e293b;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+}
+html[data-theme="light"] td {
+  background: #f8fafc;
+  color: #1e293b;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+}
+html[data-theme="light"] tr:nth-child(even) td { background: #f1f5f9; }
+html[data-theme="light"] pre,
+html[data-theme="light"] code {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+/* ── Dark mode: slate-blue dim ───────────────────────────────────────── */
+html[data-theme="dark"] {
+  --color-background:           #1c2333;
+  --color-background-secondary: #22304a;
+  --color-accent:               #253554;
+  --color-active-menu-item:     #1e3a6a;
+  --color-text:                 #cdd9e5;
+  --color-text-aside:           #768aa0;
+  --color-link:                 #60a5fa;
+  --color-focus-outline:        #60a5fa;
+  --color-icon-text:            #cdd9e5;
+  --color-icon-background:      #22304a;
+  --color-ts:                   #60a5fa;
+  --color-ts-function:          #60a5fa;
+  --color-ts-variable:          #60a5fa;
+  --color-ts-interface:         #a78bfa;
+  --color-ts-enum:              #34d399;
+  --color-ts-class:             #f472b6;
+  --color-ts-namespace:         #fb923c;
+}
+
+/* ── Dark mode: fix selected nav item ────────────────────────────────── */
+html[data-theme="dark"] .tsd-navigation a.current,
+html[data-theme="dark"] .tsd-navigation a[aria-current] {
+  background-color: #1e3a6a;
+  color: #cdd9e5 !important;
+}
+
+/* ── Dark mode: tables and code blocks ──────────────────────────────── */
+html[data-theme="dark"] table { width: 100%; border-collapse: collapse; }
+html[data-theme="dark"] th {
+  background: #253554;
+  color: #cdd9e5;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #2d4060;
+}
+html[data-theme="dark"] td {
+  background: #22304a;
+  color: #cdd9e5;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #2d4060;
+}
+html[data-theme="dark"] tr:nth-child(even) td { background: #1c2333; }
+html[data-theme="dark"] pre,
+html[data-theme="dark"] code {
+  background: #161e2e !important;
+  border: 1px solid #2d4060;
+  border-radius: 6px;
+}

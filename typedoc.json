@@ -5,5 +5,8 @@
   "name": "HDO Turnusplan – API Documentation",
   "includeVersion": true,
   "skipErrorChecking": true,
-  "exclude": ["**/*.test.ts", "**/node_modules/**"]
+  "exclude": ["**/*.test.ts", "**/node_modules/**"],
+  "disableSources": true,
+  "readme": "typedoc-intro.md",
+  "customCss": "typedoc-theme.css"
 }
