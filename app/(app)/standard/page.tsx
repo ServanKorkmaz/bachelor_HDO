@@ -264,7 +264,7 @@ export default function StandardPlanPage() {
             </p>
           </div>
 
-          <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+          <div className="space-y-2">
             {futureShiftTimeline.length === 0 ? (
               <div className="text-sm text-muted-foreground">Ingen fremtidige vakter funnet.</div>
             ) : (

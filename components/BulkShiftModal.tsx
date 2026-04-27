@@ -103,7 +103,7 @@ function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSe
           }
         }}
       />
-      <div className="max-h-48 overflow-y-auto rounded-md border p-1">
+      <div className="rounded-md border p-1">
         {isLoading && (
           <div className="px-2 py-1 text-sm text-muted-foreground">Laster ansatte...</div>
         )}
@@ -247,7 +247,7 @@ function EmployeeShiftPicker({
         />
       </div>
 
-      <div className="max-h-64 overflow-y-auto rounded-md border p-3">
+      <div className="rounded-md border p-3">
         {isLoading && (
           <div className="text-sm text-muted-foreground">Laster vakter...</div>
         )}
@@ -478,7 +478,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Bulk vaktendring</DialogTitle>
           <DialogDescription>
