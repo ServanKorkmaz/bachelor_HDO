@@ -82,6 +82,33 @@ npm run dev
 
 Åpne [http://localhost:3000](http://localhost:3000) i nettleseren.
 
+## Testing
+
+This project uses **Vitest** for fast unit and API route tests.
+
+### Run tests
+
+```bash
+npm test
+```
+
+### Watch mode
+
+```bash
+npm run test:watch
+```
+
+### Coverage
+
+```bash
+npm run test:coverage
+```
+
+### Current test scope
+
+- `tests/lib/*`: unit tests for utility and validation modules
+- `tests/api/shifts-bulk.route.test.ts`: API tests for bulk shift operations
+
 ## Demo-guide
 
 ### Rollebytte

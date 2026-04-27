@@ -94,8 +94,9 @@ export function calculateShiftHours(startDateTime: Date | string, endDateTime: D
 
 /** Format decimal hours as H:mm for display. */
 export function formatHours(hours: number): string {
-  const h = Math.floor(hours)
-  const m = Math.round((hours - h) * 60)
+  const totalMinutes = Math.round(hours * 60)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
   return `${h}:${m.toString().padStart(2, '0')}`
 }
 
