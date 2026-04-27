@@ -145,7 +145,7 @@ export default function MonthPage() {
         <div className="grid grid-cols-7 gap-px bg-border">
           {calendarDays.map((date, index) => {
             if (!date) {
-              return <div key={`empty-${index}`} className="bg-background min-h-[100px]" />
+              return <div key={`empty-${index}`} className="bg-background min-h-[140px]" />
             }
 
             const dateStr = format(date, 'yyyy-MM-dd')
@@ -156,7 +156,7 @@ export default function MonthPage() {
             return (
               <div
                 key={dateStr}
-                className={`bg-background min-h-[100px] p-2 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
+                className={`bg-background min-h-[140px] p-2 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
                   !isCurrentMonth ? 'opacity-30' : ''
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => handleDayClick(date)}
@@ -168,13 +168,18 @@ export default function MonthPage() {
                   {dayShifts.slice(0, 3).map((shift: any) => (
                     <div
                       key={shift.id}
-                      className="text-xs p-1 rounded"
+                      className="text-xs p-1.5 rounded"
                       style={{
                         backgroundColor: shift.shiftType.color + '40',
                         color: '#fff',
                       }}
                     >
-                      {shift.shiftType.label}
+                      <div className="font-medium leading-tight">{shift.shiftType.label}</div>
+                      {shift.comment && (
+                        <div className="mt-0.5 leading-tight whitespace-pre-wrap break-words opacity-95">
+                          {shift.comment}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {dayShifts.length > 3 && (

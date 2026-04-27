@@ -74,7 +74,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
             <tr>
               <th className="border border-border p-2 text-left bg-muted sticky left-0 z-10">Ansatt</th>
               {weekDates.map((date) => (
-                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[120px]">
+                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[150px]">
                   <div className="font-semibold">
                     {format(date, 'EEEE', { locale: nb })}
                   </div>
@@ -100,18 +100,33 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
                   return (
                     <td
                       key={date.toISOString()}
-                      className="border border-border p-2 cursor-pointer hover:bg-accent transition-colors"
+                      className="border border-border p-2 h-24 align-top cursor-pointer hover:bg-accent transition-colors"
                       onClick={() => handleCellClick(user.id, date)}
                     >
                       {shift ? (
                         <div
-                          className="rounded p-1 text-xs"
+                          className="group relative rounded p-2 text-xs"
                           style={{ backgroundColor: shift.shiftType.color + '40', color: '#fff' }}
                         >
                           <div className="font-medium">{shift.shiftType.label}</div>
                           <div className="text-xs opacity-90">
                             {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
                           </div>
+                          {shift.comment && (
+                            <>
+                              <div className="mt-1 text-[11px] leading-tight opacity-95 whitespace-pre-wrap break-words">
+                                {shift.comment}
+                              </div>
+                              <div className="pointer-events-none absolute left-full top-0 z-30 ml-2 hidden w-64 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg group-hover:block">
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Kommentar
+                                </div>
+                                <div className="leading-relaxed whitespace-pre-wrap break-words">
+                                  {shift.comment}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground">-</div>
