@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,10 @@ export async function GET() {
 
 /** Create a new shift type. */
 export async function POST(request: Request) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
     const body = await request.json()
     const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = body

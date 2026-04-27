@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
+import { useAuth } from '@/lib/auth/mockAuth'
 
 const normalizeHexColor = (value: string): string | null => {
   const cleaned = value.trim().replace(/^#/, '')
@@ -25,6 +26,7 @@ const normalizeHexColor = (value: string): string | null => {
 
 /** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
+  const { currentUser, isAdmin } = useAuth()
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
@@ -51,12 +53,16 @@ export default function ShiftTypesPage() {
 
   const handleCreate = async () => {
     if (!formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan opprette vakttyper')
+      return
+    }
 
     try {
       const response = await fetch('/api/shift-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -74,12 +80,16 @@ export default function ShiftTypesPage() {
 
   const handleUpdate = async () => {
     if (!editingShiftType || !formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan redigere vakttyper')
+      return
+    }
 
     try {
       const response = await fetch(`/api/shift-types/${editingShiftType.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -96,11 +106,17 @@ export default function ShiftTypesPage() {
   }
 
   const handleDelete = async (shiftTypeId: string) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan slette vakttyper')
+      return
+    }
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
 
     try {
       const response = await fetch(`/api/shift-types/${shiftTypeId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -143,11 +159,20 @@ export default function ShiftTypesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Vakttyper</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+        <Button
+          onClick={() => isAdmin() && setIsCreateModalOpen(true)}
+          disabled={!isAdmin()}
+          title={isAdmin() ? undefined : 'Kun admin kan opprette vakttyper'}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Ny vakttype
         </Button>
       </div>
+      {!isAdmin() && (
+        <div className="text-sm text-muted-foreground">
+          Kun admin kan endre vakttyper. Du kan fortsatt se hvilke farger som hører til hver vakttype.
+        </div>
+      )}
 
       <div className="space-y-2">
         {shiftTypes.map(shiftType => (
@@ -168,22 +193,24 @@ export default function ShiftTypesPage() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => openEditModal(shiftType)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={() => handleDelete(shiftType.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAdmin() && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => openEditModal(shiftType)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleDelete(shiftType.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
