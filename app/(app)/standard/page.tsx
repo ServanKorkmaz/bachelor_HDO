@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
-import { getWeekStart, getWeekDates as getWeekDatesUtil, formatDateDisplay, formatDayName } from '@/lib/date-utils'
+import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -161,7 +161,7 @@ export default function StandardPlanPage() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-[220px]">
           <label className="text-sm font-medium">Plan:</label>
           <select
             value={selectedTeamId}
