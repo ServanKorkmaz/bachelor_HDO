@@ -1,0 +1,132 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
+  mockPrisma: {
+    swapRequest: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    shift:        { update: vi.fn() },
+    notification: { create: vi.fn() },
+    auditLog:     { create: vi.fn() },
+    $transaction: vi.fn(),
+  },
+  mockDeliverNotificationToChannels: vi.fn(),
+}))
+
+vi.mock('@/lib/prisma', () => ({ prisma: mockPrisma }))
+vi.mock('@/lib/notifications/deliver', () => ({
+  deliverNotificationToChannels: mockDeliverNotificationToChannels,
+}))
+
+import { POST as approve } from '@/app/api/swap-requests/[id]/approve/route'
+import { POST as execute } from '@/app/api/swap-requests/[id]/execute/route'
+
+/** Builds a POST request with x-current-user-id header. */
+function makeRequest(userId?: string): Request {
+  return new Request('http://localhost/api/swap-requests/sr-1/action', {
+    method: 'POST',
+    headers: userId ? { 'x-current-user-id': userId } : {},
+  })
+}
+
+const baseSwapRequest = {
+  id: 'sr-1',
+  teamId: 'team-1',
+  requestedByUserId: 'user-1',
+  fromUserId: 'user-1',
+  toUserId: 'user-2',
+  shiftId: 'shift-1',
+  requestedBy: { id: 'user-1', name: 'Alice' },
+  fromUser:    { id: 'user-1', name: 'Alice' },
+  toUser:      { id: 'user-2', name: 'Bob' },
+  shift:       { id: 'shift-1', date: '2026-04-28' },
+}
+
+/** Tests for the approve and execute lifecycle of a swap request. */
+describe('POST /api/swap-requests/[id]/approve', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.auditLog.create.mockResolvedValue({})
+    mockDeliverNotificationToChannels.mockResolvedValue(undefined)
+  })
+
+  it('returnerer 401 når currentUserId mangler', async () => {
+    const res = await approve(makeRequest(), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(401)
+  })
+
+  it('returnerer 404 når vaktbytte ikke finnes', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue(null)
+    const res = await approve(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(404)
+  })
+
+  it('returnerer 400 når status ikke er PENDING', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
+    const res = await approve(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ error: 'Swap request is not pending' })
+  })
+
+  it('godkjenner vaktbytte og sender varsel til forespørsel-eier', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'PENDING' })
+    mockPrisma.swapRequest.update.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
+
+    const res = await approve(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.swapRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'APPROVED' }) })
+    )
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('POST /api/swap-requests/[id]/execute', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.auditLog.create.mockResolvedValue({})
+    mockDeliverNotificationToChannels.mockResolvedValue(undefined)
+  })
+
+  it('returnerer 401 når currentUserId mangler', async () => {
+    const res = await execute(makeRequest(), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(401)
+  })
+
+  it('returnerer 404 når vaktbytte ikke finnes', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue(null)
+    const res = await execute(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(404)
+  })
+
+  it('returnerer 400 når status ikke er APPROVED', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'PENDING' })
+    const res = await execute(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({ error: 'Swap request must be approved before execution' })
+  })
+
+  it('utfører vaktbytte — tildeler vakten til ny bruker og varsler begge parter', async () => {
+    mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
+    mockPrisma.shift.update.mockResolvedValue({})
+    mockPrisma.swapRequest.update.mockResolvedValue({ ...baseSwapRequest, status: 'EXECUTED' })
+
+    const res = await execute(makeRequest('leader-1'), { params: { id: 'sr-1' } })
+
+    expect(res.status).toBe(200)
+    // Shift must be reassigned to toUserId.
+    expect(mockPrisma.shift.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: 'user-2' } })
+    )
+    // Both fromUser and toUser should receive a notification.
+    expect(mockPrisma.notification.create).toHaveBeenCalledTimes(2)
+    expect(mockDeliverNotificationToChannels).toHaveBeenCalledTimes(2)
+  })
+})
