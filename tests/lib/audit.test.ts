@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createAuditLog } from '@/lib/admin/audit'
 
+/** Unit tests for the createAuditLog helper. */
 describe('createAuditLog', () => {
-  it('skriver audit entry med null-defaults for before/after', async () => {
+  it('writes audit entry with null defaults for before/after', async () => {
     // Simulate a Prisma transaction with a mocked auditLog.create method.
     const create = vi.fn().mockResolvedValue({})
     const tx = {

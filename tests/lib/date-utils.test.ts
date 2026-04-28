@@ -18,30 +18,30 @@ import {
 
 /** Unit tests for date utility helpers. */
 describe('date-utils', () => {
-  it('formatDate normaliserer til YYYY-MM-DD', () => {
+  it('formatDate normalizes to YYYY-MM-DD', () => {
     expect(formatDate('2026-04-27')).toBe('2026-04-27')
     expect(formatDate(new Date('2026-04-27T15:00:00.000Z'))).toBe('2026-04-27')
   })
 
-  it('formatDateTime returnerer dato og klokkeslett uten sekunder', () => {
+  it('formatDateTime returns date and time without seconds', () => {
     expect(formatDateTime(new Date('2026-04-27T08:30:00.000Z'))).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)
   })
 
-  it('formatTime returnerer klokkeslett som HH:mm', () => {
+  it('formatTime returns time as HH:mm', () => {
     expect(formatTime(new Date('2026-04-27T08:30:00.000Z'))).toMatch(/^\d{2}:\d{2}$/)
   })
 
-  it('formatDateDisplay returnerer dato på norsk format DD.MM.YYYY', () => {
+  it('formatDateDisplay returns date in DD.MM.YYYY format', () => {
     expect(formatDateDisplay('2026-04-27')).toBe('27.04.2026')
   })
 
-  it('formatDayName returnerer norsk ukedagnavn', () => {
+  it('formatDayName returns Norwegian weekday name', () => {
     // 2026-04-27 is a Monday (mandag in Norwegian).
     const day = formatDayName('2026-04-27')
     expect(day).toBe('mandag')
   })
 
-  it('getWeekStart/getWeekDates bruker mandag som ukestart', () => {
+  it('getWeekStart/getWeekDates uses Monday as week start', () => {
     const ref = new Date('2026-04-29T10:00:00.000Z') // Wednesday
     const weekStart = getWeekStart(ref)
     const weekDates = getWeekDates(ref)
@@ -51,13 +51,13 @@ describe('date-utils', () => {
     expect(weekDates[6].getDay()).toBe(0) // Sunday
   })
 
-  it('getWeekEnd returnerer søndagen i samme uke', () => {
+  it('getWeekEnd returns Sunday of the same week', () => {
     const ref = new Date('2026-04-29T10:00:00.000Z') // Wednesday
     const weekEnd = getWeekEnd(ref)
     expect(weekEnd.getDay()).toBe(0) // Sunday
   })
 
-  it('addWeek/subWeek forskyver dato med nøyaktig én uke', () => {
+  it('addWeek/subWeek shifts date by exactly one week', () => {
     const base = new Date('2026-04-27T00:00:00.000Z')
     const next = addWeek(base)
     const prev = subWeek(base)
@@ -66,16 +66,16 @@ describe('date-utils', () => {
     expect(base.getTime() - prev.getTime()).toBe(msPerWeek)
   })
 
-  it('calculateShiftHours beregner timer korrekt for deltimer', () => {
+  it('calculateShiftHours calculates hours correctly for partial hours', () => {
     expect(calculateShiftHours('2026-04-27T08:00:00.000Z', '2026-04-27T15:30:00.000Z')).toBe(7.5)
   })
 
-  it('formatHours runder opp korrekt når minutter blir 60', () => {
+  it('formatHours rounds correctly when minutes reach 60', () => {
     expect(formatHours(7.999)).toBe('8:00')
     expect(formatHours(7.5)).toBe('7:30')
   })
 
-  it('dateNDaysAgoString/todayStringInTimeZone følger format YYYY-MM-DD', () => {
+  it('dateNDaysAgoString/todayStringInTimeZone returns YYYY-MM-DD format', () => {
     // Use fake timers to make timezone-sensitive assertions deterministic.
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-27T10:00:00.000Z'))

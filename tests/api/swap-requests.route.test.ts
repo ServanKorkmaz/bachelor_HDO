@@ -26,12 +26,14 @@ vi.mock('@/lib/notifications/deliver', () => ({
 
 import { GET, POST } from '@/app/api/swap-requests/route'
 
+/** Builds a GET request with optional query parameters. */
 function makeGet(params: Record<string, string> = {}): Request {
   const url = new URL('http://localhost/api/swap-requests')
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
   return new Request(url.toString())
 }
 
+/** Builds a JSON POST request for the swap-requests endpoint. */
 function makePost(body: unknown): Request {
   return new Request('http://localhost/api/swap-requests', {
     method: 'POST',
@@ -47,13 +49,13 @@ describe('GET /api/swap-requests', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
   })
 
-  it('returnerer 400 når teamId mangler', async () => {
+  it('returns 400 when teamId is missing', async () => {
     const res = await GET(makeGet())
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'teamId is required' })
   })
 
-  it('returnerer liste med vaktbytter for et team', async () => {
+  it('returns list of swap requests for a team', async () => {
     const fakeRequests = [{ id: 'sr-1', status: 'AWAITING_ACCEPTANCE' }]
     mockPrisma.swapRequest.findMany.mockResolvedValue(fakeRequests)
 
@@ -72,13 +74,13 @@ describe('POST /api/swap-requests', () => {
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
-  it('returnerer 400 når påkrevde felt mangler', async () => {
+  it('returns 400 when required fields are missing', async () => {
     const res = await POST(makePost({ teamId: 'team-1' }))
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'Missing required fields' })
   })
 
-  it('returnerer 404 når vakten ikke finnes', async () => {
+  it('returns 404 when shift does not exist', async () => {
     mockPrisma.shift.findUnique.mockResolvedValue(null)
 
     const res = await POST(makePost({
@@ -92,7 +94,7 @@ describe('POST /api/swap-requests', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Shift not found' })
   })
 
-  it('oppretter vaktbyttereforespørsel og varsler mottaker', async () => {
+  it('creates swap request and notifies recipient', async () => {
     // Shift belongs to user-1; user-1 requests swap with user-2.
     mockPrisma.shift.findUnique.mockResolvedValue({ id: 'shift-1', userId: 'user-1' })
     const fakeSwapRequest = {

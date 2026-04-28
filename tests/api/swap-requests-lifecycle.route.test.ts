@@ -53,25 +53,25 @@ describe('POST /api/swap-requests/[id]/approve', () => {
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
-  it('returnerer 401 når currentUserId mangler', async () => {
+  it('returns 401 when currentUserId is missing', async () => {
     const res = await approve(makeRequest(), { params: { id: 'sr-1' } })
     expect(res.status).toBe(401)
   })
 
-  it('returnerer 404 når vaktbytte ikke finnes', async () => {
+  it('returns 404 when swap request does not exist', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue(null)
     const res = await approve(makeRequest('leader-1'), { params: { id: 'sr-1' } })
     expect(res.status).toBe(404)
   })
 
-  it('returnerer 400 når status ikke er PENDING', async () => {
+  it('returns 400 when status is not PENDING', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
     const res = await approve(makeRequest('leader-1'), { params: { id: 'sr-1' } })
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'Swap request is not pending' })
   })
 
-  it('godkjenner vaktbytte og sender varsel til forespørsel-eier', async () => {
+  it('approves swap request and notifies requester', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'PENDING' })
     mockPrisma.swapRequest.update.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
 
@@ -95,25 +95,25 @@ describe('POST /api/swap-requests/[id]/execute', () => {
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
-  it('returnerer 401 når currentUserId mangler', async () => {
+  it('returns 401 when currentUserId is missing', async () => {
     const res = await execute(makeRequest(), { params: { id: 'sr-1' } })
     expect(res.status).toBe(401)
   })
 
-  it('returnerer 404 når vaktbytte ikke finnes', async () => {
+  it('returns 404 when swap request does not exist', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue(null)
     const res = await execute(makeRequest('leader-1'), { params: { id: 'sr-1' } })
     expect(res.status).toBe(404)
   })
 
-  it('returnerer 400 når status ikke er APPROVED', async () => {
+  it('returns 400 when status is not APPROVED', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'PENDING' })
     const res = await execute(makeRequest('leader-1'), { params: { id: 'sr-1' } })
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'Swap request must be approved before execution' })
   })
 
-  it('utfører vaktbytte — tildeler vakten til ny bruker og varsler begge parter', async () => {
+  it('executes swap — reassigns shift to new user and notifies both parties', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
     mockPrisma.shift.update.mockResolvedValue({})
     mockPrisma.swapRequest.update.mockResolvedValue({ ...baseSwapRequest, status: 'EXECUTED' })

@@ -21,14 +21,14 @@ function makeRequest(userId?: string): Request {
 describe('requireAdmin', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returnerer 401 når currentUserId mangler', async () => {
+  it('returns 401 when currentUserId is missing', async () => {
     const auth = {}
     const res = await requireAdmin(makeRequest(), auth)
     expect(res?.status).toBe(401)
     await expect(res?.json()).resolves.toEqual({ error: 'Not authorized' })
   })
 
-  it('returnerer 403 når brukeren ikke finnes i databasen', async () => {
+  it('returns 403 when user does not exist in database', async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null)
     const auth = {}
     const res = await requireAdmin(makeRequest('unknown-user'), auth)
@@ -36,14 +36,14 @@ describe('requireAdmin', () => {
     await expect(res?.json()).resolves.toEqual({ error: 'Forbidden' })
   })
 
-  it('returnerer 403 når brukeren ikke er ADMIN', async () => {
+  it('returns 403 when user is not ADMIN', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'user-1', role: 'EMPLOYEE' })
     const auth = {}
     const res = await requireAdmin(makeRequest('user-1'), auth)
     expect(res?.status).toBe(403)
   })
 
-  it('returnerer null og setter currentUser når brukeren er ADMIN', async () => {
+  it('returns null and sets currentUser when user is ADMIN', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN' })
     const auth: { currentUser?: { id: string; role: string } } = {}
     const res = await requireAdmin(makeRequest('admin-1'), auth)

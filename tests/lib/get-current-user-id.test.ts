@@ -6,7 +6,7 @@ import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
  * x-current-user-id header → currentUserId query param → JSON body → null.
  */
 describe('getCurrentUserId', () => {
-  it('leser bruker-id fra header først', async () => {
+  it('reads user ID from header first', async () => {
     const req = new Request('http://localhost/api/test?currentUserId=query-user', {
       headers: { 'x-current-user-id': 'header-user' },
     })
@@ -14,12 +14,12 @@ describe('getCurrentUserId', () => {
     await expect(getCurrentUserId(req)).resolves.toBe('header-user')
   })
 
-  it('faller tilbake til query parameter', async () => {
+  it('falls back to query parameter', async () => {
     const req = new Request('http://localhost/api/test?currentUserId=query-user')
     await expect(getCurrentUserId(req)).resolves.toBe('query-user')
   })
 
-  it('faller tilbake til json body currentUserId', async () => {
+  it('falls back to JSON body currentUserId', async () => {
     const req = new Request('http://localhost/api/test', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -29,7 +29,7 @@ describe('getCurrentUserId', () => {
     await expect(getCurrentUserId(req)).resolves.toBe('body-user')
   })
 
-  it('returnerer null hvis ingen verdi finnes', async () => {
+  it('returns null when no value is found', async () => {
     const req = new Request('http://localhost/api/test')
     await expect(getCurrentUserId(req)).resolves.toBeNull()
   })
