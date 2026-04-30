@@ -197,7 +197,7 @@ bachelor_HDO/
 
 ## Database
 
-Systemet bruker SQLite for MVP, men kan enkelt byttes til Postgres ved å endre `DATABASE_URL` i `.env` og oppdatere Prisma-schemaet.
+Systemet bruker **PostgreSQL** hostet på **Neon** (Frankfurt / EU-region, serverless). Tilkoblingen konfigureres via `DATABASE_URL` i `.env`.
 
 ### Viktige modeller
 

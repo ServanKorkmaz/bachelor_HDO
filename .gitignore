@@ -8,6 +8,9 @@
 # testing
 /coverage
 
+# typedoc
+/docs
+
 # next.js
 /.next/
 /out/

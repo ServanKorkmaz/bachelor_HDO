@@ -11,7 +11,8 @@ export interface MockUser {
   teamId: string
 }
 
-interface AuthState {
+/** Internal state shape for the mock auth store. */
+export interface AuthState {
   currentUser: MockUser | null
   setCurrentUser: (user: MockUser | null) => void
   isAdmin: () => boolean
