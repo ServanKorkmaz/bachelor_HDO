@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSam
 import { nb } from 'date-fns/locale/nb'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
@@ -119,15 +120,19 @@ export default function MonthPage() {
       <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Plan:</label>
-          <select
+          <Select
             value={selectedTeamId}
-            onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="px-3 py-1 rounded-md border bg-background text-foreground"
+            onValueChange={setSelectedTeamId}
           >
-            {teams.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Velg plan" />
+            </SelectTrigger>
+            <SelectContent>
+              {teams.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="text-lg font-semibold">
           {format(selectedDate, 'MMMM yyyy', { locale: nb })}
