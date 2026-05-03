@@ -80,6 +80,10 @@ interface EmployeeSelectProps {
 
 function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSelectProps) {
   const [query, setQuery] = useState('')
+  const selectedUser = useMemo(
+    () => users.find((user) => user.id === value) ?? null,
+    [users, value]
+  )
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
     if (!normalized) return users
@@ -93,29 +97,41 @@ function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSe
         placeholder="Søk ansatt..."
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => {
+          if (!query && selectedUser) {
+            setQuery(selectedUser.name)
+          }
+        }}
       />
-      <Select value={value} onValueChange={onChange} disabled={isLoading || !!error}>
-        <SelectTrigger>
-          <SelectValue placeholder={isLoading ? 'Laster ansatte...' : 'Velg ansatt'} />
-        </SelectTrigger>
-        <SelectContent>
-          {error && (
-            <div className="px-3 py-2 text-sm text-destructive">
-              Kunne ikke laste ansatte
-            </div>
-          )}
-          {!error && filtered.length === 0 && (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              Ingen treff
-            </div>
-          )}
-          {!error && filtered.map(user => (
-            <SelectItem key={user.id} value={user.id}>
-              {user.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="rounded-md border p-1">
+        {isLoading && (
+          <div className="px-2 py-1 text-sm text-muted-foreground">Laster ansatte...</div>
+        )}
+        {error && (
+          <div className="px-2 py-1 text-sm text-destructive">Kunne ikke laste ansatte</div>
+        )}
+        {!isLoading && !error && filtered.length === 0 && (
+          <div className="px-2 py-1 text-sm text-muted-foreground">Ingen treff</div>
+        )}
+        {!isLoading && !error && filtered.map(user => (
+          <button
+            key={user.id}
+            type="button"
+            onClick={() => {
+              onChange(user.id)
+              setQuery(user.name)
+            }}
+            className={`w-full rounded px-2 py-1 text-left text-sm transition-colors ${
+              value === user.id ? 'bg-accent font-medium' : 'hover:bg-accent/70'
+            }`}
+          >
+            {user.name}
+          </button>
+        ))}
+      </div>
+      {selectedUser && (
+        <div className="text-xs text-muted-foreground">Valgt: {selectedUser.name}</div>
+      )}
     </div>
   )
 }
@@ -231,7 +247,7 @@ function EmployeeShiftPicker({
         />
       </div>
 
-      <div className="max-h-64 overflow-y-auto rounded-md border p-3">
+      <div className="rounded-md border p-3">
         {isLoading && (
           <div className="text-sm text-muted-foreground">Laster vakter...</div>
         )}
@@ -462,7 +478,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Bulk vaktendring</DialogTitle>
           <DialogDescription>
@@ -517,26 +533,97 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
               return (
                 <div key={row.id} className="rounded-md border p-3">
                   {isCreate && (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <EmployeeSelect
-                        users={teamUsers}
-                        value={row.userId}
-                        onChange={(value) => updateRow(row.id, { userId: value })}
-                        isLoading={usersLoading}
-                        error={usersError}
-                      />
-                      <div className="grid gap-2">
-                        <Label>Dato</Label>
-                        <Input
-                          type="date"
-                          value={row.date}
-                          onChange={(e) => updateRow(row.id, { date: e.target.value })}
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+                        <EmployeeSelect
+                          users={teamUsers}
+                          value={row.userId}
+                          onChange={(value) => updateRow(row.id, { userId: value })}
+                          isLoading={usersLoading}
+                          error={usersError}
                         />
-                        {row.date && capacity > 0 && (
-                          <div className="text-xs text-muted-foreground">
-                            Planlagt: {scheduledCount} / {capacity} · Ledig: {available}
+
+                        <div className="grid gap-4">
+                          <div className="grid gap-2">
+                            <Label>Dato</Label>
+                            <Input
+                              type="date"
+                              value={row.date}
+                              onChange={(e) => updateRow(row.id, { date: e.target.value })}
+                            />
+                            {row.date && capacity > 0 && (
+                              <div className="text-xs text-muted-foreground">
+                                Planlagt: {scheduledCount} / {capacity} · Ledig: {available}
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          <div className="grid gap-2">
+                            <Label>Vakt</Label>
+                            <Select
+                              value={row.shiftTypeId}
+                              onValueChange={(value) => {
+                                const selected = shiftTypeById.get(value)
+                                updateRow(row.id, {
+                                  shiftTypeId: value,
+                                  startTime: selected?.defaultStartTime || row.startTime,
+                                  endTime: selected?.defaultEndTime || row.endTime,
+                                  useCustomTime: false,
+                                })
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Velg vakt" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {shiftTypes.map(st => (
+                                  <SelectItem key={st.id} value={st.id}>
+                                    {st.label} ({st.defaultStartTime}-{st.defaultEndTime})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="grid gap-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={row.useCustomTime}
+                                onChange={(e) => updateRow(row.id, { useCustomTime: e.target.checked })}
+                              />
+                              <Label>Tilpass tid</Label>
+                            </div>
+                            {row.useCustomTime && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="grid gap-2">
+                                  <Label>Start</Label>
+                                  <Input
+                                    type="time"
+                                    value={row.startTime}
+                                    onChange={(e) => updateRow(row.id, { startTime: e.target.value })}
+                                  />
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label>Slutt</Label>
+                                  <Input
+                                    type="time"
+                                    value={row.endTime}
+                                    onChange={(e) => updateRow(row.id, { endTime: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 mt-1">
+                        <Label>Kommentar (valgfritt)</Label>
+                        <Input
+                          value={row.comment}
+                          onChange={(e) => updateRow(row.id, { comment: e.target.value })}
+                        />
                       </div>
                     </div>
                   )}
@@ -590,7 +677,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || (isUpdate && row.shiftId)) && (
+                  {isUpdate && row.shiftId && (
                     <div className="mt-3 grid gap-2">
                       <Label>Vakt</Label>
                       <Select
@@ -619,7 +706,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || (isUpdate && row.shiftId)) && (
+                  {isUpdate && row.shiftId && (
                     <div className="mt-3 grid gap-2">
                       <div className="flex items-center gap-2">
                         <input
@@ -652,7 +739,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                     </div>
                   )}
 
-                  {(isCreate || (isUpdate && row.shiftId)) && (
+                  {isUpdate && row.shiftId && (
                     <div className="mt-3 grid gap-2">
                       <Label>Kommentar (valgfritt)</Label>
                       <Input

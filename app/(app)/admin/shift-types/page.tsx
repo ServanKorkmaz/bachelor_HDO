@@ -13,26 +13,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
+import { useAuth } from '@/lib/auth/mockAuth'
 
-/** Simple predefined colors for shift types (no color palette). */
-const PRESET_COLORS = [
-  { name: 'Svart', hex: '#000000' },
-  { name: 'Hvit', hex: '#ffffff' },
-  { name: 'Rød', hex: '#dc2626' },
-  { name: 'Grønn', hex: '#16a34a' },
-  { name: 'Blå', hex: '#2563eb' },
-  { name: 'Gul', hex: '#ca8a04' },
-  { name: 'Oransje', hex: '#ea580c' },
-  { name: 'Grå', hex: '#6b7280' },
-  { name: 'Lilla', hex: '#7c3aed' },
-  { name: 'Turkis', hex: '#0d9488' },
-] as const
+const normalizeHexColor = (value: string): string | null => {
+  const cleaned = value.trim().replace(/^#/, '')
+  if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+    return null
+  }
+
+  return `#${cleaned.toLowerCase()}`
+}
 
 /** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
+  const { currentUser, isAdmin } = useAuth()
   const [shiftTypes, setShiftTypes] = useState<any[]>([])
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
+  const [colorInput, setColorInput] = useState('#000000')
   const [formData, setFormData] = useState({
     code: '',
     label: '',
@@ -55,12 +53,16 @@ export default function ShiftTypesPage() {
 
   const handleCreate = async () => {
     if (!formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan opprette vakttyper')
+      return
+    }
 
     try {
       const response = await fetch('/api/shift-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -78,12 +80,16 @@ export default function ShiftTypesPage() {
 
   const handleUpdate = async () => {
     if (!editingShiftType || !formData.code || !formData.label) return
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan redigere vakttyper')
+      return
+    }
 
     try {
       const response = await fetch(`/api/shift-types/${editingShiftType.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -100,11 +106,17 @@ export default function ShiftTypesPage() {
   }
 
   const handleDelete = async (shiftTypeId: string) => {
+    if (!currentUser || !isAdmin()) {
+      alert('Kun admin kan slette vakttyper')
+      return
+    }
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
 
     try {
       const response = await fetch(`/api/shift-types/${shiftTypeId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentUserId: currentUser.id }),
       })
 
       if (response.ok) {
@@ -119,6 +131,7 @@ export default function ShiftTypesPage() {
   }
 
   const resetForm = () => {
+    setColorInput('#000000')
     setFormData({
       code: '',
       label: '',
@@ -130,6 +143,7 @@ export default function ShiftTypesPage() {
   }
 
   const openEditModal = (shiftType: any) => {
+    setColorInput(shiftType.color)
     setEditingShiftType(shiftType)
     setFormData({
       code: shiftType.code,
@@ -145,11 +159,20 @@ export default function ShiftTypesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Vakttyper</h1>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+        <Button
+          onClick={() => isAdmin() && setIsCreateModalOpen(true)}
+          disabled={!isAdmin()}
+          title={isAdmin() ? undefined : 'Kun admin kan opprette vakttyper'}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Ny vakttype
         </Button>
       </div>
+      {!isAdmin() && (
+        <div className="text-sm text-muted-foreground">
+          Kun admin kan endre vakttyper. Du kan fortsatt se hvilke farger som hører til hver vakttype.
+        </div>
+      )}
 
       <div className="space-y-2">
         {shiftTypes.map(shiftType => (
@@ -170,22 +193,24 @@ export default function ShiftTypesPage() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => openEditModal(shiftType)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={() => handleDelete(shiftType.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAdmin() && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => openEditModal(shiftType)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleDelete(shiftType.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -225,24 +250,33 @@ export default function ShiftTypesPage() {
             </div>
             <div className="space-y-2">
               <Label>Farge</Label>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map(({ name, hex }) => (
-                  <button
-                    key={hex}
-                    type="button"
-                    title={name}
-                    onClick={() => setFormData({ ...formData, color: hex })}
-                    className={`h-9 w-9 rounded-md border-2 transition-shadow focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
-                      formData.color.toLowerCase() === hex.toLowerCase()
-                        ? 'border-primary ring-2 ring-primary/30'
-                        : 'border-border hover:border-muted-foreground/50'
-                    }`}
-                    style={{ backgroundColor: hex }}
-                  />
-                ))}
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={formData.color}
+                  onChange={(e) => {
+                    setColorInput(e.target.value)
+                    setFormData({ ...formData, color: e.target.value })
+                  }}
+                  className="h-10 w-14 cursor-pointer rounded border border-input bg-background p-1"
+                  aria-label="Velg farge"
+                />
+                <Input
+                  value={colorInput}
+                  onChange={(e) => setColorInput(e.target.value)}
+                  onBlur={(e) => {
+                    const normalized = normalizeHexColor(e.target.value)
+                    const nextColor = normalized ?? formData.color
+                    setColorInput(nextColor)
+                    setFormData({ ...formData, color: nextColor })
+                  }}
+                  placeholder="#000000"
+                  maxLength={7}
+                  className="max-w-[140px] uppercase"
+                />
               </div>
               <p className="text-xs text-muted-foreground">
-                Valgt: {PRESET_COLORS.find(c => c.hex.toLowerCase() === formData.color.toLowerCase())?.name ?? formData.color}
+                Bruk fargehjulet eller skriv hex-farge (for eksempel #1d4ed8).
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
