@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchMembershipSchema } from '@/lib/admin/schemas'
@@ -25,7 +26,7 @@ export async function PATCH(
       )
     }
     const data = parsed.data
-    const updateData: { role?: string; status?: string } = {}
+    const updateData: Prisma.TeamMembershipUpdateInput = {}
     if (data.role !== undefined) updateData.role = data.role
     if (data.status !== undefined) updateData.status = data.status
     if (Object.keys(updateData).length === 0) {
