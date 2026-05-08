@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
@@ -114,7 +115,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                       {shift ? (
                         <div
                           className="group relative rounded p-2 text-xs"
-                          style={{ backgroundColor: shift.shiftType.color + '40', color: '#fff' }}
+                          style={getShiftChipStyle(shift.shiftType.color)}
                         >
                           <div className="font-medium">{shift.shiftType.label}</div>
                           <div className="text-xs opacity-90">

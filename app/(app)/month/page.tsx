@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
 
 /** Monthly calendar view of shifts with per-day summaries. */
@@ -169,10 +170,7 @@ export default function MonthPage() {
                     <div
                       key={shift.id}
                       className="text-xs p-1.5 rounded"
-                      style={{
-                        backgroundColor: shift.shiftType.color + '40',
-                        color: '#fff',
-                      }}
+                      style={getShiftChipStyle(shift.shiftType.color)}
                     >
                       <div className="font-medium leading-tight">{shift.shiftType.label}</div>
                       {shift.comment && (
