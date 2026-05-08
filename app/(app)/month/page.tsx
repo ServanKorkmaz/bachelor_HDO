@@ -169,12 +169,15 @@ export default function MonthPage() {
                   {dayShifts.slice(0, 3).map((shift: any) => (
                     <div
                       key={shift.id}
-                      className="text-sm p-2 rounded-md"
+                      className="text-base p-2.5 rounded-md"
                       style={getShiftChipStyle(shift.shiftType.color)}
                     >
-                      <div className="font-medium leading-tight">{shift.shiftType.label}</div>
-                      {shift.comment && (
-                        <div className="mt-0.5 leading-tight whitespace-pre-wrap break-words opacity-95">
+                      <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
+                       <div className="mt-1.5 text-base font-semibold leading-tight">
+                         {shift.user?.name || 'Ukjent ansatt'}
+                       </div>
+                       {shift.comment && (
+                         <div className="mt-2 text-xs leading-snug whitespace-pre-wrap break-words opacity-70 italic">
                           {shift.comment}
                         </div>
                       )}
