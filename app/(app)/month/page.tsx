@@ -146,7 +146,7 @@ export default function MonthPage() {
         <div className="grid grid-cols-7 gap-px bg-border">
           {calendarDays.map((date, index) => {
             if (!date) {
-              return <div key={`empty-${index}`} className="bg-background min-h-[140px]" />
+              return <div key={`empty-${index}`} className="bg-background min-h-[170px]" />
             }
 
             const dateStr = format(date, 'yyyy-MM-dd')
@@ -157,19 +157,19 @@ export default function MonthPage() {
             return (
               <div
                 key={dateStr}
-                className={`bg-background min-h-[140px] p-2 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
+                className={`bg-background min-h-[170px] p-2.5 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
                   !isCurrentMonth ? 'opacity-30' : ''
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => handleDayClick(date)}
               >
-                <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+                <div className={`text-base font-semibold mb-2 ${isToday ? 'text-primary' : ''}`}>
                   {format(date, 'd')}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {dayShifts.slice(0, 3).map((shift: any) => (
                     <div
                       key={shift.id}
-                      className="text-xs p-1.5 rounded"
+                      className="text-sm p-2 rounded-md"
                       style={getShiftChipStyle(shift.shiftType.color)}
                     >
                       <div className="font-medium leading-tight">{shift.shiftType.label}</div>
