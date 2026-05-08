@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import {
   Select,
   SelectContent,
@@ -164,8 +165,8 @@ export default function AgendaPage() {
                     </div>
                   </div>
                   <div
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: shift.shiftType.color }}
+                    className="h-7 w-7 rounded-md"
+                    style={getShiftChipStyle(shift.shiftType.color)}
                   />
                 </div>
               ))
