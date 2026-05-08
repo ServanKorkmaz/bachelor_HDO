@@ -123,7 +123,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                           </div>
                           {shift.comment && (
                             <>
-                              <div className="mt-2 text-xs leading-snug opacity-95 whitespace-pre-wrap break-words">
+                              <div className="mt-2 rounded-md bg-red-950 border border-red-800 p-2 text-xs leading-snug whitespace-pre-wrap break-words text-red-100">
                                 {shift.comment}
                               </div>
                               <div className="pointer-events-none absolute left-full top-0 z-30 ml-2 hidden w-64 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg group-hover:block">
