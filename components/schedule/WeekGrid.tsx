@@ -77,7 +77,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
             <tr>
               <th className="border border-border p-2 text-left bg-muted sticky left-0 z-10">Ansatt</th>
               {weekDates.map((date) => (
-                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[175px]">
+                <th key={date.toISOString()} className="border border-border p-1.5 text-center bg-muted min-w-[115px]">
                   <div className="font-semibold">
                     {format(date, 'EEEE', { locale: nb })}
                   </div>
@@ -109,12 +109,12 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                   return (
                     <td
                       key={date.toISOString()}
-                      className="border border-border p-2 h-32 align-top cursor-pointer hover:bg-accent transition-colors"
+                      className="border border-border p-1.5 h-24 align-top cursor-pointer hover:bg-accent transition-colors"
                       onClick={() => handleCellClick(user.id, date)}
                     >
                       {shift ? (
                         <div
-                          className="group relative min-h-[104px] rounded-md p-3 text-sm"
+                          className="group relative min-h-[72px] rounded-md p-2 text-sm"
                           style={getShiftChipStyle(shift.shiftType.color)}
                         >
                           <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
