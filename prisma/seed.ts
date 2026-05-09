@@ -133,48 +133,48 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        name: 'Jan Thomas Kristiansen',
-        email: 'jan.thomas.kristiansen@hdo.no',
+        name: 'Kari Nordmann',
+        email: 'kari.nordmann@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Erik Heyerdahl',
-        email: 'erik.heyerdahl@hdo.no',
+        name: 'Ole Hansen',
+        email: 'ole.hansen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Stian Jørgensen',
-        email: 'stian.jorgensen@hdo.no',
+        name: 'Per Olsen',
+        email: 'per.olsen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Gerardas Zozulia',
-        email: 'gerardas.zozulia@hdo.no',
+        name: 'Anne Berg',
+        email: 'anne.berg@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Sara Luggenes',
-        email: 'sara.luggenes@hdo.no',
+        name: 'Lars Dahl',
+        email: 'lars.dahl@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Alexander Stenersen',
-        email: 'alexander.stenersen@hdo.no',
+        name: 'Ingrid Larsen',
+        email: 'ingrid.larsen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
@@ -204,8 +204,8 @@ async function main() {
   const weekStart = parse('2026-03-09', 'yyyy-MM-dd', new Date())
   const employees = users.filter(u => u.role === 'EMPLOYEE')
 
-  // Week 1 shifts (Jan Thomas Kristiansen pattern)
-  const week1Employee = employees[0] // Jan Thomas Kristiansen
+  // Week 1 shifts (Kari Nordmann pattern)
+  const week1Employee = employees[0] // Kari Nordmann
   const week1Shifts = [
     { day: 0, shiftType: shiftTypes[1] }, // Mon - Dag
     { day: 1, shiftType: shiftTypes[1] }, // Tue - Dag
@@ -240,9 +240,9 @@ async function main() {
     })
   }
 
-  // Week 2 shifts (Erik Heyerdahl pattern)
+  // Week 2 shifts (Ole Hansen pattern)
   const week2Start = addDays(weekStart, 7)
-  const week2Employee = employees[1] // Erik Heyerdahl
+  const week2Employee = employees[1] // Ole Hansen
   const week2Shifts = [
     { day: 0, shiftType: shiftTypes[3] }, // Mon - N1
     { day: 1, shiftType: shiftTypes[3] }, // Tue - N1
@@ -277,9 +277,9 @@ async function main() {
     })
   }
 
-  // Week 3 shifts (Stian Jørgensen pattern)
+  // Week 3 shifts (Per Olsen pattern)
   const week3Start = addDays(weekStart, 14)
-  const week3Employee = employees[2] // Stian Jørgensen
+  const week3Employee = employees[2] // Per Olsen
   const week3Shifts = [
     { day: 0, shiftType: shiftTypes[0] }, // Mon - Fri
     { day: 1, shiftType: shiftTypes[0] }, // Tue - Fri
@@ -314,9 +314,9 @@ async function main() {
     })
   }
 
-  // Week 4 shifts (Sara Luggenes pattern)
+  // Week 4 shifts (Lars Dahl pattern)
   const week4Start = addDays(weekStart, 21)
-  const week4Employee = employees[4] // Sara Luggenes
+  const week4Employee = employees[4] // Lars Dahl
   const week4Shifts = [
     { day: 0, shiftType: shiftTypes[5] }, // Mon - K1
     { day: 1, shiftType: shiftTypes[5] }, // Tue - K1
