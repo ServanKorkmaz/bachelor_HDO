@@ -9,6 +9,7 @@ import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -287,10 +288,12 @@ export default function StandardPlanPage() {
                         </div>
                       </div>
                       <div
-                        className="h-4 w-4 rounded-sm border"
-                        style={{ backgroundColor: entry.shift.shiftType?.color || '#999' }}
+                        className="rounded-md px-2 py-1 text-xs font-semibold"
+                        style={getShiftChipStyle(entry.shift.shiftType?.color || '#999999')}
                         title={entry.shift.shiftType?.label}
-                      />
+                      >
+                        {entry.shift.shiftType?.code || 'Vakt'}
+                      </div>
                     </div>
                     {entry.shift.comment && (
                       <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap break-words">

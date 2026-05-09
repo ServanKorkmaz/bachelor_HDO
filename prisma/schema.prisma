@@ -28,6 +28,7 @@ enum RequestStatus {
   PENDING
   APPROVED
   REJECTED
+  EXECUTED
 }
 
 enum NoteVisibility {

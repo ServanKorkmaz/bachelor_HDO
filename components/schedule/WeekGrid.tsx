@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
@@ -76,7 +77,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
             <tr>
               <th className="border border-border p-2 text-left bg-muted sticky left-0 z-10">Ansatt</th>
               {weekDates.map((date) => (
-                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[150px]">
+                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[175px]">
                   <div className="font-semibold">
                     {format(date, 'EEEE', { locale: nb })}
                   </div>
@@ -108,21 +109,21 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                   return (
                     <td
                       key={date.toISOString()}
-                      className="border border-border p-2 h-24 align-top cursor-pointer hover:bg-accent transition-colors"
+                      className="border border-border p-2 h-32 align-top cursor-pointer hover:bg-accent transition-colors"
                       onClick={() => handleCellClick(user.id, date)}
                     >
                       {shift ? (
                         <div
-                          className="group relative rounded p-2 text-xs"
-                          style={{ backgroundColor: shift.shiftType.color + '40', color: '#fff' }}
+                          className="group relative min-h-[104px] rounded-md p-3 text-sm"
+                          style={getShiftChipStyle(shift.shiftType.color)}
                         >
-                          <div className="font-medium">{shift.shiftType.label}</div>
-                          <div className="text-xs opacity-90">
+                          <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
+                          <div className="mt-1 text-sm opacity-95">
                             {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
                           </div>
                           {shift.comment && (
                             <>
-                              <div className="mt-1 text-[11px] leading-tight opacity-95 whitespace-pre-wrap break-words">
+                              <div className="mt-2 rounded-md bg-red-950 border border-red-800 p-2 text-xs leading-snug whitespace-pre-wrap break-words text-red-100">
                                 {shift.comment}
                               </div>
                               <div className="pointer-events-none absolute left-full top-0 z-30 ml-2 hidden w-64 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg group-hover:block">
