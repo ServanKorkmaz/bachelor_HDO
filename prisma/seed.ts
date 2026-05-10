@@ -133,48 +133,48 @@ async function main() {
     }),
     prisma.user.create({
       data: {
-        name: 'Jan Thomas Kristiansen',
-        email: 'jan.thomas.kristiansen@hdo.no',
+        name: 'Kari Nordmann',
+        email: 'kari.nordmann@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Erik Heyerdahl',
-        email: 'erik.heyerdahl@hdo.no',
+        name: 'Ole Hansen',
+        email: 'ole.hansen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Stian Jørgensen',
-        email: 'stian.jorgensen@hdo.no',
+        name: 'Per Olsen',
+        email: 'per.olsen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Gerardas Zozulia',
-        email: 'gerardas.zozulia@hdo.no',
+        name: 'Anne Berg',
+        email: 'anne.berg@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Sara Luggenes',
-        email: 'sara.luggenes@hdo.no',
+        name: 'Lars Dahl',
+        email: 'lars.dahl@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
     }),
     prisma.user.create({
       data: {
-        name: 'Alexander Stenersen',
-        email: 'alexander.stenersen@hdo.no',
+        name: 'Ingrid Larsen',
+        email: 'ingrid.larsen@hdo.no',
         role: 'EMPLOYEE',
         teamId: team.id,
       },
@@ -200,155 +200,96 @@ async function main() {
   }
   console.log('✅ Backfilled team memberships')
 
-  // Seed shifts for 4 weeks starting from 2026-03-09 (Monday, current week)
-  const weekStart = parse('2026-03-09', 'yyyy-MM-dd', new Date())
+  // Seed shifts for 6 weeks starting 2026-04-27 (2 weeks before demo date)
+  const weekStart = parse('2026-04-27', 'yyyy-MM-dd', new Date())
   const employees = users.filter(u => u.role === 'EMPLOYEE')
 
-  // Week 1 shifts (Jan Thomas Kristiansen pattern)
-  const week1Employee = employees[0] // Jan Thomas Kristiansen
-  const week1Shifts = [
-    { day: 0, shiftType: shiftTypes[1] }, // Mon - Dag
-    { day: 1, shiftType: shiftTypes[1] }, // Tue - Dag
-    { day: 2, shiftType: shiftTypes[1] }, // Wed - Dag
-    { day: 3, shiftType: shiftTypes[0] }, // Thu - Fri
-    { day: 4, shiftType: shiftTypes[0] }, // Fri - Fri
-    { day: 5, shiftType: shiftTypes[6] }, // Sat - D2
-    { day: 6, shiftType: shiftTypes[6] }, // Sun - D2
+  const employeePatterns = [
+    // Kari Nordmann: Dag Mon-Wed, D2 Sat-Sun
+    [
+      { day: 0, shiftType: shiftTypes[1] },
+      { day: 1, shiftType: shiftTypes[1] },
+      { day: 2, shiftType: shiftTypes[1] },
+      { day: 4, shiftType: shiftTypes[0] },
+      { day: 5, shiftType: shiftTypes[6] },
+      { day: 6, shiftType: shiftTypes[6] },
+    ],
+    // Ole Hansen: N1 Mon-Wed, off rest
+    [
+      { day: 0, shiftType: shiftTypes[3] },
+      { day: 1, shiftType: shiftTypes[3] },
+      { day: 2, shiftType: shiftTypes[3] },
+      { day: 5, shiftType: shiftTypes[0] },
+      { day: 6, shiftType: shiftTypes[0] },
+    ],
+    // Per Olsen: off Mon-Tue, N1 Thu-Fri, N2 Sat-Sun
+    [
+      { day: 0, shiftType: shiftTypes[0] },
+      { day: 1, shiftType: shiftTypes[0] },
+      { day: 3, shiftType: shiftTypes[3] },
+      { day: 4, shiftType: shiftTypes[3] },
+      { day: 5, shiftType: shiftTypes[4] },
+      { day: 6, shiftType: shiftTypes[4] },
+    ],
+    // Anne Berg: Dag/Dag2 alternating Mon-Fri
+    [
+      { day: 0, shiftType: shiftTypes[1] },
+      { day: 1, shiftType: shiftTypes[2] },
+      { day: 2, shiftType: shiftTypes[1] },
+      { day: 3, shiftType: shiftTypes[2] },
+      { day: 4, shiftType: shiftTypes[1] },
+    ],
+    // Lars Dahl: K1 Mon-Fri
+    [
+      { day: 0, shiftType: shiftTypes[5] },
+      { day: 1, shiftType: shiftTypes[5] },
+      { day: 2, shiftType: shiftTypes[5] },
+      { day: 3, shiftType: shiftTypes[5] },
+      { day: 4, shiftType: shiftTypes[5] },
+      { day: 5, shiftType: shiftTypes[0] },
+      { day: 6, shiftType: shiftTypes[0] },
+    ],
+    // Ingrid Larsen: K1 Tue-Thu, D2 Sat-Sun
+    [
+      { day: 1, shiftType: shiftTypes[5] },
+      { day: 2, shiftType: shiftTypes[5] },
+      { day: 3, shiftType: shiftTypes[5] },
+      { day: 5, shiftType: shiftTypes[6] },
+      { day: 6, shiftType: shiftTypes[6] },
+    ],
   ]
 
-  for (const shiftData of week1Shifts) {
-    const date = addDays(weekStart, shiftData.day)
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const shiftType = shiftData.shiftType
-    
-    let startDateTime = parse(`${dateStr}T${shiftType.defaultStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    let endDateTime = parse(`${dateStr}T${shiftType.defaultEndTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    
-    if (shiftType.crossesMidnight) {
-      endDateTime = addDays(endDateTime, 1)
+  for (let week = 0; week < 6; week++) {
+    const currentWeekStart = addDays(weekStart, week * 7)
+
+    for (let empIdx = 0; empIdx < employees.length; empIdx++) {
+      const employee = employees[empIdx]
+      const pattern = employeePatterns[empIdx]
+
+      for (const shiftData of pattern) {
+        const date = addDays(currentWeekStart, shiftData.day)
+        const dateStr = format(date, 'yyyy-MM-dd')
+        const shiftType = shiftData.shiftType
+
+        let startDateTime = parse(`${dateStr}T${shiftType.defaultStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
+        let endDateTime = parse(`${dateStr}T${shiftType.defaultEndTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
+
+        if (shiftType.crossesMidnight) {
+          endDateTime = addDays(endDateTime, 1)
+        }
+
+        await prisma.shift.create({
+          data: {
+            teamId: team.id,
+            userId: employee.id,
+            date: dateStr,
+            startDateTime,
+            endDateTime,
+            shiftTypeId: shiftType.id,
+          },
+        })
+      }
     }
-
-    await prisma.shift.create({
-      data: {
-        teamId: team.id,
-        userId: week1Employee.id,
-        date: dateStr,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: shiftType.id,
-      },
-    })
-  }
-
-  // Week 2 shifts (Erik Heyerdahl pattern)
-  const week2Start = addDays(weekStart, 7)
-  const week2Employee = employees[1] // Erik Heyerdahl
-  const week2Shifts = [
-    { day: 0, shiftType: shiftTypes[3] }, // Mon - N1
-    { day: 1, shiftType: shiftTypes[3] }, // Tue - N1
-    { day: 2, shiftType: shiftTypes[3] }, // Wed - N1
-    { day: 3, shiftType: shiftTypes[0] }, // Thu - Fri
-    { day: 4, shiftType: shiftTypes[0] }, // Fri - Fri
-    { day: 5, shiftType: shiftTypes[0] }, // Sat - Fri
-    { day: 6, shiftType: shiftTypes[0] }, // Sun - Fri
-  ]
-
-  for (const shiftData of week2Shifts) {
-    const date = addDays(week2Start, shiftData.day)
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const shiftType = shiftData.shiftType
-    
-    let startDateTime = parse(`${dateStr}T${shiftType.defaultStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    let endDateTime = parse(`${dateStr}T${shiftType.defaultEndTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    
-    if (shiftType.crossesMidnight) {
-      endDateTime = addDays(endDateTime, 1)
-    }
-
-    await prisma.shift.create({
-      data: {
-        teamId: team.id,
-        userId: week2Employee.id,
-        date: dateStr,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: shiftType.id,
-      },
-    })
-  }
-
-  // Week 3 shifts (Stian Jørgensen pattern)
-  const week3Start = addDays(weekStart, 14)
-  const week3Employee = employees[2] // Stian Jørgensen
-  const week3Shifts = [
-    { day: 0, shiftType: shiftTypes[0] }, // Mon - Fri
-    { day: 1, shiftType: shiftTypes[0] }, // Tue - Fri
-    { day: 2, shiftType: shiftTypes[0] }, // Wed - Fri
-    { day: 3, shiftType: shiftTypes[3] }, // Thu - N1
-    { day: 4, shiftType: shiftTypes[3] }, // Fri - N1
-    { day: 5, shiftType: shiftTypes[4] }, // Sat - N2
-    { day: 6, shiftType: shiftTypes[4] }, // Sun - N2
-  ]
-
-  for (const shiftData of week3Shifts) {
-    const date = addDays(week3Start, shiftData.day)
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const shiftType = shiftData.shiftType
-    
-    let startDateTime = parse(`${dateStr}T${shiftType.defaultStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    let endDateTime = parse(`${dateStr}T${shiftType.defaultEndTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    
-    if (shiftType.crossesMidnight) {
-      endDateTime = addDays(endDateTime, 1)
-    }
-
-    await prisma.shift.create({
-      data: {
-        teamId: team.id,
-        userId: week3Employee.id,
-        date: dateStr,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: shiftType.id,
-      },
-    })
-  }
-
-  // Week 4 shifts (Sara Luggenes pattern)
-  const week4Start = addDays(weekStart, 21)
-  const week4Employee = employees[4] // Sara Luggenes
-  const week4Shifts = [
-    { day: 0, shiftType: shiftTypes[5] }, // Mon - K1
-    { day: 1, shiftType: shiftTypes[5] }, // Tue - K1
-    { day: 2, shiftType: shiftTypes[5] }, // Wed - K1
-    { day: 3, shiftType: shiftTypes[5] }, // Thu - K1
-    { day: 4, shiftType: shiftTypes[5] }, // Fri - K1
-    { day: 5, shiftType: shiftTypes[0] }, // Sat - Fri
-    { day: 6, shiftType: shiftTypes[0] }, // Sun - Fri
-  ]
-
-  for (const shiftData of week4Shifts) {
-    const date = addDays(week4Start, shiftData.day)
-    const dateStr = format(date, 'yyyy-MM-dd')
-    const shiftType = shiftData.shiftType
-    
-    let startDateTime = parse(`${dateStr}T${shiftType.defaultStartTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    let endDateTime = parse(`${dateStr}T${shiftType.defaultEndTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    
-    if (shiftType.crossesMidnight) {
-      endDateTime = addDays(endDateTime, 1)
-    }
-
-    await prisma.shift.create({
-      data: {
-        teamId: team.id,
-        userId: week4Employee.id,
-        date: dateStr,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: shiftType.id,
-      },
-    })
   }
 
   // Create a few notes
@@ -360,8 +301,8 @@ async function main() {
       status: 'APPROVED',
       title: 'Viktig informasjon',
       body: 'Denne uken har ikke noen beskjeder.',
-      dateFrom: '2026-01-05',
-      dateTo: '2026-01-11',
+      dateFrom: '2026-05-04',
+      dateTo: '2026-05-10',
       visibility: 'ALL',
     },
   })
@@ -373,9 +314,9 @@ async function main() {
       type: 'ABSENCE',
       status: 'PENDING',
       title: 'Forespørsel om fravær',
-      body: 'Ønsker å ta fri 15-16 januar',
-      dateFrom: '2026-01-15',
-      dateTo: '2026-01-16',
+      body: 'Ønsker å ta fri 19-20 mai',
+      dateFrom: '2026-05-19',
+      dateTo: '2026-05-20',
       visibility: 'ALL',
     },
   })

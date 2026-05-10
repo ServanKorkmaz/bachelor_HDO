@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
 
 /** Monthly calendar view of shifts with per-day summaries. */
@@ -150,7 +151,7 @@ export default function MonthPage() {
         <div className="grid grid-cols-7 gap-px bg-border">
           {calendarDays.map((date, index) => {
             if (!date) {
-              return <div key={`empty-${index}`} className="bg-background min-h-[100px]" />
+              return <div key={`empty-${index}`} className="bg-background min-h-[170px]" />
             }
 
             const dateStr = format(date, 'yyyy-MM-dd')
@@ -161,25 +162,30 @@ export default function MonthPage() {
             return (
               <div
                 key={dateStr}
-                className={`bg-background min-h-[100px] p-2 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
+                className={`bg-background min-h-[170px] p-2.5 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
                   !isCurrentMonth ? 'opacity-30' : ''
                 } ${isToday ? 'ring-2 ring-primary' : ''}`}
                 onClick={() => handleDayClick(date)}
               >
-                <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+                <div className={`text-base font-semibold mb-2 ${isToday ? 'text-primary' : ''}`}>
                   {format(date, 'd')}
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   {dayShifts.slice(0, 3).map((shift: any) => (
                     <div
                       key={shift.id}
-                      className="text-xs p-1 rounded"
-                      style={{
-                        backgroundColor: shift.shiftType.color + '40',
-                        color: '#fff',
-                      }}
+                      className="text-base p-2.5 rounded-md"
+                      style={getShiftChipStyle(shift.shiftType.color)}
                     >
-                      {shift.shiftType.label}
+                      <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
+                       <div className="mt-1.5 text-base font-semibold leading-tight">
+                         {shift.user?.name || 'Ukjent ansatt'}
+                       </div>
+                       {shift.comment && (
+                         <div className="mt-2 text-xs leading-snug whitespace-pre-wrap break-words opacity-70 italic">
+                          {shift.comment}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {dayShifts.length > 3 && (

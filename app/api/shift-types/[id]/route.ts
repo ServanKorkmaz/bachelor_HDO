@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 
 /** Update a shift type by id. */
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
     const body = await request.json()
     const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = body
@@ -34,6 +39,10 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
     await prisma.shiftType.delete({
       where: { id: params.id },

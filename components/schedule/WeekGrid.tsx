@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
@@ -12,10 +13,12 @@ interface WeekGridProps {
   users: any[]
   shifts: Shift[]
   currentUser: MockUser | null
+  highlightedUserId?: string
+  onSelectUser?: (userId: string) => void
 }
 
 /** Render the weekly schedule grid with per-user totals and shift editing. */
-export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProps) {
+export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUserId, onSelectUser }: WeekGridProps) {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
@@ -74,7 +77,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
             <tr>
               <th className="border border-border p-2 text-left bg-muted sticky left-0 z-10">Ansatt</th>
               {weekDates.map((date) => (
-                <th key={date.toISOString()} className="border border-border p-2 text-center bg-muted min-w-[120px]">
+                <th key={date.toISOString()} className="border border-border p-1.5 text-center bg-muted min-w-[115px]">
                   <div className="font-semibold">
                     {format(date, 'EEEE', { locale: nb })}
                   </div>
@@ -89,8 +92,14 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
           <tbody>
             {users.map((user) => (
               <tr key={user.id}>
-                <td className="border border-border p-2 bg-muted sticky left-0 z-10 font-medium">
-                  {user.name}
+                <td className={`border border-border p-2 bg-muted sticky left-0 z-10 font-medium ${highlightedUserId === user.id ? 'bg-primary/10' : ''}`}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectUser?.(user.id)}
+                    className="w-full text-left hover:text-primary transition-colors"
+                  >
+                    {user.name}
+                  </button>
                 </td>
                 {weekDates.map((date) => {
                   const dateStr = format(date, 'yyyy-MM-dd')
@@ -100,18 +109,33 @@ export function WeekGrid({ weekDates, users, shifts, currentUser }: WeekGridProp
                   return (
                     <td
                       key={date.toISOString()}
-                      className="border border-border p-2 cursor-pointer hover:bg-accent transition-colors"
+                      className="border border-border p-1.5 h-24 align-top cursor-pointer hover:bg-accent transition-colors"
                       onClick={() => handleCellClick(user.id, date)}
                     >
                       {shift ? (
                         <div
-                          className="rounded p-1 text-xs"
-                          style={{ backgroundColor: shift.shiftType.color + '40', color: '#fff' }}
+                          className="group relative min-h-[72px] rounded-md p-2 text-sm"
+                          style={getShiftChipStyle(shift.shiftType.color)}
                         >
-                          <div className="font-medium">{shift.shiftType.label}</div>
-                          <div className="text-xs opacity-90">
+                          <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
+                          <div className="mt-1 text-sm opacity-95">
                             {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
                           </div>
+                          {shift.comment && (
+                            <>
+                              <div className="mt-2 rounded-md bg-red-950 border border-red-800 p-2 text-xs leading-snug whitespace-pre-wrap break-words text-red-100">
+                                {shift.comment}
+                              </div>
+                              <div className="pointer-events-none absolute left-full top-0 z-30 ml-2 hidden w-64 rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg group-hover:block">
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                  Kommentar
+                                </div>
+                                <div className="leading-relaxed whitespace-pre-wrap break-words">
+                                  {shift.comment}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground">-</div>
