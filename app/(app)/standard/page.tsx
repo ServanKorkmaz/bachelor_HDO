@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { addDays, differenceInCalendarDays, format, parseISO, addWeeks, subWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -10,6 +11,7 @@ import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
+import { axiosInstance } from '@/lib/axios'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -18,111 +20,72 @@ export default function StandardPlanPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [shifts, setShifts] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const [futureShifts, setFutureShifts] = useState<any[]>([])
   const { currentUser, canEditShifts } = useAuth()
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
   const weekDates = useMemo(() => getWeekDatesUtil(selectedDate), [selectedDate])
 
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const response = await axiosInstance.get('/api/teams')
+      return Array.isArray(response.data) ? response.data : []
+    },
+  })
+
   useEffect(() => {
-    fetch('/api/teams')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch teams')
-        return res.json()
-      })
-      .then(data => {
-        if (!Array.isArray(data)) {
-          setTeams([])
-          return
-        }
-        setTeams(data)
-        if (data.length === 0) return
-        const fromUrl = searchParams.get(TEAM_ID_PARAM)
-        const validId = fromUrl && data.some((t: { id: string }) => t.id === fromUrl) ? fromUrl : null
-        const nextId = validId ?? data[0].id
-        setSelectedTeamId(nextId)
-        if (!validId || fromUrl !== nextId) {
-          const params = new URLSearchParams(searchParams.toString())
-          params.set(TEAM_ID_PARAM, nextId)
-          router.replace(`/standard?${params.toString()}`, { scroll: false })
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching teams:', error)
-        setTeams([])
-      })
-  }, [])
+    if (teams.length === 0) return
+    const fromUrl = searchParams.get(TEAM_ID_PARAM)
+    const validId = fromUrl && teams.some((t: { id: string }) => t.id === fromUrl) ? fromUrl : null
+    const nextId = validId ?? teams[0].id
+    if (!selectedTeamId) {
+      setSelectedTeamId(nextId)
+    }
+    if (!validId || fromUrl !== nextId) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set(TEAM_ID_PARAM, nextId)
+      router.replace(`/standard?${params.toString()}`, { scroll: false })
+    }
+  }, [teams, searchParams, router, selectedTeamId])
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
-  useEffect(() => {
-    if (!selectedTeamId) {
-      setUsers([])
-      return
-    }
-    fetch(`/api/users?teamId=${selectedTeamId}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch users')
-        return res.json()
-      })
-      .then(data => setUsers(Array.isArray(data) ? data : []))
-      .catch(error => {
-        console.error('Error fetching users:', error)
-        setUsers([])
-      })
-  }, [selectedTeamId])
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['users', selectedTeamId],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`/api/users?teamId=${selectedTeamId}`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
-  useEffect(() => {
-    if (!selectedTeamId) return
+  const startDate = format(weekStart, 'yyyy-MM-dd')
+  const endDate = format(weekDates[6], 'yyyy-MM-dd')
+  const { data: shifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, startDate, endDate],
+    queryFn: async () => {
+      const response = await axiosInstance.get(
+        `/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`
+      )
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
-    const startDate = format(weekStart, 'yyyy-MM-dd')
-    const endDate = format(weekDates[6], 'yyyy-MM-dd')
-
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch shifts')
-        }
-        return res.json()
-      })
-      .then(data => {
-        setShifts(Array.isArray(data) ? data : [])
-      })
-      .catch(error => {
-        console.error('Error fetching shifts:', error)
-        setShifts([])
-      })
-  }, [selectedTeamId, weekStart, weekDates])
-
-  useEffect(() => {
-    if (!selectedTeamId || !selectedUserId) {
-      setFutureShifts([])
-      return
-    }
-
-    const dateFrom = format(selectedDate, 'yyyy-MM-dd')
-    const dateTo = format(addDays(selectedDate, 365), 'yyyy-MM-dd')
-
-    fetch(`/api/shifts?teamId=${selectedTeamId}&userId=${selectedUserId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch future shifts')
-        }
-        return res.json()
-      })
-      .then(data => {
-        setFutureShifts(Array.isArray(data) ? data : [])
-      })
-      .catch(error => {
-        console.error('Error fetching future shifts:', error)
-        setFutureShifts([])
-      })
-  }, [selectedTeamId, selectedUserId, selectedDate])
+  const futureDateFrom = format(selectedDate, 'yyyy-MM-dd')
+  const futureDateTo = format(addDays(selectedDate, 365), 'yyyy-MM-dd')
+  const { data: futureShifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, selectedUserId, futureDateFrom, futureDateTo],
+    queryFn: async () => {
+      const response = await axiosInstance.get(
+        `/api/shifts?teamId=${selectedTeamId}&userId=${selectedUserId}&dateFrom=${futureDateFrom}&dateTo=${futureDateTo}`
+      )
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId && selectedUserId),
+  })
 
   const handlePrevWeek = () => {
     setSelectedDate(subWeeks(selectedDate, 1))

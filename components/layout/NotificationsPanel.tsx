@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Bell, X } from 'lucide-react'
+import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,40 +13,36 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 
 /** Notification bell with polling and mark-as-read handling. */
 export function NotificationsPanel() {
-  const [notifications, setNotifications] = useState<any[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const { currentUser } = useAuth()
+  const queryClient = useQueryClient()
 
-  useEffect(() => {
-    if (!currentUser) return
+  const { data: notifications = [] } = useQuery<any[]>({
+    queryKey: ['notifications', currentUser?.id],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`/api/notifications?userId=${currentUser!.id}`)
+      return Array.isArray(response.data) ? response.data.slice(0, 10) : []
+    },
+    enabled: Boolean(currentUser?.id),
+    refetchInterval: 30000,
+  })
 
-    fetchNotifications()
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
-  }, [currentUser])
-
-  const fetchNotifications = () => {
-    if (!currentUser) return
-
-    fetch(`/api/notifications?userId=${currentUser.id}`)
-      .then(res => res.json())
-      .then(data => {
-        const unread = data.filter((n: any) => !n.read)
-        setNotifications(data.slice(0, 10)) // Show last 10
-      })
-      .catch(console.error)
-  }
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      await axiosInstance.post(`/api/notifications/${notificationId}/read`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications', currentUser?.id] })
+    },
+  })
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'POST',
-      })
-      fetchNotifications()
+      await markAsReadMutation.mutateAsync(notificationId)
     } catch (error) {
       console.error('Error marking notification as read:', error)
     }
