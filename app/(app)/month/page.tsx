@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -9,6 +10,7 @@ import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
+import { axiosInstance } from '@/lib/axios'
 
 /** Monthly calendar view of shifts with per-day summaries. */
 export default function MonthPage() {
@@ -39,29 +41,35 @@ export default function MonthPage() {
     return days
   }, [firstDayOfWeek, daysInMonth])
 
-  useEffect(() => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
-        }
-      })
-      .catch(console.error)
-  }, [])
+  const { data: fetchedTeams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
   useEffect(() => {
-    if (!selectedTeamId) return
+    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
+    if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(fetchedTeams[0].id)
+    }
+  }, [fetchedTeams, selectedTeamId])
 
-    const startDate = format(monthStart, 'yyyy-MM-dd')
-    const endDate = format(monthEnd, 'yyyy-MM-dd')
+  const startDate = format(monthStart, 'yyyy-MM-dd')
+  const endDate = format(monthEnd, 'yyyy-MM-dd')
+  const { data: fetchedShifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, startDate, endDate],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
-      .then(res => res.json())
-      .then(data => setShifts(data))
-      .catch(console.error)
-  }, [selectedTeamId, monthStart, monthEnd])
+  useEffect(() => {
+    setShifts(Array.isArray(fetchedShifts) ? fetchedShifts : [])
+  }, [fetchedShifts])
 
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, any[]>()
