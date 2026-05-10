@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parse, subDays } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 
 type BulkAction = 'create' | 'update' | 'delete'
 
@@ -282,62 +284,66 @@ function EmployeeShiftPicker({
 /** Modal for bulk create/update/delete of shifts across users and dates. */
 export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const { currentUser } = useAuth()
+  const queryClient = useQueryClient()
   const [action, setAction] = useState<BulkAction>('create')
-  const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([])
-  const [users, setUsers] = useState<UserSummary[]>([])
-  const [usersLoading, setUsersLoading] = useState(false)
-  const [usersError, setUsersError] = useState<string | null>(null)
   const [rows, setRows] = useState<BulkShiftRow[]>([])
-  const [isSaving, setIsSaving] = useState(false)
   const [result, setResult] = useState<{
     successes: Array<{ userId: string; date: string; shiftId?: string }>
     failures: Array<{ userId: string; date: string; error: string }>
   } | null>(null)
-  const [teamShifts, setTeamShifts] = useState<any[]>([])
-  const [shiftsLoading, setShiftsLoading] = useState(false)
-  const [shiftsError, setShiftsError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setUsersLoading(true)
-    setUsersError(null)
-    fetch('/api/shift-types')
-      .then(res => res.json())
-      .then(data => {
-        setShiftTypes(data)
-      })
-      .catch(console.error)
+  // Fetch shift types
+  const { data: shiftTypes = [] } = useQuery<ShiftType[]>({
+    queryKey: ['shift-types'],
+    queryFn: () => axiosInstance.get('/api/shift-types').then(res => res.data),
+  })
 
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => setUsers(data))
-      .catch((error) => {
-        console.error(error)
-        setUsersError('Kunne ikke laste ansatte')
-      })
-      .finally(() => {
-        setUsersLoading(false)
-      })
-  }, [])
+  // Fetch users
+  const { data: users = [], isLoading: usersLoading, error: usersErrorObj } = useQuery<UserSummary[]>({
+    queryKey: ['users'],
+    queryFn: () => axiosInstance.get('/api/users').then(res => res.data),
+  })
 
-  useEffect(() => {
-    if (!teamId) return
-    setShiftsLoading(true)
-    setShiftsError(null)
-    const today = new Date()
-    const dateFrom = format(subDays(today, SHIFT_LOOKBACK_DAYS), 'yyyy-MM-dd')
-    const dateTo = format(new Date(today.getTime() + SHIFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+  const usersError = usersErrorObj ? 'Kunne ikke laste ansatte' : null
 
-    fetch(`/api/shifts?teamId=${teamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
-      .then(res => res.json())
-      .then(data => setTeamShifts(data))
-      .catch((error) => {
-        console.error(error)
-        setShiftsError('Kunne ikke laste vakter')
-      })
-      .finally(() => {
-        setShiftsLoading(false)
-      })
-  }, [teamId])
+  // Fetch team shifts
+  const { data: teamShifts = [], isLoading: shiftsLoading, error: shiftsErrorObj } = useQuery<any[]>({
+    queryKey: ['shifts', teamId],
+    queryFn: async () => {
+      if (!teamId) return []
+      const today = new Date()
+      const dateFrom = format(subDays(today, SHIFT_LOOKBACK_DAYS), 'yyyy-MM-dd')
+      const dateTo = format(new Date(today.getTime() + SHIFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+      const response = await axiosInstance.get(`/api/shifts?teamId=${teamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
+      return response.data
+    },
+    enabled: !!teamId,
+  })
+
+  const shiftsError = shiftsErrorObj ? 'Kunne ikke laste vakter' : null
+
+  // Bulk update mutation
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const response = await axiosInstance.post('/api/shifts/bulk', payload)
+      return response.data
+    },
+    onSuccess: (data) => {
+      const failures = data.failures?.length || 0
+      const successes = data.successes?.length || 0
+      if (failures > 0) {
+        setResult({ successes: data.successes || [], failures: data.failures || [] })
+        alert(`Fullført med ${successes} suksess(er) og ${failures} feil.`)
+        return
+      }
+      setResult({ successes: data.successes || [], failures: [] })
+      queryClient.invalidateQueries({ queryKey: ['shifts', teamId] })
+      onClose()
+    },
+    onError: (error: any) => {
+      alert(error?.response?.data?.error || 'Kunne ikke oppdatere vakter')
+    },
+  })
 
   const defaultShiftType = useMemo(() => shiftTypes[0] || null, [shiftTypes])
   const userNameById = useMemo(
@@ -432,48 +438,22 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const handleSave = async () => {
     if (!canSubmit() || !currentUser) return
 
-    setIsSaving(true)
-    try {
-      const response = await fetch('/api/shifts/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          teamId,
-          items: rows.map(row => ({
-            shiftId: row.shiftId,
-            userId: row.userId,
-            date: row.date,
-            shiftTypeId: row.shiftTypeId || undefined,
-            startTime: row.startTime || undefined,
-            endTime: row.endTime || undefined,
-            comment: row.comment || undefined,
-          })),
-          currentUserId: currentUser.id,
-        }),
-      })
-
-      const data = await response.json()
-      if (response.ok) {
-        const failures = data.failures?.length || 0
-        const successes = data.successes?.length || 0
-        if (failures > 0) {
-          setResult({ successes: data.successes || [], failures: data.failures || [] })
-          alert(`Fullført med ${successes} suksess(er) og ${failures} feil.`)
-          return
-        }
-        setResult({ successes: data.successes || [], failures: [] })
-        onClose()
-        window.location.reload()
-      } else {
-        alert(data?.error || 'Kunne ikke oppdatere vakter')
-      }
-    } catch (error) {
-      console.error('Error bulk updating shifts:', error)
-      alert('Kunne ikke oppdatere vakter')
-    } finally {
-      setIsSaving(false)
+    const payload = {
+      action,
+      teamId,
+      items: rows.map(row => ({
+        shiftId: row.shiftId,
+        userId: row.userId,
+        date: row.date,
+        shiftTypeId: row.shiftTypeId || undefined,
+        startTime: row.startTime || undefined,
+        endTime: row.endTime || undefined,
+        comment: row.comment || undefined,
+      })),
+      currentUserId: currentUser.id,
     }
+
+    bulkUpdateMutation.mutate(payload)
   }
 
   return (
@@ -780,8 +760,8 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
           <Button variant="outline" onClick={onClose}>
             Avbryt
           </Button>
-          <Button onClick={handleSave} disabled={!canSubmit() || isSaving}>
-            {isSaving ? 'Lagrer...' : 'Utfør'}
+          <Button onClick={handleSave} disabled={!canSubmit() || bulkUpdateMutation.isPending}>
+            {bulkUpdateMutation.isPending ? 'Lagrer...' : 'Utfør'}
           </Button>
         </DialogFooter>
       </DialogContent>

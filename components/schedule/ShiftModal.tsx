@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import {
   Dialog,
@@ -23,6 +24,7 @@ import {
 import { MockUser } from '@/lib/auth/mockAuth'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
+import { axiosInstance } from '@/lib/axios'
 
 /** Shift type metadata used for labeling and default times. */
 export interface ShiftType {
@@ -61,8 +63,7 @@ interface ShiftModalProps {
 /** Modal for viewing, creating, or updating a single shift. */
 export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftModalProps) {
   const { canEditShifts } = useAuth()
-  const [shiftTypes, setShiftTypes] = useState<ShiftType[]>([])
-  const [users, setUsers] = useState<any[]>([])
+  const queryClient = useQueryClient()
   const [selectedShiftTypeId, setSelectedShiftTypeId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>(userId || '')
   const [startTime, setStartTime] = useState<string>('')
@@ -70,20 +71,73 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   const [comment, setComment] = useState<string>('')
   const [userQuery, setUserQuery] = useState('')
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const userDropdownRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    fetch('/api/shift-types')
-      .then(res => res.json())
-      .then(data => setShiftTypes(data))
-      .catch(console.error)
+  // Fetch shift types
+  const { data: shiftTypes = [] } = useQuery<ShiftType[]>({
+    queryKey: ['shift-types'],
+    queryFn: () => axiosInstance.get('/api/shift-types').then(res => res.data),
+  })
 
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => setUsers(data))
-      .catch(console.error)
-  }, [])
+  // Fetch users
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['users'],
+    queryFn: () => axiosInstance.get('/api/users').then(res => res.data),
+  })
+
+  // Save shift mutation (POST or PUT)
+  const saveShiftMutation = useMutation({
+    mutationFn: async (shiftData: any) => {
+      const url = shift ? `/api/shifts/${shift.id}` : '/api/shifts'
+      const method = shift ? 'PUT' : 'POST'
+
+      const headers: any = {
+        'Content-Type': 'application/json',
+      }
+      if (currentUser?.role) {
+        headers['x-user-role'] = currentUser.role
+      }
+
+      const response = await axiosInstance({
+        method,
+        url,
+        data: shiftData,
+        headers,
+      })
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts'] })
+      onClose()
+    },
+    onError: () => {
+      alert('Kunne ikke lagre vakt')
+    },
+  })
+
+  // Delete shift mutation
+  const deleteShiftMutation = useMutation({
+    mutationFn: async () => {
+      const headers: any = {}
+      if (currentUser?.role) {
+        headers['x-user-role'] = currentUser.role
+      }
+
+      const response = await axiosInstance({
+        method: 'DELETE',
+        url: `/api/shifts/${shift!.id}`,
+        headers,
+      })
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shifts'] })
+      onClose()
+    },
+    onError: () => {
+      alert('Kunne ikke slette vakt')
+    },
+  })
 
   useEffect(() => {
     if (shift) {
@@ -118,73 +172,22 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     const effectiveDate = shift?.date ?? date
     if (!effectiveDate || !selectedShiftTypeId || !selectedUserId) return
 
-    setIsSaving(true)
-    try {
-      const shiftData = {
-        date: effectiveDate,
-        userId: selectedUserId,
-        shiftTypeId: selectedShiftTypeId,
-        startTime,
-        endTime,
-        comment: comment || undefined,
-      }
-
-      const url = shift ? `/api/shifts/${shift.id}` : '/api/shifts'
-      const method = shift ? 'PUT' : 'POST'
-
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      }
-      if (currentUser?.role) {
-        headers['x-user-role'] = currentUser.role
-      }
-
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(shiftData),
-      })
-
-      if (response.ok) {
-        onClose()
-        window.location.reload() // Refresh to show updated data
-      } else {
-        alert('Kunne ikke lagre vakt')
-      }
-    } catch (error) {
-      console.error('Error saving shift:', error)
-      alert('Kunne ikke lagre vakt')
-    } finally {
-      setIsSaving(false)
+    const shiftData = {
+      date: effectiveDate,
+      userId: selectedUserId,
+      shiftTypeId: selectedShiftTypeId,
+      startTime,
+      endTime,
+      comment: comment || undefined,
     }
+
+    saveShiftMutation.mutate(shiftData)
   }
 
   const handleDelete = async () => {
     if (!shift) return
-
     if (!confirm('Er du sikker på at du vil slette denne vakten?')) return
-
-    try {
-      const headers: HeadersInit = {}
-      if (currentUser?.role) {
-        headers['x-user-role'] = currentUser.role
-      }
-
-      const response = await fetch(`/api/shifts/${shift.id}`, {
-        method: 'DELETE',
-        headers,
-      })
-
-      if (response.ok) {
-        onClose()
-        window.location.reload()
-      } else {
-        alert('Kunne ikke slette vakt')
-      }
-    } catch (error) {
-      console.error('Error deleting shift:', error)
-      alert('Kunne ikke slette vakt')
-    }
+    deleteShiftMutation.mutate()
   }
 
   const displayDate = shift ? shift.date : date
@@ -358,12 +361,12 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
           {canEditShifts() && (
             <>
               {shift && (
-                <Button variant="destructive" onClick={handleDelete}>
+                <Button variant="destructive" onClick={handleDelete} disabled={deleteShiftMutation.isPending}>
                   Slett
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? 'Lagrer...' : 'Lagre'}
+              <Button onClick={handleSave} disabled={saveShiftMutation.isPending}>
+                {saveShiftMutation.isPending ? 'Lagrer...' : 'Lagre'}
               </Button>
             </>
           )}
