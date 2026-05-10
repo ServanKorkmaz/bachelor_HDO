@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 
 const normalizeHexColor = (value: string): string | null => {
   const cleaned = value.trim().replace(/^#/, '')
@@ -27,7 +29,7 @@ const normalizeHexColor = (value: string): string | null => {
 /** Admin page to manage shift types and colors. */
 export default function ShiftTypesPage() {
   const { currentUser, isAdmin } = useAuth()
-  const [shiftTypes, setShiftTypes] = useState<any[]>([])
+  const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
   const [colorInput, setColorInput] = useState('#000000')
@@ -40,16 +42,53 @@ export default function ShiftTypesPage() {
     crossesMidnight: false,
   })
 
-  useEffect(() => {
-    fetchShiftTypes()
-  }, [])
+  const { data: shiftTypes = [] } = useQuery<any[]>({
+    queryKey: ['shift-types'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/shift-types')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
-  const fetchShiftTypes = () => {
-    fetch('/api/shift-types')
-      .then(res => res.json())
-      .then(data => setShiftTypes(data))
-      .catch(console.error)
-  }
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser?.id) {
+        throw new Error('Not authenticated')
+      }
+      return axiosInstance.post('/api/shift-types', { ...formData, currentUserId: currentUser.id })
+    },
+    onSuccess: async () => {
+      setIsCreateModalOpen(false)
+      resetForm()
+      await queryClient.invalidateQueries({ queryKey: ['shift-types'] })
+    },
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!currentUser?.id || !editingShiftType?.id) {
+        throw new Error('Missing user or shift type')
+      }
+      return axiosInstance.put(`/api/shift-types/${editingShiftType.id}`, { ...formData, currentUserId: currentUser.id })
+    },
+    onSuccess: async () => {
+      setEditingShiftType(null)
+      resetForm()
+      await queryClient.invalidateQueries({ queryKey: ['shift-types'] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (shiftTypeId: string) => {
+      if (!currentUser?.id) {
+        throw new Error('Not authenticated')
+      }
+      return axiosInstance.delete(`/api/shift-types/${shiftTypeId}`, { data: { currentUserId: currentUser.id } })
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['shift-types'] })
+    },
+  })
 
   const handleCreate = async () => {
     if (!formData.code || !formData.label) return
@@ -59,19 +98,7 @@ export default function ShiftTypesPage() {
     }
 
     try {
-      const response = await fetch('/api/shift-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        setIsCreateModalOpen(false)
-        resetForm()
-        fetchShiftTypes()
-      } else {
-        alert('Kunne ikke opprette vakttype')
-      }
+      await createMutation.mutateAsync()
     } catch (error) {
       console.error('Error creating shift type:', error)
       alert('Kunne ikke opprette vakttype')
@@ -86,19 +113,7 @@ export default function ShiftTypesPage() {
     }
 
     try {
-      const response = await fetch(`/api/shift-types/${editingShiftType.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        setEditingShiftType(null)
-        resetForm()
-        fetchShiftTypes()
-      } else {
-        alert('Kunne ikke oppdatere vakttype')
-      }
+      await updateMutation.mutateAsync()
     } catch (error) {
       console.error('Error updating shift type:', error)
       alert('Kunne ikke oppdatere vakttype')
@@ -113,17 +128,7 @@ export default function ShiftTypesPage() {
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
 
     try {
-      const response = await fetch(`/api/shift-types/${shiftTypeId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        fetchShiftTypes()
-      } else {
-        alert('Kunne ikke slette vakttype')
-      }
+      await deleteMutation.mutateAsync(shiftTypeId)
     } catch (error) {
       console.error('Error deleting shift type:', error)
       alert('Kunne ikke slette vakttype')
