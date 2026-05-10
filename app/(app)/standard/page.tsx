@@ -52,6 +52,7 @@ export default function StandardPlanPage() {
   }, [teams, searchParams, router, selectedTeamId])
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
+<<<<<<< Updated upstream
   const { data: users = [] } = useQuery<any[]>({
     queryKey: ['users', selectedTeamId],
     queryFn: async () => {
@@ -60,6 +61,28 @@ export default function StandardPlanPage() {
     },
     enabled: Boolean(selectedTeamId),
   })
+=======
+  useEffect(() => {
+    if (!selectedTeamId) {
+      setUsers([])
+      return
+    }
+    fetch(`/api/users?teamId=${selectedTeamId}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch users')
+        return res.json()
+      })
+      .then(data => {
+        const list = Array.isArray(data) ? data : []
+        // Exclude system Admin users from the standard plan view
+        setUsers(list.filter((u: any) => u.role !== 'ADMIN'))
+      })
+      .catch(error => {
+        console.error('Error fetching users:', error)
+        setUsers([])
+      })
+  }, [selectedTeamId])
+>>>>>>> Stashed changes
 
   const startDate = format(weekStart, 'yyyy-MM-dd')
   const endDate = format(weekDates[6], 'yyyy-MM-dd')
