@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,7 @@ import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
+import { axiosInstance } from '@/lib/axios'
 
 type AuditEntry = {
   id: string
@@ -52,76 +54,68 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 export default function AdminAuditPage() {
   const { currentUser, isAdmin } = useAuth()
   const { toast } = useToast()
-  const [entries, setEntries] = useState<AuditEntry[]>([])
-  const [userNames, setUserNames] = useState<Record<string, string>>({})
-  const [teamNames, setTeamNames] = useState<Record<string, string>>({})
-  const [loading, setLoading] = useState(true)
   const [entityFilter, setEntityFilter] = useState<string>('all')
 
-  const fetchEntries = useCallback(() => {
-    if (!currentUser?.id) return
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set('currentUserId', currentUser.id)
-    if (entityFilter !== 'all') params.set('entityType', entityFilter)
-    fetch(`/api/admin/audit?${params}`)
-      .then((res) => {
-        if (res.status === 403 || res.status === 401) {
-          toast({
-            title: 'Ikke tilgang',
-            description: 'Kun admin kan se revisjonsloggen.',
-            variant: 'destructive',
-          })
+  const { data: entries = [], isLoading: loading } = useQuery<AuditEntry[]>({
+    queryKey: ['admin-audit', currentUser?.id, entityFilter],
+    queryFn: async () => {
+      if (!currentUser?.id) return []
+      const params = new URLSearchParams()
+      params.set('currentUserId', currentUser.id)
+      if (entityFilter !== 'all') params.set('entityType', entityFilter)
+      try {
+        const res = await axiosInstance.get(`/api/admin/audit?${params.toString()}`)
+        return Array.isArray(res.data) ? res.data : []
+      } catch (error: any) {
+        if (error?.response?.status === 403 || error?.response?.status === 401) {
+          toast({ title: 'Ikke tilgang', description: 'Kun admin kan se revisjonsloggen.', variant: 'destructive' })
           return []
         }
-        return res.json()
-      })
-      .then((data) => setEntries(Array.isArray(data) ? data : []))
-      .catch(() =>
-        toast({
-          title: 'Feil',
-          description: 'Kunne ikke hente revisjonslogg',
-          variant: 'destructive',
-        })
-      )
-      .finally(() => setLoading(false))
-  }, [currentUser?.id, entityFilter, toast])
+        toast({ title: 'Feil', description: 'Kunbe ikke hente revisjonslogg', variant: 'destructive' })
+        return []
+      }
+    },
+    enabled: Boolean(currentUser?.id && isAdmin()),
+  })
 
-  useEffect(() => {
-    if (!currentUser?.id || !isAdmin()) return
-    fetchEntries()
-  }, [currentUser?.id, isAdmin, fetchEntries])
-
-  useEffect(() => {
-    if (!currentUser?.id || !isAdmin()) return
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      'x-current-user-id': currentUser.id,
-    }
-    fetch('/api/admin/users', { headers })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((list: { id: string; name: string }[]) => {
-        const map: Record<string, string> = {}
-        list.forEach((u) => {
-          map[u.id] = u.name
-        })
-        setUserNames(map)
+  const { data: usersList = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['admin-users', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return []
+      const res = await axiosInstance.get('/api/admin/users', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-current-user-id': currentUser.id,
+        },
       })
-      .catch(() => {})
-  }, [currentUser?.id, isAdmin])
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(currentUser?.id && isAdmin()),
+  })
 
-  useEffect(() => {
-    fetch('/api/teams')
-      .then((res) => (res.ok ? res.json() : []))
-      .then((list: { id: string; name: string }[]) => {
-        const map: Record<string, string> = {}
-        list.forEach((t) => {
-          map[t.id] = t.name
-        })
-        setTeamNames(map)
-      })
-      .catch(() => {})
-  }, [])
+  const { data: teamsList = [] } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
+
+  const userNames = useMemo(() => {
+    const map: Record<string, string> = {}
+    usersList.forEach((u) => {
+      map[u.id] = u.name
+    })
+    return map
+  }, [usersList])
+
+  const teamNames = useMemo(() => {
+    const map: Record<string, string> = {}
+    teamsList.forEach((t) => {
+      map[t.id] = t.name
+    })
+    return map
+  }, [teamsList])
 
   const actorName = (userId: string) => userNames[userId] ?? userId
   const actionLabel = (action: string) => ACTION_LABELS[action] ?? action
