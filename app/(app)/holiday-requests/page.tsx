@@ -6,6 +6,10 @@ import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
@@ -182,9 +186,9 @@ export default function HolidayRequestsPage() {
           <p className="text-sm text-muted-foreground">Be om fravær eller ferie og se egne forespørsler.</p>
         </div>
         <div>
-          <Link href="/holiday-requests/new">
-            <Button>Be om fravær</Button>
-          </Link>
+          <Button asChild>
+            <Link href="/holiday-requests/new">Be om fravær</Link>
+          </Button>
         </div>
       </div>
 
@@ -233,45 +237,43 @@ export default function HolidayRequestsPage() {
             <h2 className="text-xl font-semibold">Endre forespørsel</h2>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Type</label>
-              <select
-                value={editType}
-                onChange={(e) => setEditType(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                <option value="HOLIDAY">Ferie</option>
-                <option value="OTHER">Fravær</option>
-                <option value="SICK">Sykdom</option>
-              </select>
+              <Label>Type</Label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HOLIDAY">Ferie</SelectItem>
+                  <SelectItem value="OTHER">Fravær</SelectItem>
+                  <SelectItem value="SICK">Sykdom</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Fra dato</label>
-              <input
+              <Label>Fra dato</Label>
+              <Input
                 type="date"
                 value={editDateFrom}
                 onChange={(e) => setEditDateFrom(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Til dato (valgfritt)</label>
-              <input
+              <Label>Til dato (valgfritt)</Label>
+              <Input
                 type="date"
                 value={editDateTo}
                 onChange={(e) => setEditDateTo(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Melding (valgfritt)</label>
-              <textarea
+              <Label>Melding (valgfritt)</Label>
+              <Textarea
                 value={editMessage}
                 onChange={(e) => setEditMessage(e.target.value)}
                 rows={3}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 placeholder="Skriv melding..."
               />
             </div>
