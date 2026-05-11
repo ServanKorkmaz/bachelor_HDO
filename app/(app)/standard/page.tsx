@@ -53,7 +53,7 @@ export default function StandardPlanPage() {
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
   const { data: users = [] } = useQuery<any[]>({
-    queryKey: ['users', selectedTeamId],
+    queryKey: ['users', selectedTeamId, 'non-admin'],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/users?teamId=${selectedTeamId}`)
       const list = Array.isArray(response.data) ? response.data : []
