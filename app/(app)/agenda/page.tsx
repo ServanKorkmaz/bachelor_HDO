@@ -19,17 +19,13 @@ import { holidayTypeToNorwegian } from '@/lib/i18n'
 
 /** Agenda view showing upcoming shifts and notes. */
 export default function AgendaPage() {
-  const [shifts, setShifts] = useState<any[]>([])
-  const [notes, setNotes] = useState<any[]>([])
-  const [teams, setTeams] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   // Use a non-empty sentinel for 'all' to satisfy Radix SelectItem requirements
   const [selectedUserId, setSelectedUserId] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
   const { currentUser } = useAuth()
 
-  const { data: fetchedTeams = [] } = useQuery<any[]>({
+  const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')
@@ -38,13 +34,12 @@ export default function AgendaPage() {
   })
 
   useEffect(() => {
-    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
-    if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0 && !selectedTeamId) {
-      setSelectedTeamId(fetchedTeams[0].id)
+    if (Array.isArray(teams) && teams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(teams[0].id)
     }
-  }, [fetchedTeams, selectedTeamId])
+  }, [teams, selectedTeamId])
 
-  const { data: fetchedUsers = [] } = useQuery<any[]>({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ['users'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/users')
@@ -52,14 +47,10 @@ export default function AgendaPage() {
     },
   })
 
-  useEffect(() => {
-    setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : [])
-  }, [fetchedUsers])
-
   const today = format(new Date(), 'yyyy-MM-dd')
   const futureDate = format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
 
-  const { data: fetchedShifts = [] } = useQuery<any[]>({
+  const { data: shifts = [] } = useQuery<any[]>({
     queryKey: ['shifts', selectedTeamId, today, futureDate],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
@@ -68,7 +59,7 @@ export default function AgendaPage() {
     enabled: Boolean(selectedTeamId),
   })
 
-  const { data: fetchedNotes = [] } = useQuery<any[]>({
+  const { data: notes = [] } = useQuery<any[]>({
     queryKey: ['notes', selectedTeamId, today, futureDate],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/notes?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
@@ -76,14 +67,6 @@ export default function AgendaPage() {
     },
     enabled: Boolean(selectedTeamId),
   })
-
-  useEffect(() => {
-    setShifts(Array.isArray(fetchedShifts) ? fetchedShifts : [])
-  }, [fetchedShifts])
-
-  useEffect(() => {
-    setNotes(Array.isArray(fetchedNotes) ? fetchedNotes : [])
-  }, [fetchedNotes])
 
   const filteredShifts = useMemo(() => {
     let filtered = shifts

@@ -380,22 +380,6 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   }), [defaultShiftType])
 
   useEffect(() => {
-    if (!defaultShiftType || rows.length === 0) return
-    setRows(prev =>
-      prev.map(row => (
-        row.shiftTypeId
-          ? row
-          : {
-              ...row,
-              shiftTypeId: defaultShiftType.id,
-              startTime: defaultShiftType.defaultStartTime,
-              endTime: defaultShiftType.defaultEndTime,
-            }
-      ))
-    )
-  }, [defaultShiftType, rows.length])
-
-  useEffect(() => {
     if (shiftTypes.length > 0 && rows.length === 0) {
       setRows([createRow()])
     }

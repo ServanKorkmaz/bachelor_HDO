@@ -26,8 +26,6 @@ import { axiosInstance } from '@/lib/axios'
 /** Monthly calendar view of shifts with per-day summaries. */
 export default function MonthPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [shifts, setShifts] = useState<any[]>([])
-  const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedShift, setSelectedShift] = useState<any>(null)
   const [selectedDayShifts, setSelectedDayShifts] = useState<{ date: string; shifts: any[] } | null>(null)
@@ -62,7 +60,6 @@ export default function MonthPage() {
   })
 
   useEffect(() => {
-    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
     if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0 && !selectedTeamId) {
       setSelectedTeamId(fetchedTeams[0].id)
     }
@@ -79,13 +76,10 @@ export default function MonthPage() {
     enabled: Boolean(selectedTeamId),
   })
 
-  useEffect(() => {
-    setShifts(Array.isArray(fetchedShifts) ? fetchedShifts : [])
-  }, [fetchedShifts])
-
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, any[]>()
-    shifts.forEach(shift => {
+    const activeShifts = Array.isArray(fetchedShifts) ? fetchedShifts : []
+    activeShifts.forEach(shift => {
       const dateStr = shift.date
       if (!map.has(dateStr)) {
         map.set(dateStr, [])
@@ -93,7 +87,7 @@ export default function MonthPage() {
       map.get(dateStr)!.push(shift)
     })
     return map
-  }, [shifts])
+  }, [fetchedShifts])
 
   const handlePrevMonth = () => {
     setSelectedDate(subMonths(selectedDate, 1))
@@ -157,7 +151,7 @@ export default function MonthPage() {
               <SelectValue placeholder="Velg plan" />
             </SelectTrigger>
             <SelectContent>
-              {teams.map(t => (
+              {fetchedTeams.map(t => (
                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
