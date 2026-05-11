@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+import { axiosInstance } from '@/lib/axios'
 
 type RequestRow = {
   id: string
@@ -25,45 +27,47 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
 export default function AdminHolidayRequestsPage() {
   const { currentUser, isAdmin } = useAuth()
   const { toast } = useToast()
-  const [items, setItems] = useState<RequestRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchItems = useCallback(() => {
-    if (!currentUser?.id) return
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set('teamId', currentUser.teamId)
-    fetch(`/api/holiday-requests?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(() => toast({ title: 'Error', description: 'Failed to load requests', variant: 'destructive' }))
-      .finally(() => setLoading(false))
-  }, [currentUser?.id, currentUser?.teamId, toast])
+  const requestsQueryKey = ['holiday-requests', currentUser?.teamId]
+  const { data: items = [], isLoading: loading } = useQuery<RequestRow[]>({
+    queryKey: requestsQueryKey,
+    queryFn: async () => {
+      if (!currentUser?.teamId) return []
+      const params = new URLSearchParams()
+      params.set('teamId', currentUser.teamId)
+      const res = await axiosInstance.get(`/api/holiday-requests?${params.toString()}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(currentUser?.id),
+  })
 
-  useEffect(() => {
-    fetchItems()
-  }, [fetchItems])
+  const decisionMutation = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: 'APPROVE' | 'REJECT' }) => {
+      if (!currentUser?.id) {
+        throw new Error('Not authenticated')
+      }
+      return axiosInstance.patch(
+        `/api/holiday-requests/${id}`,
+        { action, decidedByUserId: currentUser.id },
+        { headers: ADMIN_HEADERS(currentUser.id) }
+      )
+    },
+    onSuccess: async () => {
+      toast({ title: 'Updated' })
+      await queryClient.invalidateQueries({ queryKey: requestsQueryKey })
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.error || 'Could not update'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    },
+  })
 
   if (!currentUser) return <div>Vennligst logg inn</div>
-  if (!isAdmin() && !currentUser) return <div>Ingen tilgang</div>
+  if (!isAdmin()) return <div>Ingen tilgang</div>
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
-    try {
-      const res = await fetch(`/api/holiday-requests/${id}`, {
-        method: 'PATCH',
-        headers: ADMIN_HEADERS(currentUser.id),
-        body: JSON.stringify({ action, decidedByUserId: currentUser.id }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast({ title: 'Updated' })
-        fetchItems()
-      } else {
-        toast({ title: 'Error', description: data.error || 'Could not update', variant: 'destructive' })
-      }
-    } catch (e) {
-      toast({ title: 'Error', description: 'Network error', variant: 'destructive' })
-    }
+    await decisionMutation.mutateAsync({ id, action })
   }
 
   return (

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth/mockAuth'
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
+import { axiosInstance } from '@/lib/axios'
 
 type RequestRow = {
   id: string
@@ -25,8 +27,7 @@ type RequestRow = {
 export default function HolidayRequestsPage() {
   const { currentUser, isAdmin } = useAuth()
   const { toast } = useToast()
-  const [items, setItems] = useState<RequestRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
   // Edit dialog state
   const [editItem, setEditItem] = useState<RequestRow | null>(null)
@@ -35,21 +36,20 @@ export default function HolidayRequestsPage() {
   const [editDateTo, setEditDateTo] = useState('')
   const [editMessage, setEditMessage] = useState('')
 
-  const fetchItems = useCallback(() => {
-    if (!currentUser?.teamId) return
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set('teamId', currentUser.teamId)
-    fetch(`/api/holiday-requests?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(() => toast({ title: 'Feil', description: 'Kunne ikke hente forespørsler', variant: 'destructive' }))
-      .finally(() => setLoading(false))
-  }, [currentUser?.teamId, toast])
+  const { data: items = [], isLoading: loading } = useQuery<RequestRow[]>({
+    queryKey: ['holiday-requests', currentUser?.teamId],
+    queryFn: async () => {
+      const params = new URLSearchParams()
+      params.set('teamId', currentUser!.teamId!)
+      const response = await axiosInstance.get(`/api/holiday-requests?${params.toString()}`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(currentUser?.teamId),
+  })
 
-  useEffect(() => {
-    fetchItems()
-  }, [fetchItems])
+  const refreshItems = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['holiday-requests', currentUser?.teamId] })
+  }
 
   if (!currentUser) return <div>Vennligst logg inn</div>
 
@@ -57,20 +57,23 @@ export default function HolidayRequestsPage() {
   if (isAdmin()) {
     const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
       try {
-        const res = await fetch(`/api/holiday-requests/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-          body: JSON.stringify({ action }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (res.ok) {
-          toast({ title: 'Oppdatert' })
-          fetchItems()
-        } else {
-          toast({ title: 'Feil', description: data.error || 'Kunne ikke oppdatere', variant: 'destructive' })
-        }
+        await axiosInstance.patch(
+          `/api/holiday-requests/${id}`,
+          { action },
+          { headers: { 'x-current-user-id': currentUser.id } }
+        )
+        toast({ title: 'Oppdatert' })
+        await refreshItems()
       } catch (e) {
-        toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' })
+        const errorMessage =
+          e && typeof e === 'object' && 'response' in e
+            ? (e as any).response?.data?.error
+            : null
+        toast({
+          title: 'Feil',
+          description: errorMessage || 'Nettverksfeil',
+          variant: 'destructive',
+        })
       }
     }
 
@@ -132,10 +135,16 @@ export default function HolidayRequestsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('Er du sikker på at du vil slette denne forespørselen?')) return
     try {
-      const res = await fetch(`/api/holiday-requests/${id}?currentUserId=${currentUser.id}`, { method: 'DELETE' })
-      if (res.ok) { toast({ title: 'Slettet' }); fetchItems() }
-      else { const d = await res.json().catch(() => ({})); toast({ title: 'Feil', description: d.error || 'Kunne ikke slette', variant: 'destructive' }) }
-    } catch { toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' }) }
+      await axiosInstance.delete(`/api/holiday-requests/${id}?currentUserId=${currentUser.id}`)
+      toast({ title: 'Slettet' })
+      await refreshItems()
+    } catch (e) {
+      const errorMessage =
+        e && typeof e === 'object' && 'response' in e
+          ? (e as any).response?.data?.error
+          : null
+      toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+    }
   }
 
   const openEdit = (r: RequestRow) => {
@@ -149,14 +158,21 @@ export default function HolidayRequestsPage() {
   const handleEdit = async () => {
     if (!editItem || !currentUser) return
     try {
-      const res = await fetch(`/api/holiday-requests/${editItem.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-        body: JSON.stringify({ type: editType, dateFrom: editDateFrom, dateTo: editDateTo || null, message: editMessage || null }),
-      })
-      if (res.ok) { toast({ title: 'Oppdatert' }); setEditItem(null); fetchItems() }
-      else { const d = await res.json().catch(() => ({})); toast({ title: 'Feil', description: d.error || 'Kunne ikke oppdatere', variant: 'destructive' }) }
-    } catch { toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' }) }
+      await axiosInstance.put(
+        `/api/holiday-requests/${editItem.id}`,
+        { type: editType, dateFrom: editDateFrom, dateTo: editDateTo || null, message: editMessage || null },
+        { headers: { 'x-current-user-id': currentUser.id } }
+      )
+      toast({ title: 'Oppdatert' })
+      setEditItem(null)
+      await refreshItems()
+    } catch (e) {
+      const errorMessage =
+        e && typeof e === 'object' && 'response' in e
+          ? (e as any).response?.data?.error
+          : null
+      toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+    }
   }
 
   // Employee view: button to create request + list of own requests

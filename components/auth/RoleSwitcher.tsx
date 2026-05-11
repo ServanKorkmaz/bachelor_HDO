@@ -13,38 +13,28 @@ import { Button } from '@/components/ui/button'
 import { User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
+import { axiosInstance } from '@/lib/axios'
 
 /** Dropdown to switch the current mock user/role for demo purposes. */
 export function RoleSwitcher() {
   const { currentUser, setCurrentUser } = useAuth()
   const [users, setUsers] = useState<MockUser[]>([])
 
+  const { data: fetchedUsers = [] } = useQuery<MockUser[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/users')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
+
   useEffect(() => {
-    // Fetch users for role switching
-    fetch('/api/users')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error('Failed to fetch users')
-        }
-        return res.json()
-      })
-      .then(data => {
-        // Ensure data is an array
-        if (Array.isArray(data)) {
-          setUsers(data)
-          // Auto-select first user on mount if no user selected
-          if (!currentUser && data.length > 0) {
-            setCurrentUser(data[0])
-          }
-        } else {
-          setUsers([])
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching users:', error)
-        setUsers([])
-      })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : [])
+    if (!currentUser && Array.isArray(fetchedUsers) && fetchedUsers.length > 0) {
+      setCurrentUser(fetchedUsers[0])
+    }
+  }, [fetchedUsers, currentUser, setCurrentUser])
 
   const handleUserSelect = (user: MockUser) => {
     setCurrentUser(user)

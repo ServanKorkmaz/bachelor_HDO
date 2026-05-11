@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { axiosInstance } from '@/lib/axios'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/mockAuth'
@@ -17,51 +19,54 @@ import { holidayTypeToNorwegian } from '@/lib/i18n'
 
 /** Agenda view showing upcoming shifts and notes. */
 export default function AgendaPage() {
-  const [shifts, setShifts] = useState<any[]>([])
-  const [notes, setNotes] = useState<any[]>([])
-  const [teams, setTeams] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   // Use a non-empty sentinel for 'all' to satisfy Radix SelectItem requirements
   const [selectedUserId, setSelectedUserId] = useState<string>('all')
   const [selectedType, setSelectedType] = useState<string>('all')
   const { currentUser } = useAuth()
 
-  useEffect(() => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
-        }
-      })
-      .catch(console.error)
-
-    fetch('/api/users')
-      .then(res => res.json())
-      .then(data => setUsers(data))
-      .catch(console.error)
-  }, [])
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
   useEffect(() => {
-    if (!selectedTeamId) return
+    if (Array.isArray(teams) && teams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(teams[0].id)
+    }
+  }, [teams, selectedTeamId])
 
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const futureDate = format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/users')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
-    Promise.all([
-      fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
-        .then(res => res.json()),
-      fetch(`/api/notes?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
-        .then(res => res.json()),
-    ])
-      .then(([shiftsData, notesData]) => {
-        setShifts(shiftsData)
-        setNotes(notesData)
-      })
-      .catch(console.error)
-  }, [selectedTeamId])
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const futureDate = format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+
+  const { data: shifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, today, futureDate],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  const { data: notes = [] } = useQuery<any[]>({
+    queryKey: ['notes', selectedTeamId, today, futureDate],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/notes?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
   const filteredShifts = useMemo(() => {
     let filtered = shifts
