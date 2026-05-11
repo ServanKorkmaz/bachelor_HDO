@@ -51,7 +51,7 @@ export default function StandardPlanPage() {
       params.set(TEAM_ID_PARAM, nextId)
       router.replace(`/standard?${params.toString()}`, { scroll: false })
     }
-  }, [teams, searchParams, router, selectedTeamId])
+  }, [teams, searchParams, router])
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
   const { data: users = [] } = useQuery<any[]>({
