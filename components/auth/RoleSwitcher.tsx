@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { User } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 /** Dropdown to switch the current mock user/role for demo purposes. */
 export function RoleSwitcher() {
@@ -64,6 +65,12 @@ export function RoleSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Bytt rolle/bruker</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/settings/profile" className="cursor-pointer">
+            Min profil
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         {Array.isArray(users) && users.map((user) => (
           <DropdownMenuItem

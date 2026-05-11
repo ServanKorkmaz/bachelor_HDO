@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 const ALLOWED_ROLES = ['ADMIN', 'LEADER', 'EMPLOYEE'] as const
 
+/** Get a user by id. */
+export async function GET(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true,
+        team: { select: { name: true } },
+      },
+    })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json(user)
+  } catch (error) {
+    console.error('Error fetching user:', error)
+    return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 })
+  }
+}
+
 /** Update a user's role by id. */
 export async function PUT(
   request: Request,
