@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,6 +24,7 @@ import {
 import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { UserPlus, Shield, UserMinus, UserX, Loader2, Plus, Building2 } from 'lucide-react'
+import { axiosInstance } from '@/lib/axios'
 
 type UserRow = {
   id: string
@@ -44,9 +46,8 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
 export default function AdminUsersPage() {
   const { currentUser, isAdmin } = useAuth()
   const { toast } = useToast()
-  const [users, setUsers] = useState<UserRow[]>([])
+  const queryClient = useQueryClient()
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
-  const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [teamFilter, setTeamFilter] = useState<string>('all')
@@ -57,41 +58,42 @@ export default function AdminUsersPage() {
     if (teamId) setTeamFilter(teamId)
   }, [searchParams])
 
-  const fetchUsers = useCallback(() => {
-    if (!currentUser?.id) return
-    setLoading(true)
-    const params = new URLSearchParams()
-    params.set('currentUserId', currentUser.id)
-    if (q.trim()) params.set('q', q.trim())
-    if (statusFilter === 'active' || statusFilter === 'inactive') params.set('status', statusFilter)
-    if (teamFilter !== 'all') params.set('teamId', teamFilter)
-    fetch(`/api/admin/users?${params}`)
-      .then((res) => {
-        if (res.status === 401 || res.status === 403) {
+  const { data: fetchedTeams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
+
+  useEffect(() => {
+    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
+  }, [fetchedTeams])
+
+  const usersQueryKey = ['admin-users', currentUser?.id, q, statusFilter, teamFilter]
+  const { data: users = [], isLoading: loading } = useQuery<UserRow[]>({
+    queryKey: usersQueryKey,
+    queryFn: async () => {
+      if (!currentUser?.id) return []
+      const params = new URLSearchParams()
+      params.set('currentUserId', currentUser.id)
+      if (q.trim()) params.set('q', q.trim())
+      if (statusFilter === 'active' || statusFilter === 'inactive') params.set('status', statusFilter)
+      if (teamFilter !== 'all') params.set('teamId', teamFilter)
+      try {
+        const res = await axiosInstance.get(`/api/admin/users?${params.toString()}`)
+        return Array.isArray(res.data) ? res.data : []
+      } catch (e: any) {
+        if (e?.response?.status === 401 || e?.response?.status === 403) {
           toast({ title: 'Ikke tilgang', description: 'Kun admin kan se denne siden.', variant: 'destructive' })
           return []
         }
-        return res.json()
-      })
-      .then((data) => setUsers(Array.isArray(data) ? data : []))
-      .catch(() => toast({ title: 'Feil', description: 'Kunne ikke hente brukere', variant: 'destructive' }))
-      .finally(() => setLoading(false))
-  }, [currentUser?.id, q, statusFilter, teamFilter, toast])
-
-  const fetchTeams = useCallback(() => {
-    fetch('/api/teams')
-      .then((res) => res.json())
-      .then((data) => setTeams(Array.isArray(data) ? data : []))
-      .catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    fetchTeams()
-  }, [fetchTeams])
-
-  useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
+        toast({ title: 'Feil', description: 'Kunne ikke hente brukere', variant: 'destructive' })
+        return []
+      }
+    },
+    enabled: Boolean(currentUser?.id),
+  })
 
   const [createDialog, setCreateDialog] = useState(false)
   const [createName, setCreateName] = useState('')
@@ -142,29 +144,23 @@ export default function AdminUsersPage() {
     }
     setBusy(true)
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: ADMIN_HEADERS(currentUser.id),
-        body: JSON.stringify({
-          name: createName.trim(),
-          email: createEmail.trim().toLowerCase(),
-          teamId: createTeamId,
-          role: createRole,
-          currentUserId: currentUser.id,
-        }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast({ title: 'Bruker opprettet', description: `${createName} er lagt til.` })
-        setCreateDialog(false)
-        setCreateName('')
-        setCreateEmail('')
-        setCreateTeamId('')
-        setCreateRole('EMPLOYEE')
-        fetchUsers()
-      } else {
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke opprette bruker', variant: 'destructive' })
-      }
+      await axiosInstance.post('/api/admin/users', {
+        name: createName.trim(),
+        email: createEmail.trim().toLowerCase(),
+        teamId: createTeamId,
+        role: createRole,
+        currentUserId: currentUser.id,
+      }, { headers: ADMIN_HEADERS(currentUser.id) })
+      toast({ title: 'Bruker opprettet', description: `${createName} er lagt til.` })
+      setCreateDialog(false)
+      setCreateName('')
+      setCreateEmail('')
+      setCreateTeamId('')
+      setCreateRole('EMPLOYEE')
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    } catch (e: any) {
+      const err = e?.response?.data?.error
+      toast({ title: 'Feil', description: err || 'Kunne ikke opprette bruker', variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -174,20 +170,14 @@ export default function AdminUsersPage() {
     if (!addDialog || !addTeamId || !currentUser?.id) return
     setBusy(true)
     try {
-      const res = await fetch(`/api/admin/teams/${addTeamId}/members`, {
-        method: 'POST',
-        headers: ADMIN_HEADERS(currentUser.id),
-        body: JSON.stringify({ userId: addDialog.user.id, role: addRole, currentUserId: currentUser.id }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast({ title: 'Lagt til', description: `${addDialog.user.name} er lagt til i teamet.` })
-        setAddDialog(null)
-        setAddTeamId('')
-        fetchUsers()
-      } else {
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke legge til', variant: 'destructive' })
-      }
+      await axiosInstance.post(`/api/admin/teams/${addTeamId}/members`, { userId: addDialog.user.id, role: addRole, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      toast({ title: 'Lagt til', description: `${addDialog.user.name} er lagt til i teamet.` })
+      setAddDialog(null)
+      setAddTeamId('')
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    } catch (e: any) {
+      const err = e?.response?.data?.error
+      toast({ title: 'Feil', description: err || 'Kunne ikke legge til', variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -197,22 +187,13 @@ export default function AdminUsersPage() {
     if (!roleDialog?.membership.membershipId || !currentUser?.id) return
     setBusy(true)
     try {
-      const res = await fetch(
-        `/api/admin/teams/${roleDialog.membership.teamId}/members/${roleDialog.membership.membershipId}`,
-        {
-          method: 'PATCH',
-          headers: ADMIN_HEADERS(currentUser.id),
-          body: JSON.stringify({ role: newRole, currentUserId: currentUser.id }),
-        }
-      )
-      if (res.ok) {
-        toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${newRole}.` })
-        setRoleDialog(null)
-        fetchUsers()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke oppdatere', variant: 'destructive' })
-      }
+      await axiosInstance.patch(`/api/admin/teams/${roleDialog.membership.teamId}/members/${roleDialog.membership.membershipId}`, { role: newRole, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${newRole}.` })
+      setRoleDialog(null)
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    } catch (e: any) {
+      const err = e?.response?.data?.error
+      toast({ title: 'Feil', description: err || 'Kunne ikke oppdatere', variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -223,18 +204,13 @@ export default function AdminUsersPage() {
     const teamId = removeDialog.membership.teamId
     setBusy(true)
     try {
-      const res = await fetch(`/api/admin/teams/${teamId}/members/${removeDialog.membership.membershipId}`, {
-        method: 'DELETE',
-        headers: ADMIN_HEADERS(currentUser.id),
-      })
-      if (res.ok) {
-        toast({ title: 'Fjernet fra team', description: `${removeDialog.user.name} er fjernet fra teamet.` })
-        setRemoveDialog(null)
-        fetchUsers()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke fjerne', variant: 'destructive' })
-      }
+      await axiosInstance.delete(`/api/admin/teams/${teamId}/members/${removeDialog.membership.membershipId}`, { headers: ADMIN_HEADERS(currentUser.id) })
+      toast({ title: 'Fjernet fra team', description: `${removeDialog.user.name} er fjernet fra teamet.` })
+      setRemoveDialog(null)
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    } catch (e: any) {
+      const err = e?.response?.data?.error
+      toast({ title: 'Feil', description: err || 'Kunne ikke fjerne', variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -244,22 +220,16 @@ export default function AdminUsersPage() {
     if (!statusDialog || !currentUser?.id) return
     setBusy(true)
     try {
-      const res = await fetch(`/api/admin/users/${statusDialog.user.id}`, {
-        method: 'PATCH',
-        headers: ADMIN_HEADERS(currentUser.id),
-        body: JSON.stringify({ status: statusDialog.newStatus, currentUserId: currentUser.id }),
+      await axiosInstance.patch(`/api/admin/users/${statusDialog.user.id}`, { status: statusDialog.newStatus, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      toast({
+        title: statusDialog.newStatus === 'active' ? 'Aktivert' : 'Deaktivert',
+        description: `${statusDialog.user.name} er ${statusDialog.newStatus === 'active' ? 'aktivert' : 'deaktivert'}.`,
       })
-      if (res.ok) {
-        toast({
-          title: statusDialog.newStatus === 'active' ? 'Aktivert' : 'Deaktivert',
-          description: `${statusDialog.user.name} er ${statusDialog.newStatus === 'active' ? 'aktivert' : 'deaktivert'}.`,
-        })
-        setStatusDialog(null)
-        fetchUsers()
-      } else {
-        const data = await res.json().catch(() => ({}))
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke oppdatere', variant: 'destructive' })
-      }
+      setStatusDialog(null)
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    } catch (e: any) {
+      const err = e?.response?.data?.error
+      toast({ title: 'Feil', description: err || 'Kunne ikke oppdatere', variant: 'destructive' })
     } finally {
       setBusy(false)
     }

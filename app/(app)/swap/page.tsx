@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth/mockAuth'
@@ -22,119 +23,114 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { axiosInstance } from '@/lib/axios'
 
 /** Shift swap request page with create/approve flows. */
 export default function SwapPage() {
-  const [swapRequests, setSwapRequests] = useState<any[]>([])
-  const [shifts, setShifts] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [teams, setTeams] = useState<any[]>([])
+  const queryClient = useQueryClient()
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedShiftId, setSelectedShiftId] = useState<string>('')
   const [selectedToUserId, setSelectedToUserId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
-  const [colleagueShifts, setColleagueShifts] = useState<any[]>([])
   const { currentUser, canApproveSwaps } = useAuth()
 
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const response = await axiosInstance.get('/api/teams')
+      return Array.isArray(response.data) ? response.data : []
+    },
+  })
+
   useEffect(() => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
-        }
-      })
-      .catch(console.error)
-  }, [])
+    if (!selectedTeamId && teams.length > 0) {
+      setSelectedTeamId(teams[0].id)
+    }
+  }, [teams, selectedTeamId])
 
   // Brukere i valgt team (for «Bytt med») – bruk teamId så TeamMembership inkluderes
-  useEffect(() => {
-    if (!selectedTeamId) {
-      setUsers([])
-      return
-    }
-    fetch(`/api/users?teamId=${selectedTeamId}`)
-      .then(res => res.json())
-      .then(data => setUsers(Array.isArray(data) ? data : []))
-      .catch(() => setUsers([]))
-  }, [selectedTeamId])
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ['users', selectedTeamId],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`/api/users?teamId=${selectedTeamId}`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
-  useEffect(() => {
-    if (!selectedTeamId) return
-
-    fetch(`/api/swap-requests?teamId=${selectedTeamId}`)
-      .then(res => res.json())
-      .then(data => setSwapRequests(data))
-      .catch(console.error)
-
-    // Fra start av uken (mandag) til 30 dager frem – slik at egne vakter i inneværende uke vises
+  const { dateFrom, dateTo } = useMemo(() => {
     const now = new Date()
     const dayOfWeek = now.getDay()
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
     const weekStart = new Date(now)
     weekStart.setDate(now.getDate() + mondayOffset)
-    const dateFrom = format(weekStart, 'yyyy-MM-dd')
-    const futureDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${futureDate}`)
-      .then(res => res.json())
-      .then(data => setShifts(Array.isArray(data) ? data : []))
-      .catch(() => setShifts([]))
-  }, [selectedTeamId])
+    return {
+      dateFrom: format(weekStart, 'yyyy-MM-dd'),
+      dateTo: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+    }
+  }, [])
+
+  const { data: swapRequests = [] } = useQuery<any[]>({
+    queryKey: ['swap-requests', selectedTeamId],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`/api/swap-requests?teamId=${selectedTeamId}`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  const { data: shifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, dateFrom, dateTo],
+    queryFn: async () => {
+      const response = await axiosInstance.get(
+        `/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`
+      )
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
   const myShifts = shifts.filter(
     (s: any) => (s.userId ?? s.user?.id) === currentUser?.id
   )
 
-  // Hent valgt kollegas vakter når «Bytt med» er satt (samme periode som egne vakter)
-  useEffect(() => {
-    if (!selectedTeamId || !selectedToUserId) {
-      setColleagueShifts([])
-      return
-    }
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() + mondayOffset)
-    const dateFrom = format(weekStart, 'yyyy-MM-dd')
-    const futureDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${futureDate}&userId=${selectedToUserId}`)
-      .then(res => res.json())
-      .then(data => setColleagueShifts(Array.isArray(data) ? data : []))
-      .catch(() => setColleagueShifts([]))
-  }, [selectedTeamId, selectedToUserId])
+  const { data: colleagueShifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, selectedToUserId, dateFrom, dateTo],
+    queryFn: async () => {
+      const response = await axiosInstance.get(
+        `/api/shifts?teamId=${selectedTeamId}&dateFrom=${dateFrom}&dateTo=${dateTo}&userId=${selectedToUserId}`
+      )
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId && selectedToUserId),
+  })
+
+  const refreshSwapData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['swap-requests', selectedTeamId] }),
+      queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId, dateFrom, dateTo] }),
+      queryClient.invalidateQueries({ queryKey: ['shifts', selectedTeamId, selectedToUserId, dateFrom, dateTo] }),
+    ])
+  }
 
   const handleCreateRequest = async () => {
     if (!selectedShiftId || !selectedToUserId || !currentUser) return
 
     try {
-      const response = await fetch('/api/swap-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: selectedTeamId,
-          requestedByUserId: currentUser.id,
-          shiftId: selectedShiftId,
-          toUserId: selectedToUserId,
-          message: message || undefined,
-        }),
+      await axiosInstance.post('/api/swap-requests', {
+        teamId: selectedTeamId,
+        requestedByUserId: currentUser.id,
+        shiftId: selectedShiftId,
+        toUserId: selectedToUserId,
+        message: message || undefined,
       })
 
-      if (response.ok) {
-        setIsCreateModalOpen(false)
-        setSelectedShiftId('')
-        setSelectedToUserId('')
-        setMessage('')
-        // Refresh requests
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`)
-          .then(res => res.json())
-          .then(data => setSwapRequests(data))
-          .catch(console.error)
-      } else {
-        alert('Kunne ikke opprette vaktbytteforespørsel')
-      }
+      setIsCreateModalOpen(false)
+      setSelectedShiftId('')
+      setSelectedToUserId('')
+      setMessage('')
+      await refreshSwapData()
     } catch (error) {
       console.error('Error creating swap request:', error)
       alert('Kunne ikke opprette vaktbytteforespørsel')
@@ -144,21 +140,12 @@ export default function SwapPage() {
   const handleApprove = async (requestId: string) => {
     if (!currentUser?.id) return
     try {
-      const response = await fetch(`/api/swap-requests/${requestId}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-        body: JSON.stringify({ currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        // Refresh requests
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`)
-          .then(res => res.json())
-          .then(data => setSwapRequests(data))
-          .catch(console.error)
-      } else {
-        alert('Kunne ikke godkjenne forespørsel')
-      }
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/approve`,
+        { currentUserId: currentUser.id },
+        { headers: { 'x-current-user-id': currentUser.id } }
+      )
+      await refreshSwapData()
     } catch (error) {
       console.error('Error approving swap request:', error)
       alert('Kunne ikke godkjenne forespørsel')
@@ -168,21 +155,12 @@ export default function SwapPage() {
   const handleReject = async (requestId: string) => {
     if (!currentUser?.id) return
     try {
-      const response = await fetch(`/api/swap-requests/${requestId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-        body: JSON.stringify({ currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        // Refresh requests
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`)
-          .then(res => res.json())
-          .then(data => setSwapRequests(data))
-          .catch(console.error)
-      } else {
-        alert('Kunne ikke avvise forespørsel')
-      }
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/reject`,
+        { currentUserId: currentUser.id },
+        { headers: { 'x-current-user-id': currentUser.id } }
+      )
+      await refreshSwapData()
     } catch (error) {
       console.error('Error rejecting swap request:', error)
       alert('Kunne ikke avvise forespørsel')
@@ -192,35 +170,31 @@ export default function SwapPage() {
   const handleCancel = async (requestId: string) => {
     if (!confirm('Er du sikker på at du vil avbryte denne forespørselen?')) return
     try {
-      const res = await fetch(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
-      } else { alert('Kunne ikke avbryte forespørsel') }
+      await axiosInstance.delete(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`)
+      await refreshSwapData()
     } catch { alert('Kunne ikke avbryte forespørsel') }
   }
 
   const handleAccept = async (requestId: string) => {
     try {
-      const res = await fetch(`/api/swap-requests/${requestId}/accept`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser?.id ?? '' },
-      })
-      if (res.ok) {
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
-      } else { alert('Kunne ikke godta forespørsel') }
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/accept`,
+        {},
+        { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
+      )
+      await refreshSwapData()
     } catch { alert('Nettverksfeil') }
   }
 
   const handleDecline = async (requestId: string) => {
     if (!confirm('Er du sikker på at du vil avslå denne forespørselen?')) return
     try {
-      const res = await fetch(`/api/swap-requests/${requestId}/decline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser?.id ?? '' },
-      })
-      if (res.ok) {
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`).then(r => r.json()).then(d => setSwapRequests(d)).catch(console.error)
-      } else { alert('Kunne ikke avslå forespørsel') }
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/decline`,
+        {},
+        { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
+      )
+      await refreshSwapData()
     } catch { alert('Nettverksfeil') }
   }
 
@@ -229,27 +203,12 @@ export default function SwapPage() {
     if (!confirm('Er du sikker på at du vil utføre dette vaktbyttet?')) return
 
     try {
-      const response = await fetch(`/api/swap-requests/${requestId}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-        body: JSON.stringify({ currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        // Refresh requests and shifts
-        fetch(`/api/swap-requests?teamId=${selectedTeamId}`)
-          .then(res => res.json())
-          .then(data => setSwapRequests(data))
-          .catch(console.error)
-        const today = format(new Date(), 'yyyy-MM-dd')
-        const futureDate = format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
-        fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
-          .then(res => res.json())
-          .then(data => setShifts(data))
-          .catch(console.error)
-      } else {
-        alert('Kunne ikke utføre vaktbytte')
-      }
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/execute`,
+        { currentUserId: currentUser.id },
+        { headers: { 'x-current-user-id': currentUser.id } }
+      )
+      await refreshSwapData()
     } catch (error) {
       console.error('Error executing swap request:', error)
       alert('Kunne ikke utføre vaktbytte')

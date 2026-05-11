@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,10 +13,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 
 /** Admin page for notification settings per team and per-user preferences. */
 export default function SettingsPage() {
   const { currentUser } = useAuth()
+  const queryClient = useQueryClient()
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [settings, setSettings] = useState<any>(null)
@@ -32,67 +35,100 @@ export default function SettingsPage() {
   } | null>(null)
   const [prefsSaving, setPrefsSaving] = useState(false)
 
-  useEffect(() => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
-        }
-      })
-      .catch(console.error)
-  }, [])
+  const { data: fetchedTeams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
   useEffect(() => {
-    if (!selectedTeamId) return
+    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
+    if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(fetchedTeams[0].id)
+    }
+  }, [fetchedTeams, selectedTeamId])
 
-    fetch(`/api/notification-settings?teamId=${selectedTeamId}`)
-      .then(res => res.json())
-      .then(data => {
-        setSettings(data)
-        if (data) {
-          setEmailEnabled(data.emailEnabled)
-          setSmsEndpoint(data.smsEndpoint || '')
-        }
-      })
-      .catch(console.error)
-  }, [selectedTeamId])
+  const { data: teamSettings } = useQuery<any>({
+    queryKey: ['notification-settings', selectedTeamId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/notification-settings?teamId=${selectedTeamId}`)
+      return res.data
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
   useEffect(() => {
-    if (!currentUser?.id) return
-    fetch(`/api/users/${currentUser.id}/notification-preferences`)
-      .then(res => res.json())
-      .then(data => {
-        setPrefs({
-          shiftChangesEmail: data.shiftChangesEmail ?? true,
-          shiftChangesSms: data.shiftChangesSms ?? false,
-          swapEmail: data.swapEmail ?? true,
-          swapSms: data.swapSms ?? false,
-          noteEmail: data.noteEmail ?? true,
-          noteSms: data.noteSms ?? false,
-        })
+    setSettings(teamSettings ?? null)
+    if (teamSettings) {
+      setEmailEnabled(teamSettings.emailEnabled)
+      setSmsEndpoint(teamSettings.smsEndpoint || '')
+    }
+  }, [teamSettings])
+
+  const { data: prefData } = useQuery<any>({
+    queryKey: ['notification-preferences', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null
+      const res = await axiosInstance.get(`/api/users/${currentUser.id}/notification-preferences`)
+      return res.data
+    },
+    enabled: Boolean(currentUser?.id),
+  })
+
+  useEffect(() => {
+    if (!prefData) return
+    setPrefs({
+      shiftChangesEmail: prefData.shiftChangesEmail ?? true,
+      shiftChangesSms: prefData.shiftChangesSms ?? false,
+      swapEmail: prefData.swapEmail ?? true,
+      swapSms: prefData.swapSms ?? false,
+      noteEmail: prefData.noteEmail ?? true,
+      noteSms: prefData.noteSms ?? false,
+    })
+  }, [prefData])
+
+  const savePrefsMutation = useMutation({
+    mutationFn: async (nextPrefs: any) => {
+      if (!currentUser?.id) {
+        throw new Error('Not authenticated')
+      }
+      return axiosInstance.put(`/api/users/${currentUser.id}/notification-preferences`, nextPrefs)
+    },
+    onSuccess: async () => {
+      alert('Varslingspreferanser lagret')
+      await queryClient.invalidateQueries({ queryKey: ['notification-preferences', currentUser?.id] })
+    },
+    onError: () => {
+      alert('Kunne ikke lagre varslingspreferanser')
+    },
+  })
+
+  const saveSettingsMutation = useMutation({
+    mutationFn: async () => {
+      return axiosInstance.put('/api/notification-settings', {
+        teamId: selectedTeamId,
+        emailEnabled,
+        smsEndpoint: smsEndpoint || null,
       })
-      .catch(console.error)
-  }, [currentUser?.id])
+    },
+    onSuccess: async () => {
+      alert('Innstillinger lagret')
+      await queryClient.invalidateQueries({ queryKey: ['notification-settings', selectedTeamId] })
+    },
+    onError: () => {
+      alert('Kunne ikke lagre innstillinger')
+    },
+  })
 
   const handleSavePrefs = async () => {
     if (!currentUser?.id || !prefs) return
     setPrefsSaving(true)
     try {
-      const response = await fetch(`/api/users/${currentUser.id}/notification-preferences`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prefs),
-      })
-      if (response.ok) {
-        alert('Varslingspreferanser lagret')
-      } else {
-        alert('Kunne ikke lagre varslingspreferanser')
-      }
+      await savePrefsMutation.mutateAsync(prefs)
     } catch (error) {
       console.error('Error saving notification preferences:', error)
-      alert('Kunne ikke lagre varslingspreferanser')
     } finally {
       setPrefsSaving(false)
     }
@@ -102,24 +138,9 @@ export default function SettingsPage() {
     if (!selectedTeamId) return
 
     try {
-      const response = await fetch('/api/notification-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: selectedTeamId,
-          emailEnabled,
-          smsEndpoint: smsEndpoint || null,
-        }),
-      })
-
-      if (response.ok) {
-        alert('Innstillinger lagret')
-      } else {
-        alert('Kunne ikke lagre innstillinger')
-      }
+      await saveSettingsMutation.mutateAsync()
     } catch (error) {
       console.error('Error saving settings:', error)
-      alert('Kunne ikke lagre innstillinger')
     }
   }
 

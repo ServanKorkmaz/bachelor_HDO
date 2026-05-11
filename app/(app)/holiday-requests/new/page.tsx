@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { dateNDaysAgoString, todayStringInTimeZone } from '@/lib/date-utils'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth/mockAuth'
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
+import { axiosInstance } from '@/lib/axios'
 
 export default function NewHolidayRequestPage() {
   const { currentUser } = useAuth()
@@ -24,6 +26,18 @@ export default function NewHolidayRequestPage() {
   // Compute date boundaries
   const todayStr = useMemo(() => todayStringInTimeZone(), [])
   const sicknessMinStr = useMemo(() => dateNDaysAgoString(30), [])
+
+  const createHolidayRequest = useMutation({
+    mutationFn: async (payload: any) => {
+      if (!currentUser?.id) {
+        throw new Error('Not authenticated')
+      }
+      const res = await axiosInstance.post('/api/holiday-requests', payload, {
+        headers: { 'x-current-user-id': currentUser.id },
+      })
+      return res.data
+    },
+  })
 
   if (!currentUser) return <div>Vennligst logg inn for å sende fraværsforespørsel</div>
 
@@ -73,22 +87,13 @@ export default function NewHolidayRequestPage() {
         message: message || undefined,
       }
 
-      const res = await fetch('/api/holiday-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-current-user-id': currentUser.id },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast({ title: 'Sendt', description: 'Forespørselen er sendt til godkjenning' })
-        router.push('/agenda')
-      } else {
-        toast({ title: 'Feil', description: data.error || 'Kunne ikke sende forespørsel', variant: 'destructive' })
-      }
+      await createHolidayRequest.mutateAsync(payload)
+      toast({ title: 'Sendt', description: 'Forespørselen er sendt til godkjenning' })
+      router.push('/agenda')
     } catch (err) {
       console.error(err)
-      toast({ title: 'Feil', description: 'Nettverksfeil', variant: 'destructive' })
+      const message = (err as any)?.response?.data?.error || 'Nettverksfeil'
+      toast({ title: 'Feil', description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }

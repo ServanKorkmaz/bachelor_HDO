@@ -1,15 +1,27 @@
 "use client"
 
 import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { useAuth } from '@/lib/auth/mockAuth'
-import { formatDateDisplay } from '@/lib/date-utils'
+import { formatDateDisplay, formatTime } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
+import { axiosInstance } from '@/lib/axios'
 
 /** Monthly calendar view of shifts with per-day summaries. */
 export default function MonthPage() {
@@ -18,6 +30,7 @@ export default function MonthPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedShift, setSelectedShift] = useState<any>(null)
+  const [selectedDayShifts, setSelectedDayShifts] = useState<{ date: string; shifts: any[] } | null>(null)
   const { currentUser } = useAuth()
 
   const monthStart = useMemo(() => startOfMonth(selectedDate), [selectedDate])
@@ -40,29 +53,35 @@ export default function MonthPage() {
     return days
   }, [firstDayOfWeek, daysInMonth])
 
-  useEffect(() => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => {
-        setTeams(data)
-        if (data.length > 0 && !selectedTeamId) {
-          setSelectedTeamId(data[0].id)
-        }
-      })
-      .catch(console.error)
-  }, [])
+  const { data: fetchedTeams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
   useEffect(() => {
-    if (!selectedTeamId) return
+    setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
+    if (Array.isArray(fetchedTeams) && fetchedTeams.length > 0 && !selectedTeamId) {
+      setSelectedTeamId(fetchedTeams[0].id)
+    }
+  }, [fetchedTeams, selectedTeamId])
 
-    const startDate = format(monthStart, 'yyyy-MM-dd')
-    const endDate = format(monthEnd, 'yyyy-MM-dd')
+  const startDate = format(monthStart, 'yyyy-MM-dd')
+  const endDate = format(monthEnd, 'yyyy-MM-dd')
+  const { data: fetchedShifts = [] } = useQuery<any[]>({
+    queryKey: ['shifts', selectedTeamId, startDate, endDate],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
 
-    fetch(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
-      .then(res => res.json())
-      .then(data => setShifts(data))
-      .catch(console.error)
-  }, [selectedTeamId, monthStart, monthEnd])
+  useEffect(() => {
+    setShifts(Array.isArray(fetchedShifts) ? fetchedShifts : [])
+  }, [fetchedShifts])
 
   const shiftsByDate = useMemo(() => {
     const map = new Map<string, any[]>()
@@ -92,11 +111,20 @@ export default function MonthPage() {
     if (!date) return
     const dateStr = format(date, 'yyyy-MM-dd')
     const dayShifts = shiftsByDate.get(dateStr) || []
-    if (dayShifts.length > 0) {
+    if (dayShifts.length === 1) {
       setSelectedShift(dayShifts[0])
+      setSelectedDayShifts(null)
+    } else if (dayShifts.length > 1) {
+      setSelectedDayShifts({ date: dateStr, shifts: dayShifts })
     } else {
       setSelectedShift(null)
+      setSelectedDayShifts(null)
     }
+  }
+
+  const handleShiftClick = (shift: any) => {
+    setSelectedDayShifts(null)
+    setSelectedShift(shift)
   }
 
   const weekDays = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
@@ -172,21 +200,29 @@ export default function MonthPage() {
                 </div>
                 <div className="space-y-1.5">
                   {dayShifts.slice(0, 3).map((shift: any) => (
-                    <div
+                    <button
                       key={shift.id}
-                      className="text-base p-2.5 rounded-md"
+                      type="button"
+                      className="w-full text-left text-base p-2.5 rounded-md hover:brightness-95 transition"
                       style={getShiftChipStyle(shift.shiftType.color)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleShiftClick(shift)
+                      }}
                     >
                       <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
-                       <div className="mt-1.5 text-base font-semibold leading-tight">
-                         {shift.user?.name || 'Ukjent ansatt'}
-                       </div>
-                       {shift.comment && (
-                         <div className="mt-2 text-xs leading-snug whitespace-pre-wrap break-words opacity-70 italic">
+                      <div className="mt-1.5 text-base font-semibold leading-tight">
+                        {shift.user?.name || 'Ukjent ansatt'}
+                      </div>
+                      <div className="mt-1 text-sm leading-tight opacity-80">
+                        {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
+                      </div>
+                      {shift.comment && (
+                        <div className="mt-2 text-xs leading-snug whitespace-pre-wrap break-words opacity-70 italic">
                           {shift.comment}
                         </div>
                       )}
-                    </div>
+                    </button>
                   ))}
                   {dayShifts.length > 3 && (
                     <div className="text-xs text-muted-foreground">
@@ -208,6 +244,51 @@ export default function MonthPage() {
           onClose={() => setSelectedShift(null)}
           currentUser={currentUser}
         />
+      )}
+
+      {selectedDayShifts && (
+        <Dialog open={true} onOpenChange={() => setSelectedDayShifts(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {formatDateDisplay(selectedDayShifts.date)}
+              </DialogTitle>
+              <DialogDescription>
+                {selectedDayShifts.shifts.length} vakter denne dagen
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2">
+              {selectedDayShifts.shifts.map((shift) => (
+                <button
+                  key={shift.id}
+                  type="button"
+                  onClick={() => handleShiftClick(shift)}
+                  className="w-full rounded-lg border p-4 text-left transition hover:bg-accent"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                      <div className="text-base font-semibold">
+                        {shift.shiftType?.label || 'Vakt'}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {shift.user?.name || 'Ukjent ansatt'}
+                      </div>
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
+                    </div>
+                  </div>
+                  {shift.comment && (
+                    <div className="mt-3 text-sm leading-snug text-muted-foreground whitespace-pre-wrap break-words">
+                      {shift.comment}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

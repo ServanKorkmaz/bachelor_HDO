@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,25 +14,24 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Users } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 
 /** Admin page to create and remove teams. */
 export default function TeamsPage() {
   const { currentUser, isAdmin } = useAuth()
-  const [teams, setTeams] = useState<any[]>([])
+  const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
 
-  useEffect(() => {
-    fetchTeams()
-  }, [])
-
-  const fetchTeams = () => {
-    fetch('/api/teams')
-      .then(res => res.json())
-      .then(data => setTeams(data))
-      .catch(console.error)
-  }
+  const { data: teams = [] } = useQuery<any[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
 
   const handleCreate = async () => {
     if (!newTeamName.trim()) return
@@ -42,19 +41,11 @@ export default function TeamsPage() {
     }
 
     try {
-      const response = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName, currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        setIsCreateModalOpen(false)
-        setNewTeamName('')
-        fetchTeams()
-      } else {
-        alert('Kunne ikke opprette team')
-      }
+      await axiosInstance.post('/api/teams', { name: newTeamName, currentUserId: currentUser.id })
+      setIsCreateModalOpen(false)
+      setNewTeamName('')
+      await queryClient.invalidateQueries({ queryKey: ['teams'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
     } catch (error) {
       console.error('Error creating team:', error)
       alert('Kunne ikke opprette team')
@@ -69,17 +60,9 @@ export default function TeamsPage() {
     if (!confirm('Er du sikker på at du vil slette dette teamet?')) return
 
     try {
-      const response = await fetch(`/api/teams/${teamId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentUserId: currentUser.id }),
-      })
-
-      if (response.ok) {
-        fetchTeams()
-      } else {
-        alert('Kunne ikke slette team')
-      }
+      await axiosInstance.delete(`/api/teams/${teamId}`, { data: { currentUserId: currentUser.id } })
+      await queryClient.invalidateQueries({ queryKey: ['teams'] })
+      await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
     } catch (error) {
       console.error('Error deleting team:', error)
       alert('Kunne ikke slette team')
