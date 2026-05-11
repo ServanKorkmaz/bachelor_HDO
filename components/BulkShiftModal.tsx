@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parse, subDays } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
@@ -367,7 +367,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     return map
   }, [teamShifts])
 
-  const createRow = (): BulkShiftRow => ({
+  const createRow = useCallback((): BulkShiftRow => ({
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     shiftId: undefined,
     userId: '',
@@ -377,7 +377,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     endTime: defaultShiftType?.defaultEndTime || '',
     comment: '',
     useCustomTime: false,
-  })
+  }), [defaultShiftType])
 
   useEffect(() => {
     if (!defaultShiftType || rows.length === 0) return
@@ -399,7 +399,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
     if (shiftTypes.length > 0 && rows.length === 0) {
       setRows([createRow()])
     }
-  }, [shiftTypes.length, rows.length])
+  }, [shiftTypes.length, rows.length, createRow])
 
   const addRow = () => {
     if (rows.length >= MAX_ROWS) return
