@@ -71,7 +71,7 @@ export default function AdminAuditPage() {
           toast({ title: 'Ikke tilgang', description: 'Kun admin kan se revisjonsloggen.', variant: 'destructive' })
           return []
         }
-        toast({ title: 'Feil', description: 'Kunbe ikke hente revisjonslogg', variant: 'destructive' })
+        toast({ title: 'Feil', description: 'Kunne ikke hente revisjonslogg', variant: 'destructive' })
         return []
       }
     },

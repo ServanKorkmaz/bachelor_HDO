@@ -6,6 +6,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { addDays, differenceInCalendarDays, format, parseISO, addWeeks, subWeeks } from 'date-fns'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { useAuth } from '@/lib/auth/mockAuth'
@@ -174,26 +176,29 @@ export default function StandardPlanPage() {
       <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Dato:</label>
-          <input
+          <Input
             type="date"
             value={format(selectedDate, 'yyyy-MM-dd')}
             onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            className="px-3 py-1 rounded-md border bg-background text-foreground"
           />
         </div>
 
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium">Se oversikt for ansatt:</label>
-          <select
-            value={selectedUserId}
-            onChange={(e) => setSelectedUserId(e.target.value)}
-            className="px-3 py-1 rounded-md border bg-background text-foreground"
+          <Select
+            value={selectedUserId || 'all'}
+            onValueChange={(value) => setSelectedUserId(value === 'all' ? '' : value)}
           >
-            <option value="">Alle</option>
-            {Array.isArray(users) && users.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Alle" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle</SelectItem>
+              {Array.isArray(users) && users.map(u => (
+                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="text-sm text-muted-foreground">
@@ -202,21 +207,24 @@ export default function StandardPlanPage() {
 
         <div className="flex items-center gap-2 min-w-[220px]">
           <label className="text-sm font-medium">Plan:</label>
-          <select
+          <Select
             value={selectedTeamId}
-            onChange={(e) => {
-              const id = e.target.value
+            onValueChange={(id) => {
               setSelectedTeamId(id)
               const params = new URLSearchParams(searchParams.toString())
               params.set(TEAM_ID_PARAM, id)
               router.replace(`/standard?${params.toString()}`, { scroll: false })
             }}
-            className="px-3 py-1 rounded-md border bg-background text-foreground"
           >
-            {Array.isArray(teams) && teams.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
-            ))}
-          </select>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Velg plan" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.isArray(teams) && teams.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
