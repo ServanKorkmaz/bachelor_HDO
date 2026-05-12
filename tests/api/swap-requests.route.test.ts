@@ -12,9 +12,11 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    notification: { create: vi.fn() },
-    auditLog:     { create: vi.fn() },
-    $transaction: vi.fn(),
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
+    notification:   { create: vi.fn() },
+    auditLog:       { create: vi.fn() },
+    $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -27,10 +29,12 @@ vi.mock('@/lib/notifications/deliver', () => ({
 import { GET, POST } from '@/app/api/swap-requests/route'
 
 /** Builds a GET request with optional query parameters. */
-function makeGet(params: Record<string, string> = {}): Request {
+function makeGet(params: Record<string, string> = {}, userId?: string): Request {
   const url = new URL('http://localhost/api/swap-requests')
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
-  return new Request(url.toString())
+  return new Request(url.toString(), {
+    headers: userId ? { 'x-current-user-id': userId } : {},
+  })
 }
 
 /** Builds a JSON POST request for the swap-requests endpoint. */
@@ -55,11 +59,17 @@ describe('GET /api/swap-requests', () => {
     await expect(res.json()).resolves.toEqual({ error: 'teamId is required' })
   })
 
-  it('returns list of swap requests for a team', async () => {
+  it('returns 401 when caller is not authenticated', async () => {
+    const res = await GET(makeGet({ teamId: 'team-1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns list of swap requests for a team member', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN', teamId: 'team-1' })
     const fakeRequests = [{ id: 'sr-1', status: 'AWAITING_ACCEPTANCE' }]
     mockPrisma.swapRequest.findMany.mockResolvedValue(fakeRequests)
 
-    const res = await GET(makeGet({ teamId: 'team-1' }))
+    const res = await GET(makeGet({ teamId: 'team-1' }, 'admin-1'))
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual(fakeRequests)
   })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,9 @@ export async function GET(request: Request) {
     if (!teamId) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
+
+    const auth = await requireTeamMembership(request, teamId)
+    if ('error' in auth) return auth.error
 
     const where: any = { teamId }
 

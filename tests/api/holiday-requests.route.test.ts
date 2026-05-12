@@ -9,10 +9,11 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
-    user: { findUnique: vi.fn() },
-    notification: { create: vi.fn() },
-    auditLog:     { create: vi.fn() },
-    $transaction: vi.fn(),
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
+    notification:   { create: vi.fn() },
+    auditLog:       { create: vi.fn() },
+    $transaction:   vi.fn(),
   },
 }))
 
@@ -26,10 +27,12 @@ import {
 } from '@/app/api/holiday-requests/[id]/route'
 
 /** Builds a GET request with optional query parameters. */
-function makeGet(params: Record<string, string> = {}): Request {
+function makeGet(params: Record<string, string> = {}, userId?: string): Request {
   const url = new URL('http://localhost/api/holiday-requests')
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
-  return new Request(url.toString())
+  return new Request(url.toString(), {
+    headers: userId ? { 'x-current-user-id': userId } : {},
+  })
 }
 
 /** Builds a JSON POST request for the holiday-requests endpoint. */
@@ -87,9 +90,15 @@ describe('holiday-requests', () => {
       expect(res.status).toBe(400)
     })
 
-    it('returns list of holiday requests for a team', async () => {
-      mockPrisma.holidayRequest.findMany.mockResolvedValue([baseHolidayRequest])
+    it('returns 401 when caller is not authenticated', async () => {
       const res = await GET(makeGet({ teamId: 'team-1' }))
+      expect(res.status).toBe(401)
+    })
+
+    it('returns list of holiday requests for a team member', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN', teamId: 'team-1' })
+      mockPrisma.holidayRequest.findMany.mockResolvedValue([baseHolidayRequest])
+      const res = await GET(makeGet({ teamId: 'team-1' }, 'admin-1'))
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body).toHaveLength(1)

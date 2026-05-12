@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuth } from '@/lib/auth/mockAuth'
 
 /** Shared axios instance for all API calls. */
 export const axiosInstance = axios.create({
@@ -6,6 +7,16 @@ export const axiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const userId = useAuth.getState().currentUser?.id
+    if (userId) {
+      config.headers['x-current-user-id'] = userId
+    }
+  }
+  return config
 })
 
 export default axiosInstance

@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
   mockPrisma: {
-    note:         { findMany: vi.fn(), create: vi.fn() },
-    notification: { create: vi.fn() },
+    note:           { findMany: vi.fn(), create: vi.fn() },
+    notification:   { create: vi.fn() },
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -16,10 +18,12 @@ vi.mock('@/lib/notifications/deliver', () => ({
 import { GET, POST } from '@/app/api/notes/route'
 
 /** Builds a GET request with optional query parameters. */
-function makeGet(params: Record<string, string> = {}): Request {
+function makeGet(params: Record<string, string> = {}, userId?: string): Request {
   const url = new URL('http://localhost/api/notes')
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v))
-  return new Request(url.toString())
+  return new Request(url.toString(), {
+    headers: userId ? { 'x-current-user-id': userId } : {},
+  })
 }
 
 /** Builds a JSON POST request for the notes endpoint. */
@@ -41,11 +45,17 @@ describe('GET /api/notes', () => {
     await expect(res.json()).resolves.toEqual({ error: 'teamId is required' })
   })
 
-  it('returns list of notes for a team', async () => {
+  it('returns 401 when caller is not authenticated', async () => {
+    const res = await GET(makeGet({ teamId: 'team-1' }))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns list of notes for a team member', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN', teamId: 'team-1' })
     const fakeNotes = [{ id: 'note-1', teamId: 'team-1', type: 'HOLIDAY', status: 'PENDING' }]
     mockPrisma.note.findMany.mockResolvedValue(fakeNotes)
 
-    const res = await GET(makeGet({ teamId: 'team-1' }))
+    const res = await GET(makeGet({ teamId: 'team-1' }, 'admin-1'))
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual(fakeNotes)
   })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
+import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +14,9 @@ export async function GET(request: Request) {
     if (!teamId) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
+
+    const auth = await requireTeamMembership(request, teamId)
+    if ('error' in auth) return auth.error
 
     const swapRequests = await prisma.swapRequest.findMany({
       where: { teamId },
