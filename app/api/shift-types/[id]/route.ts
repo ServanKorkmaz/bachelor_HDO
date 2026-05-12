@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 
 /** Update a shift type by id. */
 export async function PUT(
@@ -12,8 +14,9 @@ export async function PUT(
   if (err) return err
 
   try {
-    const body = await request.json()
-    const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = body
+    const parsed = await parseJsonBody(request, shiftTypeBodySchema)
+    if ('error' in parsed) return parsed.error
+    const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = parsed.data
 
     const shiftType = await prisma.shiftType.update({
       where: { id: params.id },
@@ -23,7 +26,7 @@ export async function PUT(
         color,
         defaultStartTime,
         defaultEndTime,
-        crossesMidnight: crossesMidnight || false,
+        crossesMidnight: crossesMidnight ?? false,
       },
     })
 

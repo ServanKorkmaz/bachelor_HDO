@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/admin/audit'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { holidayPatchSchema, holidayPutSchema } from '@/lib/validation/schemas'
 
 /** Get a single holiday request or update its status (approve/reject). */
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -23,17 +25,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const body = await request.json()
-    const { action } = body // action: 'APPROVE' | 'REJECT'
-
-    if (!action) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
     const currentUserId = await getCurrentUserId(request)
     if (!currentUserId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
     }
+
+    const parsed = await parseJsonBody(request, holidayPatchSchema)
+    if ('error' in parsed) return parsed.error
+    const { action } = parsed.data
 
     const updated = await prisma.$transaction(async (tx: any) => {
       const hr = await tx.holidayRequest.findUnique({ where: { id } })
@@ -82,16 +81,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const body = await request.json()
-    const { type, dateFrom, dateTo, message } = body
     const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
+
+    const parsed = await parseJsonBody(request, holidayPutSchema)
+    if ('error' in parsed) return parsed.error
+    const { type, dateFrom, dateTo, message } = parsed.data
 
     const hr = await prisma.holidayRequest.findUnique({ where: { id } })
     if (!hr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (hr.status !== 'PENDING') return NextResponse.json({ error: 'Kan bare endre ventende forespørsler' }, { status: 400 })
-    if (currentUserId && hr.userId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
-
-    if (!type || !dateFrom) return NextResponse.json({ error: 'type og dateFrom er påkrevd' }, { status: 400 })
+    if (hr.userId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
 
     const updated = await prisma.holidayRequest.update({
       where: { id },
@@ -110,6 +110,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   try {
     const { id } = params
     const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
 
     const hr = await prisma.holidayRequest.findUnique({ where: { id } })
     if (!hr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -118,7 +119,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Kan bare avbestille ventende forespørsler' }, { status: 400 })
     }
 
-    if (currentUserId && hr.userId !== currentUserId) {
+    if (hr.userId !== currentUserId) {
       return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
     }
 

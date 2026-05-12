@@ -72,7 +72,13 @@ describe('POST /api/notes', () => {
   it('returns 400 when required fields are missing', async () => {
     const res = await POST(makePost({ teamId: 'team-1' }))
     expect(res.status).toBe(400)
-    await expect(res.json()).resolves.toEqual({ error: 'Missing required fields' })
+    const body = await res.json()
+    expect(body.error).toBe('Ugyldig data')
+    expect(body.details.fieldErrors).toMatchObject({
+      createdByUserId: expect.any(Array),
+      type: expect.any(Array),
+      body: expect.any(Array),
+    })
   })
 
   it('creates note and notifies creator', async () => {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { shiftCreateSchema } from '@/lib/validation/schemas'
 import { parse, format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -62,15 +64,9 @@ export async function GET(request: Request) {
 /** Create a shift and emit a notification for the affected user. */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { date, userId, shiftTypeId, startTime, endTime, comment, teamId } = body
-
-    if (!date || !userId || !shiftTypeId || !startTime || !endTime) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    const parsed = await parseJsonBody(request, shiftCreateSchema)
+    if ('error' in parsed) return parsed.error
+    const { date, userId, shiftTypeId, startTime, endTime, comment, teamId } = parsed.data
 
     // Get teamId from user if not provided
     let finalTeamId = teamId

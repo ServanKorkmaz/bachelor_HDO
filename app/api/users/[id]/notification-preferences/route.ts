@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { notificationPreferencesSchema } from '@/lib/validation/schemas'
 
 /** Get notification preferences for a user (create defaults if missing). */
 export async function GET(
@@ -51,7 +53,8 @@ export async function PUT(
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    const body = await request.json()
+    const parsed = await parseJsonBody(request, notificationPreferencesSchema)
+    if ('error' in parsed) return parsed.error
     const {
       shiftChangesEmail,
       shiftChangesSms,
@@ -59,7 +62,7 @@ export async function PUT(
       swapSms,
       noteEmail,
       noteSms,
-    } = body
+    } = parsed.data
 
     const prefs = await prisma.userNotificationPreference.upsert({
       where: { userId },

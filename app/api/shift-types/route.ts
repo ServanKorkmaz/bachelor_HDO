@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,15 +27,9 @@ export async function POST(request: Request) {
   if (err) return err
 
   try {
-    const body = await request.json()
-    const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = body
-
-    if (!code || !label || !color || !defaultStartTime || !defaultEndTime) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    const parsed = await parseJsonBody(request, shiftTypeBodySchema)
+    if ('error' in parsed) return parsed.error
+    const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = parsed.data
 
     const shiftType = await prisma.shiftType.create({
       data: {
@@ -42,7 +38,7 @@ export async function POST(request: Request) {
         color,
         defaultStartTime,
         defaultEndTime,
-        crossesMidnight: crossesMidnight || false,
+        crossesMidnight: crossesMidnight ?? false,
       },
     })
 

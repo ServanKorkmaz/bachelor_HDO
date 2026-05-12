@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
-
-const VALID_NOTE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { noteApproveSchema } from '@/lib/validation/schemas'
 
 /** Approve or reject a note by id and notify the creator. */
 export async function POST(
@@ -11,12 +11,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json()
-    const { status } = body
-
-    if (!status || !VALID_NOTE_STATUSES.includes(status as any)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, noteApproveSchema)
+    if ('error' in parsed) return parsed.error
+    const { status } = parsed.data
 
     const note = await prisma.note.update({
       where: { id: params.id },

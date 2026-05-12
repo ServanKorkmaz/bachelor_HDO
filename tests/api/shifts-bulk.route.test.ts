@@ -120,7 +120,9 @@ describe('POST /api/shifts/bulk', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid action' })
+    const body = await response.json()
+    expect(body.error).toBe('Ugyldig data')
+    expect(body.details.fieldErrors).toMatchObject({ action: expect.any(Array) })
   })
 
   it('returns 400 when item count exceeds max limit', async () => {
@@ -142,7 +144,9 @@ describe('POST /api/shifts/bulk', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Too many items (max 200)' })
+    const body = await response.json()
+    expect(body.error).toBe('Ugyldig data')
+    expect(body.details.fieldErrors).toMatchObject({ items: expect.any(Array) })
   })
 
   it('creates a shift and handles cross-midnight duration', async () => {

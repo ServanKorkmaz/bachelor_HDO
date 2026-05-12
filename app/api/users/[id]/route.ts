@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-const ALLOWED_ROLES = ['ADMIN', 'LEADER', 'EMPLOYEE'] as const
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { userRoleUpdateSchema } from '@/lib/validation/schemas'
 
 /** Get a user by id. */
 export async function GET(
@@ -35,8 +36,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json()
-    const { role, currentUserId } = body
+    const parsed = await parseJsonBody(request, userRoleUpdateSchema)
+    if ('error' in parsed) return parsed.error
+    const { role, currentUserId } = parsed.data
 
     if (!currentUserId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
@@ -49,10 +51,6 @@ export async function PUT(
 
     if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
-
-    if (!role || !ALLOWED_ROLES.includes(role)) {
-      return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
 
     const user = await prisma.user.update({

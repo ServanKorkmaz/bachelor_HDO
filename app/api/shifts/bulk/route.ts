@@ -2,36 +2,21 @@ import { NextResponse } from 'next/server'
 import { parse } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { bulkShiftSchema, type BulkShiftBody } from '@/lib/validation/schemas'
 
-type BulkAction = 'create' | 'update' | 'delete'
-
-interface BulkShiftItem {
-  shiftId?: string
-  userId?: string
-  date?: string
-  shiftTypeId?: string
-  startTime?: string
-  endTime?: string
-  comment?: string
-}
-
-interface BulkShiftRequest {
-  action: BulkAction
-  teamId?: string
-  items: BulkShiftItem[]
-  currentUserId?: string
-}
+type BulkShiftItem = BulkShiftBody['items'][number]
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 const timeRegex = /^\d{2}:\d{2}$/
-const MAX_ITEMS = 200
 const BATCH_SIZE = 20
 
 /** Bulk create, update, or delete shifts for multiple users and dates. */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as BulkShiftRequest
-    const { action, items, currentUserId } = body
+    const parsed = await parseJsonBody(request, bulkShiftSchema)
+    if ('error' in parsed) return parsed.error
+    const { action, items, currentUserId } = parsed.data
 
     if (!currentUserId) {
       return NextResponse.json({ error: 'currentUserId is required' }, { status: 401 })
@@ -42,21 +27,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    const teamId = body.teamId || currentUser.teamId
+    const teamId = parsed.data.teamId || currentUser.teamId
     if (!teamId) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
-    if (!action || !['create', 'update', 'delete'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
+    if (items.length === 0) {
       return NextResponse.json({ error: 'items is required' }, { status: 400 })
-    }
-
-    if (items.length > MAX_ITEMS) {
-      return NextResponse.json({ error: `Too many items (max ${MAX_ITEMS})` }, { status: 400 })
     }
 
     const uniqueUserIds = Array.from(

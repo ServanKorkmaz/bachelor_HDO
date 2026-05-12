@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { swapMessageSchema } from '@/lib/validation/schemas'
 
 /** Cancel (delete) a PENDING swap request — only the requester can do this. */
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
     const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
 
     const sr = await prisma.swapRequest.findUnique({ where: { id } })
     if (!sr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (sr.status !== 'PENDING') return NextResponse.json({ error: 'Kan bare avbestille ventende forespørsler' }, { status: 400 })
-    if (currentUserId && sr.requestedByUserId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
+    if (sr.requestedByUserId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
 
     await prisma.swapRequest.delete({ where: { id } })
     return NextResponse.json({ success: true })
@@ -25,14 +28,17 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const body = await request.json()
-    const { message } = body
     const currentUserId = await getCurrentUserId(request)
+    if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
+
+    const parsed = await parseJsonBody(request, swapMessageSchema)
+    if ('error' in parsed) return parsed.error
+    const { message } = parsed.data
 
     const sr = await prisma.swapRequest.findUnique({ where: { id } })
     if (!sr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (sr.status !== 'PENDING') return NextResponse.json({ error: 'Kan bare endre ventende forespørsler' }, { status: 400 })
-    if (currentUserId && sr.requestedByUserId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
+    if (sr.requestedByUserId !== currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
 
     const updated = await prisma.swapRequest.update({
       where: { id },

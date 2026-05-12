@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 
 /** Delete a team by id. */
 export async function DELETE(
@@ -7,14 +8,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    let currentUserId: string | null = null
-    try {
-      const body = await request.json()
-      currentUserId = body?.currentUserId || null
-    } catch {
-      currentUserId = null
-    }
-
+    const currentUserId = await getCurrentUserId(request)
     if (!currentUserId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
     }

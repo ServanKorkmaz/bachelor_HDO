@@ -45,7 +45,9 @@ describe('POST /api/notes/[id]/approve', () => {
   it('returns 400 for invalid status', async () => {
     const res = await POST(makeRequest({ status: 'INVALID' }), { params: { id: 'note-1' } })
     expect(res.status).toBe(400)
-    await expect(res.json()).resolves.toEqual({ error: 'Invalid status' })
+    const body = await res.json()
+    expect(body.error).toBe('Ugyldig data')
+    expect(body.details.fieldErrors).toMatchObject({ status: expect.any(Array) })
   })
 
   it('approves note and notifies owner via notification and deliver', async () => {

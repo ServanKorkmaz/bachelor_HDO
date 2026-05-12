@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { notificationSettingsSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,12 +40,9 @@ export async function GET(request: Request) {
 /** Upsert notification settings for a team. */
 export async function PUT(request: Request) {
   try {
-    const body = await request.json()
-    const { teamId, emailEnabled, smsEndpoint } = body
-
-    if (!teamId) {
-      return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(request, notificationSettingsSchema)
+    if ('error' in parsed) return parsed.error
+    const { teamId, emailEnabled, smsEndpoint } = parsed.data
 
     const settings = await prisma.notificationSettings.upsert({
       where: { teamId },

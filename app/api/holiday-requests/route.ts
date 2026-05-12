@@ -4,6 +4,8 @@ import { createAuditLog } from '@/lib/admin/audit'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { holidayCreateSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,8 +41,9 @@ export async function GET(request: Request) {
 /** Create a holiday / absence request. */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { teamId: teamIdBody, userId: userIdBody, type, dateFrom, dateTo, message } = body
+    const parsed = await parseJsonBody(request, holidayCreateSchema)
+    if ('error' in parsed) return parsed.error
+    const { teamId: teamIdBody, userId: userIdBody, type, dateFrom, dateTo, message } = parsed.data
 
     // Prefer authenticated user when available
     const currentUserId = await getCurrentUserId(request)
@@ -55,8 +58,8 @@ export async function POST(request: Request) {
       teamId = u.teamId
     }
 
-    if (!teamId || !userId || !type || !dateFrom) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!teamId || !userId) {
+      return NextResponse.json({ error: 'teamId and userId are required' }, { status: 400 })
     }
 
     // Server-side date validations

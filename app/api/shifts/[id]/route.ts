@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { shiftUpdateSchema } from '@/lib/validation/schemas'
 import { parse } from 'date-fns'
 
 /** Update a shift by id and notify the affected user. */
@@ -9,8 +11,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const body = await request.json()
-    const { date, userId, shiftTypeId, startTime, endTime, comment } = body
+    const parsed = await parseJsonBody(request, shiftUpdateSchema)
+    if ('error' in parsed) return parsed.error
+    const { date, userId, shiftTypeId, startTime, endTime, comment } = parsed.data
 
     const existingShift = await prisma.shift.findUnique({
       where: { id: params.id },

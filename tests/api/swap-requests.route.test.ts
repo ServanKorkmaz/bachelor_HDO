@@ -87,7 +87,13 @@ describe('POST /api/swap-requests', () => {
   it('returns 400 when required fields are missing', async () => {
     const res = await POST(makePost({ teamId: 'team-1' }))
     expect(res.status).toBe(400)
-    await expect(res.json()).resolves.toEqual({ error: 'Missing required fields' })
+    const body = await res.json()
+    expect(body.error).toBe('Ugyldig data')
+    expect(body.details.fieldErrors).toMatchObject({
+      requestedByUserId: expect.any(Array),
+      shiftId: expect.any(Array),
+      toUserId: expect.any(Array),
+    })
   })
 
   it('returns 404 when shift does not exist', async () => {

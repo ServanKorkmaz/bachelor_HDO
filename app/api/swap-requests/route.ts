@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { swapCreateSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,15 +60,9 @@ export async function GET(request: Request) {
 /** Create a swap request and notify the team. */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { teamId, requestedByUserId, shiftId, toUserId, message } = body
-
-    if (!teamId || !requestedByUserId || !shiftId || !toUserId) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
-    }
+    const parsed = await parseJsonBody(request, swapCreateSchema)
+    if ('error' in parsed) return parsed.error
+    const { teamId, requestedByUserId, shiftId, toUserId, message } = parsed.data
 
     // Get the shift to find the fromUserId
     const shift = await prisma.shift.findUnique({

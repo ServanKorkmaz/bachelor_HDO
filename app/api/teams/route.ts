@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { parseJsonBody } from '@/lib/validation/parseJson'
+import { teamCreateSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,12 +22,10 @@ export async function GET() {
 /** Create a team and default notification settings. */
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { name, currentUserId } = body
+    const parsed = await parseJsonBody(request, teamCreateSchema)
+    if ('error' in parsed) return parsed.error
+    const { name, currentUserId } = parsed.data
 
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
-    }
     if (!currentUserId) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
     }
