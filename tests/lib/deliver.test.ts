@@ -4,6 +4,7 @@ const { mockPrisma, mockSendEmail, mockSendSms } = vi.hoisted(() => ({
   mockPrisma: {
     user: { findUnique: vi.fn() },
     userNotificationPreference: { findUnique: vi.fn() },
+    notificationDeliveryLog: { create: vi.fn() },
   },
   mockSendEmail: vi.fn(),
   mockSendSms:   vi.fn(),
@@ -29,6 +30,7 @@ describe('deliverNotificationToChannels', () => {
     vi.clearAllMocks()
     mockSendEmail.mockResolvedValue(undefined)
     mockSendSms.mockResolvedValue(undefined)
+    mockPrisma.notificationDeliveryLog.create.mockResolvedValue({})
     // No saved preferences by default → falls back to defaults
     mockPrisma.userNotificationPreference.findUnique.mockResolvedValue(null)
   })
@@ -115,5 +117,53 @@ describe('deliverNotificationToChannels', () => {
     await deliverNotificationToChannels({ ...baseParams, type: 'NOTE_STATUS_CHANGED' })
 
     expect(mockSendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  // === Delivery logging — L5 fix ===
+
+  it('writes a SENT row on a successful email delivery', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ email: 'alice@example.com' })
+
+    await deliverNotificationToChannels(baseParams)
+
+    expect(mockPrisma.notificationDeliveryLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          channel: 'EMAIL',
+          notificationType: 'SHIFT_CREATED',
+          recipient: 'alice@example.com',
+          status: 'SENT',
+          errorMessage: null,
+        }),
+      })
+    )
+  })
+
+  it('writes a FAILED row with the error message when email send throws', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ email: 'alice@example.com' })
+    mockSendEmail.mockRejectedValueOnce(new Error('SMTP connection refused'))
+
+    // Must not throw to caller — failures are persisted, not propagated
+    await expect(deliverNotificationToChannels(baseParams)).resolves.toBeUndefined()
+
+    expect(mockPrisma.notificationDeliveryLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          channel: 'EMAIL',
+          status: 'FAILED',
+          errorMessage: 'SMTP connection refused',
+        }),
+      })
+    )
+  })
+
+  it('does not throw when even the delivery-log write fails', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ email: 'alice@example.com' })
+    mockPrisma.notificationDeliveryLog.create.mockRejectedValueOnce(new Error('DB down'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(deliverNotificationToChannels(baseParams)).resolves.toBeUndefined()
+
+    consoleError.mockRestore()
   })
 })

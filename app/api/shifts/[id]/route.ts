@@ -92,13 +92,13 @@ export async function PUT(
         message: updateMessage,
       },
     })
-    deliverNotificationToChannels({
+    void deliverNotificationToChannels({
       userId: existingShift.userId,
       teamId: existingShift.teamId,
       type: 'SHIFT_UPDATED',
       title: updateTitle,
       message: updateMessage,
-    }).catch(console.error)
+    })
 
     return NextResponse.json(shift)
   } catch (error) {
@@ -144,13 +144,13 @@ export async function DELETE(
         message: delMessage,
       },
     })
-    deliverNotificationToChannels({
+    void deliverNotificationToChannels({
       userId: shift.userId,
       teamId: shift.teamId,
       type: 'SHIFT_DELETED',
       title: delTitle,
       message: delMessage,
-    }).catch(console.error)
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -160,7 +160,7 @@ export async function POST(request: Request) {
         await prisma.notification.create({
           data: { teamId, userId, type: 'SHIFT_CREATED', title, message },
         })
-        deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_CREATED', title, message }).catch(console.error)
+        void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_CREATED', title, message })
         return { status: 'success', userId, date, shiftId: created.id }
       }
 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
         await prisma.notification.create({
           data: { teamId, userId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage },
         })
-        deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage }).catch(console.error)
+        void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage })
         return { status: 'success', userId, date, shiftId: updated.id }
       }
 
@@ -204,7 +204,7 @@ export async function POST(request: Request) {
       await prisma.notification.create({
         data: { teamId, userId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage },
       })
-      deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage }).catch(console.error)
+      void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage })
       return { status: 'success', userId, date, shiftId: existingShift.id }
     }
 

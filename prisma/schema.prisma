@@ -45,6 +45,16 @@ enum NoteType {
   SICKNESS
 }
 
+enum DeliveryChannel {
+  EMAIL
+  SMS
+}
+
+enum DeliveryStatus {
+  SENT
+  FAILED
+}
+
 model Team {
   id        String   @id @default(cuid())
   name      String
@@ -212,6 +222,22 @@ model NotificationSettings {
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@map("notification_settings")
+}
+
+model NotificationDeliveryLog {
+  id                String          @id @default(cuid())
+  teamId            String
+  userId            String?
+  channel           DeliveryChannel
+  notificationType  String
+  recipient         String
+  status            DeliveryStatus
+  errorMessage      String?
+  createdAt         DateTime        @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("notification_delivery_log")
 }
 
 model UserNotificationPreference {

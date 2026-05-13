@@ -149,7 +149,7 @@ export async function POST(request: Request) {
         message,
       },
     })
-    deliverNotificationToChannels({ userId, teamId: finalTeamId, type: 'SHIFT_CREATED', title, message }).catch(console.error)
+    void deliverNotificationToChannels({ userId, teamId: finalTeamId, type: 'SHIFT_CREATED', title, message })
 
     return NextResponse.json(shift)
   } catch (error) {

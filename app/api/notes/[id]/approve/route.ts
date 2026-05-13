@@ -58,13 +58,13 @@ export async function POST(
         message: notifMessage,
       },
     })
-    deliverNotificationToChannels({
+    void deliverNotificationToChannels({
       userId: note.createdByUserId,
       teamId: note.teamId,
       type: 'NOTE_STATUS_CHANGED',
       title: notifTitle,
       message: notifMessage,
-    }).catch(console.error)
+    })
 
     return NextResponse.json(note)
   } catch (error) {

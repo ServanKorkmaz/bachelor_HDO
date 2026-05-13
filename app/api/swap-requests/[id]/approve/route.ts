@@ -75,13 +75,13 @@ export async function POST(
       return u
     })
 
-    deliverNotificationToChannels({
+    void deliverNotificationToChannels({
       userId: swapRequest.requestedByUserId,
       teamId: swapRequest.teamId,
       type: 'SWAP_APPROVED',
       title,
       message,
-    }).catch(console.error)
+    })
 
     return NextResponse.json(updated)
   } catch (error) {
