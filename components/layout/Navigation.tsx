@@ -2,24 +2,35 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut, CalendarCheck } from 'lucide-react'
+import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut, CalendarCheck, User } from 'lucide-react'
 import { Button } from '../ui/button'
 import { RoleSwitcher } from '../auth/RoleSwitcher'
 import { NotificationsPanel } from './NotificationsPanel'
+import { useAuth } from '@/lib/auth/mockAuth'
 import { cn } from '../../lib/utils'
 
-const navItems = [
+const baseNavItems = [
   { href: '/standard', label: 'Standard plan', icon: Calendar },
   { href: '/month', label: 'Måned', icon: CalendarDays },
   { href: '/agenda', label: 'Agenda', icon: List },
   { href: '/swap', label: 'Vaktbytter', icon: RefreshCw },
   { href: '/holiday-requests', label: 'Fravær', icon: CalendarCheck },
-  { href: '/admin', label: 'Innstillinger', icon: Lock },
-]
+] as const
 
-/** Primary top navigation for the app pages. */
+/**
+ * Primary top navigation. The settings entry is role-aware: admins get the
+ * full admin hub at `/admin`, everyone else gets their personal settings hub
+ * at `/settings`. Non-admins never see admin-only pages in the nav at all.
+ */
 export function Navigation() {
   const pathname = usePathname()
+  const { isAdmin } = useAuth()
+
+  const settingsItem = isAdmin()
+    ? { href: '/admin', label: 'Innstillinger', icon: Lock }
+    : { href: '/settings', label: 'Min konto', icon: User }
+
+  const navItems = [...baseNavItems, settingsItem]
 
   return (
     <nav className="border-b border-border bg-card">
@@ -57,4 +68,3 @@ export function Navigation() {
     </nav>
   )
 }
-

@@ -26,9 +26,15 @@ const normalizeHexColor = (value: string): string | null => {
   return `#${cleaned.toLowerCase()}`
 }
 
-/** Admin page to manage shift types and colors. */
+/**
+ * Admin page to manage shift types and colors.
+ *
+ * Reachable only when the parent `AdminLayout` has confirmed the caller is
+ * an admin; non-admin role checks below are therefore not needed for UX.
+ * The API still enforces them — see `withAdmin` on the shift-types routes.
+ */
 export default function ShiftTypesPage() {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser } = useAuth()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
@@ -91,12 +97,7 @@ export default function ShiftTypesPage() {
   })
 
   const handleCreate = async () => {
-    if (!formData.code || !formData.label) return
-    if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan opprette vakttyper')
-      return
-    }
-
+    if (!formData.code || !formData.label || !currentUser) return
     try {
       await createMutation.mutateAsync()
     } catch (error) {
@@ -106,12 +107,7 @@ export default function ShiftTypesPage() {
   }
 
   const handleUpdate = async () => {
-    if (!editingShiftType || !formData.code || !formData.label) return
-    if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan redigere vakttyper')
-      return
-    }
-
+    if (!editingShiftType || !formData.code || !formData.label || !currentUser) return
     try {
       await updateMutation.mutateAsync()
     } catch (error) {
@@ -121,12 +117,8 @@ export default function ShiftTypesPage() {
   }
 
   const handleDelete = async (shiftTypeId: string) => {
-    if (!currentUser || !isAdmin()) {
-      alert('Kun admin kan slette vakttyper')
-      return
-    }
+    if (!currentUser) return
     if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
-
     try {
       await deleteMutation.mutateAsync(shiftTypeId)
     } catch (error) {
@@ -164,20 +156,11 @@ export default function ShiftTypesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Vakttyper</h1>
-        <Button
-          onClick={() => isAdmin() && setIsCreateModalOpen(true)}
-          disabled={!isAdmin()}
-          title={isAdmin() ? undefined : 'Kun admin kan opprette vakttyper'}
-        >
+        <Button onClick={() => setIsCreateModalOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Ny vakttype
         </Button>
       </div>
-      {!isAdmin() && (
-        <div className="text-sm text-muted-foreground">
-          Kun admin kan endre vakttyper. Du kan fortsatt se hvilke farger som hører til hver vakttype.
-        </div>
-      )}
 
       <div className="space-y-2">
         {shiftTypes.map(shiftType => (
@@ -198,24 +181,22 @@ export default function ShiftTypesPage() {
                 </div>
               </div>
             </div>
-            {isAdmin() && (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => openEditModal(shiftType)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => handleDelete(shiftType.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => openEditModal(shiftType)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={() => handleDelete(shiftType.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>

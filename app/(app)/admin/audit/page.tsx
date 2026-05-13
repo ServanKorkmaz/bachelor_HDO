@@ -52,7 +52,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 
 /** Admin revisjonslogg: viser hvem som gjorde hva og når (brukere og tilgang). */
 export default function AdminAuditPage() {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser } = useAuth()
   const { toast } = useToast()
   const [entityFilter, setEntityFilter] = useState<string>('all')
 
@@ -66,16 +66,12 @@ export default function AdminAuditPage() {
       try {
         const res = await axiosInstance.get(`/api/admin/audit?${params.toString()}`)
         return Array.isArray(res.data) ? res.data : []
-      } catch (error: any) {
-        if (error?.response?.status === 403 || error?.response?.status === 401) {
-          toast({ title: 'Ikke tilgang', description: 'Kun admin kan se revisjonsloggen.', variant: 'destructive' })
-          return []
-        }
+      } catch (_error: any) {
         toast({ title: 'Feil', description: 'Kunne ikke hente revisjonslogg', variant: 'destructive' })
         return []
       }
     },
-    enabled: Boolean(currentUser?.id && isAdmin()),
+    enabled: Boolean(currentUser?.id),
   })
 
   const { data: usersList = [] } = useQuery<{ id: string; name: string }[]>({
@@ -90,7 +86,7 @@ export default function AdminAuditPage() {
       })
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(currentUser?.id && isAdmin()),
+    enabled: Boolean(currentUser?.id),
   })
 
   const { data: teamsList = [] } = useQuery<{ id: string; name: string }[]>({
@@ -164,19 +160,6 @@ export default function AdminAuditPage() {
   }
 
   if (!currentUser) return null
-  if (!isAdmin()) {
-    return (
-      <div className="space-y-4">
-        <p className="text-muted-foreground">Kun administratorer kan se revisjonsloggen.</p>
-        <Button variant="outline" asChild>
-          <Link href="/admin">
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Tilbake til Admin
-          </Link>
-        </Button>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-4">

@@ -42,9 +42,14 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
   'x-current-user-id': currentUserId,
 })
 
-/** Admin > Brukere: alt bruker- og tilgangsstyring samlet (legg til, roller, team, aktiver/deaktiver). */
+/**
+ * Admin > Brukere: alt bruker- og tilgangsstyring samlet.
+ *
+ * Reachable only when the parent `AdminLayout` has confirmed the caller is
+ * an admin; the API still enforces it independently via `withAdmin`.
+ */
 export default function AdminUsersPage() {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
@@ -84,10 +89,6 @@ export default function AdminUsersPage() {
         const res = await axiosInstance.get(`/api/admin/users?${params.toString()}`)
         return Array.isArray(res.data) ? res.data : []
       } catch (e: any) {
-        if (e?.response?.status === 401 || e?.response?.status === 403) {
-          toast({ title: 'Ikke tilgang', description: 'Kun admin kan se denne siden.', variant: 'destructive' })
-          return []
-        }
         toast({ title: 'Feil', description: 'Kunne ikke hente brukere', variant: 'destructive' })
         return []
       }
@@ -124,15 +125,6 @@ export default function AdminUsersPage() {
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Brukere</h1>
         <p className="text-muted-foreground">Logg inn for å se brukere.</p>
-      </div>
-    )
-  }
-
-  if (!isAdmin()) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold">Brukere</h1>
-        <p className="text-muted-foreground">Kun administratorer har tilgang til denne siden.</p>
       </div>
     )
   }

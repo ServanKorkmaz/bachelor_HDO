@@ -24,8 +24,14 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
   'x-current-user-id': currentUserId,
 })
 
+/**
+ * Admin > Ferie- og fraværsforespørsler.
+ *
+ * Reachable only when the parent `AdminLayout` has confirmed the caller is
+ * an admin. The API enforces it independently via `withAuth` + role checks.
+ */
 export default function AdminHolidayRequestsPage() {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -64,7 +70,6 @@ export default function AdminHolidayRequestsPage() {
   })
 
   if (!currentUser) return <div>Vennligst logg inn</div>
-  if (!isAdmin()) return <div>Ingen tilgang</div>
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
     await decisionMutation.mutateAsync({ id, action })
