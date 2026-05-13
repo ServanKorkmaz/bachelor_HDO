@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { parse } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { bulkShiftSchema, type BulkShiftBody } from '@/lib/validation/schemas'
 import { applyRateLimit } from '@/lib/security/rateLimit'
 import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
+import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
 
 type BulkShiftItem = BulkShiftBody['items'][number]
 
@@ -128,10 +128,20 @@ export async function POST(request: Request) {
           return { status: 'failure', userId, date, error: 'Shift already exists' }
         }
 
-        const startDateTime = parse(`${date}T${item.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-        let endDateTime = parse(`${date}T${item.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-        if (shiftType?.crossesMidnight || endDateTime <= startDateTime) {
-          endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000)
+        let startDateTime: Date
+        let endDateTime: Date
+        try {
+          ;({ startDateTime, endDateTime } = buildShiftDateTimes({
+            date,
+            startTime: item.startTime!,
+            endTime: item.endTime!,
+            shiftType: shiftType!,
+          }))
+        } catch (e) {
+          if (e instanceof ShiftTimeError) {
+            return { status: 'failure', userId, date, error: e.message }
+          }
+          throw e
         }
 
         let created
@@ -169,10 +179,20 @@ export async function POST(request: Request) {
           return { status: 'failure', userId, date, error: 'Shift not found' }
         }
 
-        const startDateTime = parse(`${date}T${item.startTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-        let endDateTime = parse(`${date}T${item.endTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-        if (shiftType?.crossesMidnight || endDateTime <= startDateTime) {
-          endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000)
+        let startDateTime: Date
+        let endDateTime: Date
+        try {
+          ;({ startDateTime, endDateTime } = buildShiftDateTimes({
+            date,
+            startTime: item.startTime!,
+            endTime: item.endTime!,
+            shiftType: shiftType!,
+          }))
+        } catch (e) {
+          if (e instanceof ShiftTimeError) {
+            return { status: 'failure', userId, date, error: e.message }
+          }
+          throw e
         }
 
         const updated = await prisma.shift.update({

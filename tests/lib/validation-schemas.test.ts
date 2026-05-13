@@ -170,6 +170,17 @@ describe('validation schemas', () => {
       })
       expect(r.success).toBe(true)
     })
+
+    it('rejects a shift type with equal start and end defaults', () => {
+      const r = shiftTypeBodySchema.safeParse({
+        code: 'X',
+        label: 'Zero',
+        color: '#000000',
+        defaultStartTime: '08:00',
+        defaultEndTime: '08:00',
+      })
+      expect(r.success).toBe(false)
+    })
   })
 
   describe('bulkShiftSchema', () => {

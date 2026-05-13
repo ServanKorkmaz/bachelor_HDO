@@ -142,6 +142,17 @@ describe('POST /api/shifts', () => {
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
   })
 
+  it('returns 400 when startTime equals endTime (zero-length shift)', async () => {
+    mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })
+
+    const res = await POST(makePost({ ...validBody, startTime: '08:00', endTime: '08:00' }, 'admin-1'))
+
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/like/i)
+    expect(mockPrisma.shift.create).not.toHaveBeenCalled()
+  })
+
   it('returns 409 when the (userId, date) unique constraint is violated', async () => {
     const { Prisma } = await import('@prisma/client')
     mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })

@@ -174,15 +174,20 @@ export const teamDeleteSchema = z.object({
 
 // === Shift types ===
 
-export const shiftTypeBodySchema = z.object({
-  code: z.string().min(1).max(20),
-  label: z.string().min(1).max(100),
-  color: hexColor,
-  defaultStartTime: timeString,
-  defaultEndTime: timeString,
-  crossesMidnight: z.boolean().optional(),
-  currentUserId: id.optional(),
-})
+export const shiftTypeBodySchema = z
+  .object({
+    code: z.string().min(1).max(20),
+    label: z.string().min(1).max(100),
+    color: hexColor,
+    defaultStartTime: timeString,
+    defaultEndTime: timeString,
+    crossesMidnight: z.boolean().optional(),
+    currentUserId: id.optional(),
+  })
+  .refine((d) => d.defaultStartTime !== d.defaultEndTime, {
+    message: 'Standard start- og sluttid kan ikke være like',
+    path: ['defaultEndTime'],
+  })
 
 // === Notification settings (per team) ===
 

@@ -7,7 +7,7 @@ import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftUpdateSchema } from '@/lib/validation/schemas'
 import { applyRateLimit } from '@/lib/security/rateLimit'
 import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
-import { parse } from 'date-fns'
+import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
 
 /** Update a shift by id and notify the affected user. */
 export async function PUT(
@@ -41,11 +41,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Shift type not found' }, { status: 404 })
     }
 
-    const startDateTime = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-    let endDateTime = parse(`${date}T${endTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
-
-    if (shiftType.crossesMidnight || endDateTime <= startDateTime) {
-      endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000)
+    let startDateTime: Date
+    let endDateTime: Date
+    try {
+      ;({ startDateTime, endDateTime } = buildShiftDateTimes({ date, startTime, endTime, shiftType }))
+    } catch (e) {
+      if (e instanceof ShiftTimeError) {
+        return NextResponse.json({ error: e.message }, { status: 400 })
+      }
+      throw e
     }
 
     let shift
