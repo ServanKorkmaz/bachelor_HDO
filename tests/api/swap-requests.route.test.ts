@@ -87,6 +87,7 @@ describe('POST /api/swap-requests', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(EMPLOYEE_USER)
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'membership-1' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 

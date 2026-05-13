@@ -60,6 +60,10 @@ model User {
   name        String
   email       String       @unique
   role        UserRole     @default(EMPLOYEE)
+  // teamId is the user's "home" or primary team — kept for display labels and
+  // sensible defaults when creating new objects on the user's behalf. The
+  // authoritative source for "is this user currently allowed into team X?"
+  // is the TeamMembership table (where membership status is also tracked).
   teamId      String
   azureOid    String?      @unique
   status      ActiveStatus @default(active)

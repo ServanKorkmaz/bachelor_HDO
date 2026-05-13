@@ -48,6 +48,7 @@ describe('POST /api/notes/[id]/approve', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.note.findUnique.mockResolvedValue({ teamId: 'team-1' })
     mockPrisma.user.findUnique.mockResolvedValue(LEADER_USER)
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'membership-1' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 

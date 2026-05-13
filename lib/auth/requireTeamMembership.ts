@@ -5,9 +5,15 @@ import { getCurrentUserId } from './getCurrentUserId'
 export type TeamAuth = { userId: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE' }
 
 /**
- * Require the current user to have active membership in the given team.
- * Admins bypass the membership check (can read any team). Optionally also
- * restrict to a set of system roles (e.g. only ADMIN/LEADER may write).
+ * Require the current user to have an active TeamMembership in the given
+ * team. Admins bypass the membership check (can read any team). Optionally
+ * also restrict to a set of system roles (e.g. only ADMIN/LEADER may write).
+ *
+ * Note: authorization always goes through TeamMembership, never the cached
+ * `User.teamId` column. That column is the user's "home team" for display
+ * purposes; the source of truth for "is this user *currently* in team X?"
+ * is the TeamMembership table where membership status (active/inactive) is
+ * also tracked. See L2 in the security review for context.
  */
 export async function requireTeamMembership(
   request: Request,
@@ -21,7 +27,7 @@ export async function requireTeamMembership(
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, teamId: true },
+    select: { id: true, role: true },
   })
   if (!user) {
     return { error: NextResponse.json({ error: 'Not authorized' }, { status: 401 }) }
@@ -33,10 +39,6 @@ export async function requireTeamMembership(
 
   if (user.role === 'ADMIN') {
     return { userId: user.id, role: user.role }
-  }
-
-  if (user.teamId === teamId) {
-    return { userId: user.id, role: user.role as TeamAuth['role'] }
   }
 
   const membership = await prisma.teamMembership.findFirst({

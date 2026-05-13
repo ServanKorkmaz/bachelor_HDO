@@ -15,14 +15,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
 
+    // Source of truth for team membership is the TeamMembership table.
+    // User.teamId is kept only as a display-level "home team" reference.
     const users = await prisma.user.findMany({
       where: teamId
-        ? {
-            OR: [
-              { teamMemberships: { some: { teamId, status: 'active' } } },
-              { teamId }, // fallback: brukere med teamId før TeamMembership
-            ],
-          }
+        ? { teamMemberships: { some: { teamId, status: 'active' } } }
         : undefined,
       orderBy: { name: 'asc' },
       select: {
