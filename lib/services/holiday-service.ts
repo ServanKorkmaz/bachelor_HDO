@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/admin/audit'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { dateNDaysAgoString, todayStringInTimeZone } from '@/lib/date-utils'
+import { withEvents } from '@/lib/notifications/events'
 import { ServiceError } from './errors'
 
 export type HolidayType = 'HOLIDAY' | 'ABSENCE' | 'SICKNESS'
@@ -87,7 +88,7 @@ export async function createHoliday(input: CreateHolidayInput) {
   await assertNoOverlap(input)
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await withEvents(async (tx, emit) => {
       const hr = await tx.holidayRequest.create({
         data: {
           teamId: input.teamId,
@@ -101,15 +102,11 @@ export async function createHoliday(input: CreateHolidayInput) {
         include: { user: { select: { id: true, name: true } } },
       })
 
-      const typeNor = holidayTypeToNorwegian(input.type)
-      await tx.notification.create({
-        data: {
-          teamId: input.teamId,
-          userId: null,
-          type: 'HOLIDAY_REQUESTED',
-          title: 'Ny fraværsforespørsel',
-          message: `${hr.user.name} sendte inn en forespørsel om ${typeNor}`,
-        },
+      await emit({
+        type: 'HOLIDAY_REQUESTED',
+        teamId: input.teamId,
+        submitterName: hr.user.name,
+        holidayTypeNor: holidayTypeToNorwegian(input.type),
       })
 
       await createAuditLog(tx, {
@@ -156,7 +153,7 @@ export async function decideHoliday(
   actorUserId: string,
   action: 'APPROVE' | 'REJECT'
 ) {
-  return prisma.$transaction(async (tx) => {
+  return withEvents(async (tx, emit) => {
     const hr = await tx.holidayRequest.findUnique({ where: { id: holidayRequestId } })
     if (!hr) {
       throw new ServiceError('HOLIDAY_NOT_FOUND', 'Not found', 404)
@@ -170,16 +167,12 @@ export async function decideHoliday(
       include: { user: { select: { id: true, name: true } } },
     })
 
-    const typeNor = holidayTypeToNorwegian(res.type)
-    const statusNor = statusToNorwegian(newStatus)
-    await tx.notification.create({
-      data: {
-        teamId: res.teamId,
-        userId: res.userId,
-        type: 'HOLIDAY_DECIDED',
-        title: `Forespørsel ${statusNor}`,
-        message: `Din ${typeNor}-forespørsel ble ${statusNor.toLowerCase()}`,
-      },
+    await emit({
+      type: 'HOLIDAY_DECIDED',
+      teamId: res.teamId,
+      submitterUserId: res.userId,
+      holidayTypeNor: holidayTypeToNorwegian(res.type),
+      statusNor: statusToNorwegian(newStatus),
     })
 
     await createAuditLog(tx, {

@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
+import { withEvents } from '@/lib/notifications/events'
 import { ServiceError } from './errors'
 
 const swapInclude = {
@@ -55,7 +55,7 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
     throw new ServiceError('SHIFT_NOT_FOUND', 'Shift not found', 404)
   }
 
-  return prisma.$transaction(async (tx) => {
+  return withEvents(async (tx, emit) => {
     const sr = await tx.swapRequest.create({
       data: {
         teamId: input.teamId,
@@ -68,14 +68,11 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
       },
       include: swapInclude,
     })
-    await tx.notification.create({
-      data: {
-        teamId: input.teamId,
-        userId: input.toUserId,
-        type: 'SWAP_REQUESTED',
-        title: 'Vaktbytteforespørsel',
-        message: `${sr.requestedBy.name} ønsker å bytte vakt med deg`,
-      },
+    await emit({
+      type: 'SWAP_REQUEST_SENT',
+      teamId: input.teamId,
+      toUserId: input.toUserId,
+      requesterName: sr.requestedBy.name,
     })
     await createAuditLog(tx, {
       actorUserId: input.requestedByUserId,
@@ -107,28 +104,22 @@ export async function acceptSwap(swapRequestId: string, actorUserId: string) {
     throw new ServiceError('SWAP_FORBIDDEN', 'Ikke autorisert', 403)
   }
 
-  return prisma.$transaction(async (tx) => {
+  return withEvents(async (tx, emit) => {
     const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'PENDING' },
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.requestedByUserId,
-        type: 'SWAP_ACCEPTED_BY_COLLEAGUE',
-        title: 'Kollega godtok vaktbytte',
-        message: `${sr.toUser.name} godtok din vaktbytteforespørsel. Venter nå på leder.`,
-      },
+    await emit({
+      type: 'SWAP_ACCEPTED_BY_PARTNER',
+      teamId: sr.teamId,
+      requesterUserId: sr.requestedByUserId,
+      partnerName: sr.toUser.name,
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: null,
-        type: 'SWAP_REQUESTED',
-        title: 'Vaktbytte klar for godkjenning',
-        message: `${sr.requestedBy.name} og ${sr.toUser.name} er enige om vaktbytte`,
-      },
+    await emit({
+      type: 'SWAP_READY_FOR_LEADER',
+      teamId: sr.teamId,
+      requesterName: sr.requestedBy.name,
+      partnerName: sr.toUser.name,
     })
     return updated
   })
@@ -145,19 +136,16 @@ export async function declineSwap(swapRequestId: string, actorUserId: string) {
     throw new ServiceError('SWAP_FORBIDDEN', 'Ikke autorisert', 403)
   }
 
-  return prisma.$transaction(async (tx) => {
+  return withEvents(async (tx, emit) => {
     const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'REJECTED', decidedBy: actorUserId, decidedAt: new Date() },
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.requestedByUserId,
-        type: 'SWAP_REJECTED',
-        title: 'Vaktbytte avslått',
-        message: `${sr.toUser.name} avslo din vaktbytteforespørsel`,
-      },
+    await emit({
+      type: 'SWAP_DECLINED_BY_PARTNER',
+      teamId: sr.teamId,
+      requesterUserId: sr.requestedByUserId,
+      partnerName: sr.toUser.name,
     })
     return updated
   })
@@ -167,22 +155,15 @@ export async function declineSwap(swapRequestId: string, actorUserId: string) {
 export async function approveSwap(swapRequestId: string, actorUserId: string) {
   const sr = await loadSwap(swapRequestId, 'PENDING', 'Swap request is not pending')
 
-  const title = 'Vaktbytteforespørsel godkjent'
-  const message = 'Din forespørsel om vaktbytte er godkjent'
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const u = await tx.swapRequest.update({
+  return withEvents(async (tx, emit) => {
+    const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'APPROVED', decidedBy: actorUserId, decidedAt: new Date() },
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.requestedByUserId,
-        type: 'SWAP_APPROVED',
-        title,
-        message,
-      },
+    await emit({
+      type: 'SWAP_APPROVED_BY_LEADER',
+      teamId: sr.teamId,
+      requesterUserId: sr.requestedByUserId,
     })
     await createAuditLog(tx, {
       actorUserId,
@@ -199,40 +180,23 @@ export async function approveSwap(swapRequestId: string, actorUserId: string) {
         shiftDate: sr.shift.date,
       }),
     })
-    return u
+    return updated
   })
-
-  void deliverNotificationToChannels({
-    userId: sr.requestedByUserId,
-    teamId: sr.teamId,
-    type: 'SWAP_APPROVED',
-    title,
-    message,
-  })
-
-  return updated
 }
 
 /** Leader rejects a PENDING swap and notifies the requester. */
 export async function rejectSwap(swapRequestId: string, actorUserId: string) {
   const sr = await loadSwap(swapRequestId, 'PENDING', 'Swap request is not pending')
 
-  const title = 'Vaktbytteforespørsel avvist'
-  const message = 'Din forespørsel om vaktbytte er avvist'
-
-  const updated = await prisma.$transaction(async (tx) => {
-    const u = await tx.swapRequest.update({
+  return withEvents(async (tx, emit) => {
+    const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'REJECTED', decidedBy: actorUserId, decidedAt: new Date() },
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.requestedByUserId,
-        type: 'SWAP_REJECTED',
-        title,
-        message,
-      },
+    await emit({
+      type: 'SWAP_REJECTED_BY_LEADER',
+      teamId: sr.teamId,
+      requesterUserId: sr.requestedByUserId,
     })
     await createAuditLog(tx, {
       actorUserId,
@@ -249,18 +213,8 @@ export async function rejectSwap(swapRequestId: string, actorUserId: string) {
         shiftDate: sr.shift.date,
       }),
     })
-    return u
+    return updated
   })
-
-  void deliverNotificationToChannels({
-    userId: sr.requestedByUserId,
-    teamId: sr.teamId,
-    type: 'SWAP_REJECTED',
-    title,
-    message,
-  })
-
-  return updated
 }
 
 /**
@@ -274,36 +228,26 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     'Swap request must be approved before execution'
   )
 
-  const title = 'Vaktbytte utført'
-  const fromMessage = `Vaktbytte utført: ${sr.toUser.name} har overtatt vakten`
-  const toMessage = `Du har overtatt vakten fra ${sr.fromUser.name}`
-
-  const updated = await prisma.$transaction(async (tx) => {
+  return withEvents(async (tx, emit) => {
     await tx.shift.update({
       where: { id: sr.shiftId },
       data: { userId: sr.toUserId },
     })
-    const u = await tx.swapRequest.update({
+    const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'EXECUTED', decidedAt: new Date() },
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.fromUserId,
-        type: 'SWAP_EXECUTED',
-        title,
-        message: fromMessage,
-      },
+    await emit({
+      type: 'SWAP_EXECUTED_FROM',
+      teamId: sr.teamId,
+      fromUserId: sr.fromUserId,
+      toUserName: sr.toUser.name,
     })
-    await tx.notification.create({
-      data: {
-        teamId: sr.teamId,
-        userId: sr.toUserId,
-        type: 'SWAP_EXECUTED',
-        title,
-        message: toMessage,
-      },
+    await emit({
+      type: 'SWAP_EXECUTED_TO',
+      teamId: sr.teamId,
+      toUserId: sr.toUserId,
+      fromUserName: sr.fromUser.name,
     })
     await createAuditLog(tx, {
       actorUserId,
@@ -319,23 +263,6 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
         shiftDate: sr.shift.date,
       }),
     })
-    return u
+    return updated
   })
-
-  void deliverNotificationToChannels({
-    userId: sr.fromUserId,
-    teamId: sr.teamId,
-    type: 'SWAP_EXECUTED',
-    title,
-    message: fromMessage,
-  })
-  void deliverNotificationToChannels({
-    userId: sr.toUserId,
-    teamId: sr.teamId,
-    type: 'SWAP_EXECUTED',
-    title,
-    message: toMessage,
-  })
-
-  return updated
 }

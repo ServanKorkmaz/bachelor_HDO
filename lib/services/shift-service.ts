@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
+import { withEvents } from '@/lib/notifications/events'
 import { ServiceError } from './errors'
 
 const shiftInclude = {
@@ -84,26 +84,6 @@ function translateUniqueViolation(e: unknown): never {
   throw e
 }
 
-/** Persist a notification row and fan it out to the user's channels. */
-async function notify(params: {
-  teamId: string
-  userId: string
-  type: 'SHIFT_CREATED' | 'SHIFT_UPDATED' | 'SHIFT_DELETED'
-  title: string
-  message: string
-}) {
-  await prisma.notification.create({
-    data: {
-      teamId: params.teamId,
-      userId: params.userId,
-      type: params.type,
-      title: params.title,
-      message: params.message,
-    },
-  })
-  void deliverNotificationToChannels(params)
-}
-
 /** Create a shift, then notify the assigned user. */
 export async function createShift(input: CreateShiftInput): Promise<ShiftWithRelations> {
   const shiftType = await loadShiftType(input.shiftTypeId, input.shiftType)
@@ -114,33 +94,35 @@ export async function createShift(input: CreateShiftInput): Promise<ShiftWithRel
     shiftType,
   })
 
-  let shift: ShiftWithRelations
-  try {
-    shift = await prisma.shift.create({
-      data: {
-        teamId: input.teamId,
-        userId: input.userId,
-        date: input.date,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: input.shiftTypeId,
-        comment: input.comment || null,
-      },
-      include: shiftInclude,
+  return withEvents(async (tx, emit) => {
+    let shift: ShiftWithRelations
+    try {
+      shift = await tx.shift.create({
+        data: {
+          teamId: input.teamId,
+          userId: input.userId,
+          date: input.date,
+          startDateTime,
+          endDateTime,
+          shiftTypeId: input.shiftTypeId,
+          comment: input.comment || null,
+        },
+        include: shiftInclude,
+      })
+    } catch (e) {
+      translateUniqueViolation(e)
+    }
+
+    await emit({
+      type: 'SHIFT_CREATED',
+      teamId: shift.teamId,
+      assigneeUserId: shift.userId,
+      assigneeName: shift.user.name,
+      date: input.date,
     })
-  } catch (e) {
-    translateUniqueViolation(e)
-  }
 
-  await notify({
-    teamId: shift.teamId,
-    userId: shift.userId,
-    type: 'SHIFT_CREATED',
-    title: 'Vakt opprettet',
-    message: `Ny vakt opprettet for ${shift.user.name} på ${input.date}`,
+    return shift
   })
-
-  return shift
 }
 
 /**
@@ -160,33 +142,35 @@ export async function updateShift(
     shiftType,
   })
 
-  let shift: ShiftWithRelations
-  try {
-    shift = await prisma.shift.update({
-      where: { id: existing.id },
-      data: {
-        userId: input.userId,
-        date: input.date,
-        startDateTime,
-        endDateTime,
-        shiftTypeId: input.shiftTypeId,
-        comment: input.comment || null,
-      },
-      include: shiftInclude,
+  return withEvents(async (tx, emit) => {
+    let shift: ShiftWithRelations
+    try {
+      shift = await tx.shift.update({
+        where: { id: existing.id },
+        data: {
+          userId: input.userId,
+          date: input.date,
+          startDateTime,
+          endDateTime,
+          shiftTypeId: input.shiftTypeId,
+          comment: input.comment || null,
+        },
+        include: shiftInclude,
+      })
+    } catch (e) {
+      translateUniqueViolation(e)
+    }
+
+    await emit({
+      type: 'SHIFT_UPDATED',
+      teamId: existing.teamId,
+      assigneeUserId: existing.userId,
+      assigneeName: shift.user.name,
+      date: input.date,
     })
-  } catch (e) {
-    translateUniqueViolation(e)
-  }
 
-  await notify({
-    teamId: existing.teamId,
-    userId: existing.userId,
-    type: 'SHIFT_UPDATED',
-    title: 'Vakt oppdatert',
-    message: `Vakt oppdatert for ${shift.user.name} på ${input.date}`,
+    return shift
   })
-
-  return shift
 }
 
 /** Delete an already-loaded shift and notify the previous assignee. */
@@ -197,13 +181,14 @@ export async function deleteShift(existing: {
   date: string
   user: { name: string }
 }): Promise<void> {
-  await prisma.shift.delete({ where: { id: existing.id } })
-
-  await notify({
-    teamId: existing.teamId,
-    userId: existing.userId,
-    type: 'SHIFT_DELETED',
-    title: 'Vakt slettet',
-    message: `Vakt slettet for ${existing.user.name} på ${existing.date}`,
+  await withEvents(async (tx, emit) => {
+    await tx.shift.delete({ where: { id: existing.id } })
+    await emit({
+      type: 'SHIFT_DELETED',
+      teamId: existing.teamId,
+      assigneeUserId: existing.userId,
+      assigneeName: existing.user.name,
+      date: existing.date,
+    })
   })
 }

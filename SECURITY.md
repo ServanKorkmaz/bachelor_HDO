@@ -179,6 +179,25 @@ decisions, holiday decisions) are recorded in the `AuditLog` table via
 `createAuditLog` inside the same Prisma transaction as the underlying
 mutation, so audit entries cannot disappear if the mutation succeeds.
 
+## Notification events
+
+`lib/notifications/events.ts` defines a `DomainEvent` discriminated union
+covering every notification the system produces (shift lifecycle, swap
+workflow, holiday decisions, note decisions). Services emit events through a
+typed `withEvents((tx, emit) => …)` helper that:
+
+1. Runs the domain operation inside a Prisma transaction.
+2. Persists each emitted notification's row **inside that same transaction**,
+   so a notification cannot survive a write that ultimately rolled back, and
+   a write cannot produce orphan state if the notification insert fails.
+3. Fans out to email/SMS channels **after the transaction commits**, so
+   external recipients never hear about a write that didn't happen.
+
+Title/message text for every event lives in one `render()` switch — sensor
+and future developers see "this is what the system communicates" in one
+place. Adding a new notification = one variant in the union + one `case` in
+`render()` + one `emit()` call from a service.
+
 ## Calendar dates as strings
 
 `Shift.date`, `Note.dateFrom/dateTo`, and `HolidayRequest.dateFrom/dateTo`

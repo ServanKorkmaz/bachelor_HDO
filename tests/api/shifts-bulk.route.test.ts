@@ -26,6 +26,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     notification: {
       create: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -63,6 +64,8 @@ function makeRequest(body: unknown, userId?: string): Request {
 describe('POST /api/shifts/bulk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
 
     // Default mock behavior: authorized admin and no pre-existing shifts.
     mockPrisma.user.findUnique.mockResolvedValue({

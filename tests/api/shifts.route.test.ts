@@ -7,6 +7,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     shiftType:      { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
     notification:   { create: vi.fn() },
+    $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -79,6 +80,7 @@ describe('GET /api/shifts', () => {
 describe('POST /api/shifts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
