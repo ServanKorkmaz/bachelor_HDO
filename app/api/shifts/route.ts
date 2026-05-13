@@ -79,6 +79,10 @@ export async function POST(request: Request) {
       finalTeamId = user.teamId
     }
 
+    // Only ADMIN/LEADER of the target team may create shifts
+    const auth = await requireTeamMembership(request, finalTeamId, ['ADMIN', 'LEADER'])
+    if ('error' in auth) return auth.error
+
     // Get shift type to check if it crosses midnight
     const shiftType = await prisma.shiftType.findUnique({
       where: { id: shiftTypeId },

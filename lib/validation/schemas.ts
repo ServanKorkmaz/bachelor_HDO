@@ -84,7 +84,6 @@ export const bulkShiftSchema = z.object({
 
 export const noteCreateSchema = z.object({
   teamId: id,
-  createdByUserId: id,
   type: z.string().min(1),
   body: z.string().min(1).max(5000),
   dateFrom: dateString,
@@ -126,7 +125,6 @@ export const holidayPutSchema = z.object({
 
 export const swapCreateSchema = z.object({
   teamId: id,
-  requestedByUserId: id,
   shiftId: id,
   toUserId: id,
   message: z.string().max(2000).optional().nullable(),

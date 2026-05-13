@@ -28,13 +28,18 @@ function makeGet(params: Record<string, string> = {}, userId?: string): Request 
 }
 
 /** Builds a JSON POST request for the shifts endpoint. */
-function makePost(body: unknown): Request {
+function makePost(body: unknown, userId?: string): Request {
   return new Request('http://localhost/api/shifts', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(userId ? { 'x-current-user-id': userId } : {}),
+    },
     body: JSON.stringify(body),
   })
 }
+
+const ADMIN_USER = { id: 'admin-1', role: 'ADMIN', teamId: 'team-1' }
 
 /** Tests for GET /api/shifts. */
 describe('GET /api/shifts', () => {
@@ -74,11 +79,21 @@ describe('POST /api/shifts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
+  const validBody = {
+    teamId: 'team-1',
+    userId: 'user-1',
+    date: '2026-04-28',
+    shiftTypeId: 'type-1',
+    startTime: '08:00',
+    endTime: '16:00',
+  }
+
   it('returns 400 when required fields are missing', async () => {
-    const res = await POST(makePost({ teamId: 'team-1' }))
+    const res = await POST(makePost({ teamId: 'team-1' }, 'admin-1'))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toBe('Ugyldig data')
@@ -89,17 +104,21 @@ describe('POST /api/shifts', () => {
     })
   })
 
+  it('returns 401 when caller is not authenticated', async () => {
+    const res = await POST(makePost(validBody))
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when caller is an employee (not ADMIN/LEADER)', async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'emp-1', role: 'EMPLOYEE', teamId: 'team-1' })
+    const res = await POST(makePost(validBody, 'emp-1'))
+    expect(res.status).toBe(403)
+  })
+
   it('returns 404 when shift type does not exist', async () => {
     mockPrisma.shiftType.findUnique.mockResolvedValue(null)
 
-    const res = await POST(makePost({
-      teamId: 'team-1',
-      userId: 'user-1',
-      date: '2026-04-28',
-      shiftTypeId: 'type-x',
-      startTime: '08:00',
-      endTime: '16:00',
-    }))
+    const res = await POST(makePost({ ...validBody, shiftTypeId: 'type-x' }, 'admin-1'))
 
     expect(res.status).toBe(404)
     await expect(res.json()).resolves.toEqual({ error: 'Shift type not found' })
@@ -116,14 +135,7 @@ describe('POST /api/shifts', () => {
       shiftType: { id: 'type-1' },
     })
 
-    const res = await POST(makePost({
-      teamId: 'team-1',
-      userId: 'user-1',
-      date: '2026-04-28',
-      shiftTypeId: 'type-1',
-      startTime: '08:00',
-      endTime: '16:00',
-    }))
+    const res = await POST(makePost(validBody, 'admin-1'))
 
     expect(res.status).toBe(200)
     expect(mockPrisma.shift.create).toHaveBeenCalledTimes(1)
@@ -140,14 +152,7 @@ describe('POST /api/shifts', () => {
       })
     )
 
-    const res = await POST(makePost({
-      teamId: 'team-1',
-      userId: 'user-1',
-      date: '2026-04-28',
-      shiftTypeId: 'type-1',
-      startTime: '08:00',
-      endTime: '16:00',
-    }))
+    const res = await POST(makePost(validBody, 'admin-1'))
 
     expect(res.status).toBe(409)
     const body = await res.json()

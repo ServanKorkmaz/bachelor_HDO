@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
   mockPrisma: {
-    note:         { update: vi.fn() },
-    notification: { create: vi.fn() },
+    note:           { findUnique: vi.fn(), update: vi.fn() },
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
+    notification:   { create: vi.fn() },
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -16,13 +18,18 @@ vi.mock('@/lib/notifications/deliver', () => ({
 import { POST } from '@/app/api/notes/[id]/approve/route'
 
 /** Builds a JSON POST request for the note approve endpoint. */
-function makeRequest(body: unknown): Request {
+function makeRequest(body: unknown, userId = 'leader-1'): Request {
   return new Request('http://localhost/api/notes/note-1/approve', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'x-current-user-id': userId,
+    },
     body: JSON.stringify(body),
   })
 }
+
+const LEADER_USER = { id: 'leader-1', role: 'LEADER', teamId: 'team-1' }
 
 const baseNote = {
   id: 'note-1',
@@ -39,7 +46,25 @@ describe('POST /api/notes/[id]/approve', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.note.findUnique.mockResolvedValue({ teamId: 'team-1' })
+    mockPrisma.user.findUnique.mockResolvedValue(LEADER_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
+  })
+
+  it('returns 401 when caller is not authenticated', async () => {
+    const req = new Request('http://localhost/api/notes/note-1/approve', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'APPROVED' }),
+    })
+    const res = await POST(req, { params: { id: 'note-1' } })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when caller is an employee (not ADMIN/LEADER)', async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'emp-1', role: 'EMPLOYEE', teamId: 'team-1' })
+    const res = await POST(makeRequest({ status: 'APPROVED' }, 'emp-1'), { params: { id: 'note-1' } })
+    expect(res.status).toBe(403)
   })
 
   it('returns 400 for invalid status', async () => {

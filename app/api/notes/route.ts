@@ -58,7 +58,12 @@ export async function POST(request: Request) {
   try {
     const parsed = await parseJsonBody(request, noteCreateSchema)
     if ('error' in parsed) return parsed.error
-    const { teamId, createdByUserId, type, status, title, body: noteBody, dateFrom, dateTo } = parsed.data
+    const { teamId, type, status, title, body: noteBody, dateFrom, dateTo } = parsed.data
+
+    const auth = await requireTeamMembership(request, teamId)
+    if ('error' in auth) return auth.error
+    // createdByUserId always comes from the authenticated caller — never trust the body
+    const createdByUserId = auth.userId
 
     const note = await prisma.note.create({
       data: {

@@ -6,7 +6,7 @@ export type UserRole = 'ADMIN' | 'LEADER' | 'EMPLOYEE'
 export interface MockUser {
   id: string
   name: string
-  email: string
+  email?: string
   role: UserRole
   teamId: string
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftUpdateSchema } from '@/lib/validation/schemas'
 import { parse } from 'date-fns'
@@ -23,6 +24,9 @@ export async function PUT(
     if (!existingShift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
+
+    const auth = await requireTeamMembership(request, existingShift.teamId, ['ADMIN', 'LEADER'])
+    if ('error' in auth) return auth.error
 
     const shiftType = await prisma.shiftType.findUnique({
       where: { id: shiftTypeId },
@@ -112,6 +116,9 @@ export async function DELETE(
     if (!shift) {
       return NextResponse.json({ error: 'Shift not found' }, { status: 404 })
     }
+
+    const auth = await requireTeamMembership(request, shift.teamId, ['ADMIN', 'LEADER'])
+    if ('error' in auth) return auth.error
 
     await prisma.shift.delete({
       where: { id: params.id },

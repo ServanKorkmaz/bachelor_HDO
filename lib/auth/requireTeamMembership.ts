@@ -6,12 +6,13 @@ export type TeamAuth = { userId: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE' }
 
 /**
  * Require the current user to have active membership in the given team.
- * Admins bypass the membership check (can read any team).
- * Returns a NextResponse on failure, or the authenticated user on success.
+ * Admins bypass the membership check (can read any team). Optionally also
+ * restrict to a set of system roles (e.g. only ADMIN/LEADER may write).
  */
 export async function requireTeamMembership(
   request: Request,
-  teamId: string
+  teamId: string,
+  allowedRoles?: TeamAuth['role'][]
 ): Promise<{ error: NextResponse } | TeamAuth> {
   const userId = await getCurrentUserId(request)
   if (!userId) {
@@ -24,6 +25,10 @@ export async function requireTeamMembership(
   })
   if (!user) {
     return { error: NextResponse.json({ error: 'Not authorized' }, { status: 401 }) }
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role as TeamAuth['role'])) {
+    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
 
   if (user.role === 'ADMIN') {

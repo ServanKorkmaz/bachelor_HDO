@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
+import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { noteApproveSchema } from '@/lib/validation/schemas'
 
@@ -14,6 +15,18 @@ export async function POST(
     const parsed = await parseJsonBody(request, noteApproveSchema)
     if ('error' in parsed) return parsed.error
     const { status } = parsed.data
+
+    const existing = await prisma.note.findUnique({
+      where: { id: params.id },
+      select: { teamId: true },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 })
+    }
+
+    // Only ADMIN/LEADER of the note's team may approve/reject
+    const auth = await requireTeamMembership(request, existing.teamId, ['ADMIN', 'LEADER'])
+    if ('error' in auth) return auth.error
 
     const note = await prisma.note.update({
       where: { id: params.id },

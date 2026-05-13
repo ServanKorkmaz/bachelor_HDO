@@ -7,8 +7,10 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
-    shiftType:    { findUnique: vi.fn() },
-    notification: { create: vi.fn() },
+    shiftType:      { findUnique: vi.fn() },
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
+    notification:   { create: vi.fn() },
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -21,18 +23,26 @@ vi.mock('@/lib/notifications/deliver', () => ({
 import { PUT, DELETE } from '@/app/api/shifts/[id]/route'
 
 /** Builds a JSON PUT request for a shift. */
-function makePut(body: unknown): Request {
+function makePut(body: unknown, userId = 'admin-1'): Request {
   return new Request('http://localhost/api/shifts/shift-1', {
     method: 'PUT',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'x-current-user-id': userId,
+    },
     body: JSON.stringify(body),
   })
 }
 
 /** Builds a DELETE request for a shift. */
-function makeDelete(): Request {
-  return new Request('http://localhost/api/shifts/shift-1', { method: 'DELETE' })
+function makeDelete(userId = 'admin-1'): Request {
+  return new Request('http://localhost/api/shifts/shift-1', {
+    method: 'DELETE',
+    headers: { 'x-current-user-id': userId },
+  })
 }
+
+const ADMIN_USER = { id: 'admin-1', role: 'ADMIN', teamId: 'team-1' }
 
 const baseShift = {
   id: 'shift-1',
@@ -55,7 +65,26 @@ describe('PUT /api/shifts/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
+  })
+
+  it('returns 401 when caller is not authenticated', async () => {
+    mockPrisma.shift.findUnique.mockResolvedValue(baseShift)
+    const req = new Request('http://localhost/api/shifts/shift-1', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(validPutBody),
+    })
+    const res = await PUT(req, { params: { id: 'shift-1' } })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when caller is an employee', async () => {
+    mockPrisma.shift.findUnique.mockResolvedValue(baseShift)
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'emp-1', role: 'EMPLOYEE', teamId: 'team-1' })
+    const res = await PUT(makePut(validPutBody, 'emp-1'), { params: { id: 'shift-1' } })
+    expect(res.status).toBe(403)
   })
 
   it('returns 404 when shift does not exist', async () => {
@@ -95,7 +124,15 @@ describe('DELETE /api/shifts/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.notification.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
+  })
+
+  it('returns 401 when caller is not authenticated', async () => {
+    mockPrisma.shift.findUnique.mockResolvedValue(baseShift)
+    const req = new Request('http://localhost/api/shifts/shift-1', { method: 'DELETE' })
+    const res = await DELETE(req, { params: { id: 'shift-1' } })
+    expect(res.status).toBe(401)
   })
 
   it('returns 404 when shift does not exist', async () => {

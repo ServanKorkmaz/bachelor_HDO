@@ -38,13 +38,18 @@ function makeGet(params: Record<string, string> = {}, userId?: string): Request 
 }
 
 /** Builds a JSON POST request for the swap-requests endpoint. */
-function makePost(body: unknown): Request {
+function makePost(body: unknown, userId?: string): Request {
   return new Request('http://localhost/api/swap-requests', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(userId ? { 'x-current-user-id': userId } : {}),
+    },
     body: JSON.stringify(body),
   })
 }
+
+const EMPLOYEE_USER = { id: 'user-1', role: 'EMPLOYEE', teamId: 'team-1' }
 
 /** Tests for GET and POST /api/swap-requests. */
 describe('GET /api/swap-requests', () => {
@@ -81,37 +86,62 @@ describe('POST /api/swap-requests', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue(EMPLOYEE_USER)
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
+  const validBody = {
+    teamId: 'team-1',
+    shiftId: 'shift-1',
+    toUserId: 'user-2',
+  }
+
   it('returns 400 when required fields are missing', async () => {
-    const res = await POST(makePost({ teamId: 'team-1' }))
+    const res = await POST(makePost({ teamId: 'team-1' }, 'user-1'))
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toBe('Ugyldig data')
     expect(body.details.fieldErrors).toMatchObject({
-      requestedByUserId: expect.any(Array),
       shiftId: expect.any(Array),
       toUserId: expect.any(Array),
     })
   })
 
+  it('still requires shiftId even if requestedByUserId is provided', async () => {
+    const res = await POST(makePost({ teamId: 'team-1', requestedByUserId: 'spoofed' }, 'user-1'))
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 401 when caller is not authenticated', async () => {
+    const res = await POST(makePost(validBody))
+    expect(res.status).toBe(401)
+  })
+
+  it('forces requestedByUserId to the authenticated caller, ignoring the body value', async () => {
+    mockPrisma.shift.findUnique.mockResolvedValue({ id: 'shift-1', userId: 'user-3' })
+    mockPrisma.swapRequest.create.mockResolvedValue({
+      id: 'sr-1', requestedBy: { id: 'user-1', name: 'Alice' },
+      fromUser: { id: 'user-3', name: '' }, toUser: { id: 'user-2', name: '' },
+      shift: { id: 'shift-1', date: '2026-04-28', shiftType: {} },
+    })
+
+    await POST(makePost({ ...validBody, requestedByUserId: 'spoofed-victim' }, 'user-1'))
+
+    expect(mockPrisma.swapRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requestedByUserId: 'user-1' }),
+      })
+    )
+  })
+
   it('returns 404 when shift does not exist', async () => {
     mockPrisma.shift.findUnique.mockResolvedValue(null)
-
-    const res = await POST(makePost({
-      teamId: 'team-1',
-      requestedByUserId: 'user-1',
-      shiftId: 'shift-x',
-      toUserId: 'user-2',
-    }))
-
+    const res = await POST(makePost(validBody, 'user-1'))
     expect(res.status).toBe(404)
     await expect(res.json()).resolves.toEqual({ error: 'Shift not found' })
   })
 
   it('creates swap request and notifies recipient', async () => {
-    // Shift belongs to user-1; user-1 requests swap with user-2.
     mockPrisma.shift.findUnique.mockResolvedValue({ id: 'shift-1', userId: 'user-1' })
     const fakeSwapRequest = {
       id: 'sr-1',
@@ -122,13 +152,7 @@ describe('POST /api/swap-requests', () => {
     }
     mockPrisma.swapRequest.create.mockResolvedValue(fakeSwapRequest)
 
-    const res = await POST(makePost({
-      teamId: 'team-1',
-      requestedByUserId: 'user-1',
-      shiftId: 'shift-1',
-      toUserId: 'user-2',
-      message: 'Kan du ta vakten?',
-    }))
+    const res = await POST(makePost({ ...validBody, message: 'Kan du ta vakten?' }, 'user-1'))
 
     expect(res.status).toBe(200)
     expect(mockPrisma.swapRequest.create).toHaveBeenCalledTimes(1)

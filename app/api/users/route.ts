@@ -3,7 +3,13 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-/** List users. Optional teamId: only users with active TeamMembership in that team. */
+/**
+ * List users. Returns only non-sensitive fields (id, name, role, teamId) so the
+ * mock-auth RoleSwitcher can bootstrap on first load without exposing emails,
+ * Azure OIDs, login timestamps or other PII. In production this endpoint would
+ * be replaced by the Azure AD / Entra ID directory and gated by authentication.
+ * Optional teamId: only users with active TeamMembership in that team.
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -19,6 +25,12 @@ export async function GET(request: NextRequest) {
           }
         : undefined,
       orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        teamId: true,
+      },
     })
 
     return NextResponse.json(users)

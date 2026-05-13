@@ -55,7 +55,6 @@ describe('validation schemas', () => {
     it('rejects empty body and missing dates', () => {
       const r = noteCreateSchema.safeParse({
         teamId: 't1',
-        createdByUserId: 'u1',
         type: 'INFO',
         body: '',
       })
@@ -70,12 +69,11 @@ describe('validation schemas', () => {
   })
 
   describe('swapCreateSchema', () => {
-    it('requires all four ids', () => {
+    it('requires shift, target user and team', () => {
       const r = swapCreateSchema.safeParse({ teamId: 't1' })
       expect(r.success).toBe(false)
       if (!r.success) {
         const fields = r.error.flatten().fieldErrors
-        expect(fields.requestedByUserId).toBeDefined()
         expect(fields.shiftId).toBeDefined()
         expect(fields.toUserId).toBeDefined()
       }

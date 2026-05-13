@@ -62,7 +62,12 @@ export async function POST(request: Request) {
   try {
     const parsed = await parseJsonBody(request, swapCreateSchema)
     if ('error' in parsed) return parsed.error
-    const { teamId, requestedByUserId, shiftId, toUserId, message } = parsed.data
+    const { teamId, shiftId, toUserId, message } = parsed.data
+
+    const auth = await requireTeamMembership(request, teamId)
+    if ('error' in auth) return auth.error
+    // requestedByUserId always comes from the authenticated caller — never trust the body
+    const requestedByUserId = auth.userId
 
     // Get the shift to find the fromUserId
     const shift = await prisma.shift.findUnique({
