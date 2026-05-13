@@ -26,6 +26,12 @@ export async function GET(request: Request) {
 
     const where: any = { teamId }
 
+    // Employees can read ALL and TEAM notes, but never LEADERS-only ones.
+    // ADMIN/LEADER see everything.
+    if (auth.role === 'EMPLOYEE') {
+      where.visibility = { not: 'LEADERS' }
+    }
+
     if (dateFrom && dateTo) {
       where.OR = [
         {
@@ -63,12 +69,17 @@ export async function POST(request: Request) {
 
     const parsed = await parseJsonBody(request, noteCreateSchema)
     if ('error' in parsed) return parsed.error
-    const { teamId, type, status, title, body: noteBody, dateFrom, dateTo } = parsed.data
+    const { teamId, type, status, title, body: noteBody, dateFrom, dateTo, visibility } = parsed.data
 
     const auth = await requireTeamMembership(request, teamId)
     if ('error' in auth) return auth.error
     // createdByUserId always comes from the authenticated caller — never trust the body
     const createdByUserId = auth.userId
+
+    // Only ADMIN/LEADER may post LEADERS-only notes. Silently downgrade if an
+    // EMPLOYEE somehow asks for it.
+    const effectiveVisibility =
+      visibility === 'LEADERS' && auth.role === 'EMPLOYEE' ? 'ALL' : (visibility ?? 'ALL')
 
     const note = await prisma.note.create({
       data: {
@@ -80,7 +91,7 @@ export async function POST(request: Request) {
         body: noteBody,
         dateFrom,
         dateTo,
-        visibility: 'ALL',
+        visibility: effectiveVisibility,
       },
       include: {
         createdBy: {

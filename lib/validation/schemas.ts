@@ -31,6 +31,8 @@ const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Ugyldig farge (#RRGGBB)'
 const HOLIDAY_TYPES = ['HOLIDAY', 'ABSENCE', 'SICKNESS'] as const
 const REQUEST_STATUSES = ['AWAITING_ACCEPTANCE', 'PENDING', 'APPROVED', 'REJECTED', 'EXECUTED'] as const
 const NOTE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const
+const NOTE_TYPES = ['GENERAL', 'INFO', 'ABSENCE', 'HOLIDAY', 'SICKNESS'] as const
+const NOTE_VISIBILITIES = ['ALL', 'LEADERS', 'TEAM'] as const
 const USER_ROLES = ['ADMIN', 'LEADER', 'EMPLOYEE'] as const
 const MEMBERSHIP_ROLES = ['LEADER', 'EMPLOYEE'] as const
 const ACTIVE_STATUSES = ['active', 'inactive'] as const
@@ -107,11 +109,12 @@ export const bulkShiftSchema = z.object({
 
 export const noteCreateSchema = z.object({
   teamId: id,
-  type: z.string().min(1),
+  type: z.enum(NOTE_TYPES),
   body: z.string().min(1).max(5000),
   dateFrom: dateString,
   dateTo: dateString,
   status: z.enum(NOTE_STATUSES).optional(),
+  visibility: z.enum(NOTE_VISIBILITIES).optional(),
   title: z.string().max(200).optional().nullable(),
 })
 

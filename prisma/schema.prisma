@@ -37,6 +37,14 @@ enum NoteVisibility {
   TEAM
 }
 
+enum NoteType {
+  GENERAL
+  INFO
+  ABSENCE
+  HOLIDAY
+  SICKNESS
+}
+
 model Team {
   id        String   @id @default(cuid())
   name      String
@@ -134,7 +142,7 @@ model Note {
   id              String         @id @default(cuid())
   teamId          String
   createdByUserId String
-  type            String
+  type            NoteType
   status          RequestStatus  @default(PENDING)
   title           String?
   body            String

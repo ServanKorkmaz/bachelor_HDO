@@ -64,6 +64,30 @@ describe('GET /api/notes', () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual(fakeNotes)
   })
+
+  it('hides LEADERS-only notes from an EMPLOYEE caller', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'emp-1', role: 'EMPLOYEE', teamId: 'team-1' })
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'm-1' })
+    mockPrisma.note.findMany.mockResolvedValue([])
+
+    await GET(makeGet({ teamId: 'team-1' }, 'emp-1'))
+
+    expect(mockPrisma.note.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ visibility: { not: 'LEADERS' } }),
+      })
+    )
+  })
+
+  it('does not filter visibility for an ADMIN caller', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN', teamId: 'team-1' })
+    mockPrisma.note.findMany.mockResolvedValue([])
+
+    await GET(makeGet({ teamId: 'team-1' }, 'admin-1'))
+
+    const callArgs = mockPrisma.note.findMany.mock.calls[0][0]
+    expect(callArgs.where).not.toHaveProperty('visibility')
+  })
 })
 
 /** Tests for POST /api/notes. */
@@ -116,6 +140,59 @@ describe('POST /api/notes', () => {
     expect(mockPrisma.note.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ createdByUserId: 'admin-1' }),
+      })
+    )
+  })
+
+  it('rejects an unknown note type', async () => {
+    const res = await POST(makePost({
+      teamId: 'team-1',
+      type: 'BOGUS_TYPE',
+      body: 'x',
+      dateFrom: '2027-01-01',
+      dateTo: '2027-01-07',
+    }, 'admin-1'))
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.details.fieldErrors).toMatchObject({ type: expect.any(Array) })
+  })
+
+  it('silently downgrades a LEADERS request from an EMPLOYEE to ALL', async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ id: 'emp-1', role: 'EMPLOYEE', teamId: 'team-1' })
+    mockPrisma.teamMembership.findFirst.mockResolvedValueOnce({ id: 'm-1' })
+    mockPrisma.note.create.mockResolvedValue({ id: 'n-1', createdBy: { id: 'emp-1', name: 'E' } })
+
+    await POST(makePost({
+      teamId: 'team-1',
+      type: 'GENERAL',
+      body: 'x',
+      dateFrom: '2027-01-01',
+      dateTo: '2027-01-07',
+      visibility: 'LEADERS',
+    }, 'emp-1'))
+
+    expect(mockPrisma.note.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ visibility: 'ALL' }),
+      })
+    )
+  })
+
+  it('honours a LEADERS visibility request from an ADMIN', async () => {
+    mockPrisma.note.create.mockResolvedValue({ id: 'n-2', createdBy: { id: 'admin-1', name: 'A' } })
+
+    await POST(makePost({
+      teamId: 'team-1',
+      type: 'GENERAL',
+      body: 'x',
+      dateFrom: '2027-01-01',
+      dateTo: '2027-01-07',
+      visibility: 'LEADERS',
+    }, 'admin-1'))
+
+    expect(mockPrisma.note.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ visibility: 'LEADERS' }),
       })
     )
   })
