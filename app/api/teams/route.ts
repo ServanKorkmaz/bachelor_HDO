@@ -1,31 +1,32 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { teamCreateSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
-/** List all teams. */
-export async function GET() {
+/** List teams. ADMIN sees every team; anyone else sees only teams they belong to. */
+export const GET = withAuth(async (_request, ctx) => {
   try {
-    const teams = await prisma.team.findMany({
-      orderBy: { name: 'asc' },
-    })
+    const teams = ctx.role === 'ADMIN'
+      ? await prisma.team.findMany({ orderBy: { name: 'asc' } })
+      : await prisma.team.findMany({
+          where: {
+            memberships: { some: { userId: ctx.userId, status: 'active' } },
+          },
+          orderBy: { name: 'asc' },
+        })
 
     return NextResponse.json(teams)
   } catch (error) {
     console.error('Error fetching teams:', error)
     return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 })
   }
-}
+})
 
 /** Create a team and default notification settings. Admin only. */
-export async function POST(request: Request) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+export const POST = withAdmin(async (request) => {
   try {
     const parsed = await parseJsonBody(request, teamCreateSchema)
     if ('error' in parsed) return parsed.error
@@ -35,7 +36,6 @@ export async function POST(request: Request) {
       data: { name },
     })
 
-    // Create default notification settings
     await prisma.notificationSettings.create({
       data: {
         teamId: team.id,
@@ -49,5 +49,4 @@ export async function POST(request: Request) {
     console.error('Error creating team:', error)
     return NextResponse.json({ error: 'Failed to create team' }, { status: 500 })
   }
-}
-
+})

@@ -74,8 +74,21 @@ describe('POST /api/shifts/bulk', () => {
     mockPrisma.shiftType.findMany.mockResolvedValue([])
     mockPrisma.shift.findUnique.mockResolvedValue(null)
     mockPrisma.shift.findFirst.mockResolvedValue(null)
-    mockPrisma.shift.create.mockResolvedValue({ id: 'shift-1' })
-    mockPrisma.shift.update.mockResolvedValue({ id: 'shift-1' })
+    // Bulk now delegates to shift-service.createShift, which calls
+    // prisma.shift.create with `include: { shiftType, user }`. The mock must
+    // return that shape so the service can build its notification message.
+    mockPrisma.shift.create.mockResolvedValue({
+      id: 'shift-1',
+      teamId: 'team-1',
+      userId: 'user-1',
+      user: { id: 'user-1', name: 'Test User' },
+    })
+    mockPrisma.shift.update.mockResolvedValue({
+      id: 'shift-1',
+      teamId: 'team-1',
+      userId: 'user-1',
+      user: { id: 'user-1', name: 'Test User' },
+    })
     mockPrisma.shift.delete.mockResolvedValue({})
     mockPrisma.notification.create.mockResolvedValue({})
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)

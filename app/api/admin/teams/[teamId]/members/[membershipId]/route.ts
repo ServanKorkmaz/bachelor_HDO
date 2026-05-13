@@ -1,22 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchMembershipSchema } from '@/lib/admin/schemas'
 
 /** PATCH /api/admin/teams/:teamId/members/:membershipId - Update role/status. Admin only. */
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string; membershipId: string }> }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-  const actorId = authResult.currentUser!.id
-
+export const PATCH = withAdmin<{ teamId: string; membershipId: string }>(async (request, ctx) => {
   try {
-    const { teamId, membershipId } = await params
+    const { teamId, membershipId } = ctx.params
     const body = await request.json().catch(() => ({}))
     const parsed = patchMembershipSchema.safeParse(body)
     if (!parsed.success) {
@@ -56,7 +48,7 @@ export async function PATCH(
         include: { team: { select: { id: true, name: true } } },
       })
       await createAuditLog(tx, {
-        actorUserId: actorId,
+        actorUserId: ctx.userId,
         action: AUDIT_ACTION.MEMBERSHIP_UPDATED,
         entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: membershipId,
@@ -73,20 +65,12 @@ export async function PATCH(
       { status: 500 }
     )
   }
-}
+})
 
 /** DELETE /api/admin/teams/:teamId/members/:membershipId - Soft remove (set status inactive). Admin only. */
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string; membershipId: string }> }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-  const actorId = authResult.currentUser!.id
-
+export const DELETE = withAdmin<{ teamId: string; membershipId: string }>(async (_request, ctx) => {
   try {
-    const { teamId, membershipId } = await params
+    const { teamId, membershipId } = ctx.params
 
     const existing = await prisma.teamMembership.findFirst({
       where: { id: membershipId, teamId },
@@ -108,7 +92,7 @@ export async function DELETE(
         include: { team: { select: { id: true, name: true } } },
       })
       await createAuditLog(tx, {
-        actorUserId: actorId,
+        actorUserId: ctx.userId,
         action: AUDIT_ACTION.MEMBER_REMOVED,
         entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: membershipId,
@@ -125,5 +109,4 @@ export async function DELETE(
       { status: 500 }
     )
   }
-}
-
+})

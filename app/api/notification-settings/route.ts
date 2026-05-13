@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { assertTeamMember, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { notificationSettingsSchema } from '@/lib/validation/schemas'
 
 export const dynamic = 'force-dynamic'
 
-/** Get notification settings for a team, creating defaults if missing. */
-export async function GET(request: Request) {
+/** Get notification settings for a team. Members may read; defaults are created lazily. */
+export const GET = withAuth(async (request, ctx) => {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
@@ -15,12 +16,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
     }
 
+    const forbidden = await assertTeamMember(ctx, teamId)
+    if (forbidden) return forbidden
+
     let settings = await prisma.notificationSettings.findUnique({
       where: { teamId },
     })
 
     if (!settings) {
-      // Create default settings if they don't exist
       settings = await prisma.notificationSettings.create({
         data: {
           teamId,
@@ -35,14 +38,17 @@ export async function GET(request: Request) {
     console.error('Error fetching notification settings:', error)
     return NextResponse.json({ error: 'Failed to fetch notification settings' }, { status: 500 })
   }
-}
+})
 
-/** Upsert notification settings for a team. */
-export async function PUT(request: Request) {
+/** Upsert notification settings for a team. Only ADMIN/LEADER of the team. */
+export const PUT = withAuth(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, notificationSettingsSchema)
     if ('error' in parsed) return parsed.error
     const { teamId, emailEnabled, smsEndpoint } = parsed.data
+
+    const forbidden = await assertTeamMember(ctx, teamId, ['ADMIN', 'LEADER'])
+    if (forbidden) return forbidden
 
     const settings = await prisma.notificationSettings.upsert({
       where: { teamId },
@@ -62,5 +68,4 @@ export async function PUT(request: Request) {
     console.error('Error updating notification settings:', error)
     return NextResponse.json({ error: 'Failed to update notification settings' }, { status: 500 })
   }
-}
-
+})

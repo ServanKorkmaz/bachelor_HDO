@@ -1,25 +1,18 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 
-/** Update a shift type by id. */
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+/** Update a shift type by id. Admin only. */
+export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, shiftTypeBodySchema)
     if ('error' in parsed) return parsed.error
     const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = parsed.data
 
     const shiftType = await prisma.shiftType.update({
-      where: { id: params.id },
+      where: { id: ctx.params.id },
       data: {
         code,
         label,
@@ -35,20 +28,13 @@ export async function PUT(
     console.error('Error updating shift type:', error)
     return NextResponse.json({ error: 'Failed to update shift type' }, { status: 500 })
   }
-}
+})
 
-/** Delete a shift type by id. */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+/** Delete a shift type by id. Admin only. */
+export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
   try {
     await prisma.shiftType.delete({
-      where: { id: params.id },
+      where: { id: ctx.params.id },
     })
 
     return NextResponse.json({ success: true })
@@ -56,5 +42,4 @@ export async function DELETE(
     console.error('Error deleting shift type:', error)
     return NextResponse.json({ error: 'Failed to delete shift type' }, { status: 500 })
   }
-}
-
+})

@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/admin/audit - List audit log entries. Admin only. Optional entityType, entityId. */
-export async function GET(request: Request) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+export const GET = withAdmin(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entityType') || undefined
@@ -32,5 +28,4 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-}
-
+})

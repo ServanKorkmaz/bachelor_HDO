@@ -1,17 +1,22 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { notificationPreferencesSchema } from '@/lib/validation/schemas'
 
-/** Get notification preferences for a user (create defaults if missing). */
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/**
+ * Get notification preferences for a user. Self or admin only — these settings
+ * are personal and shouldn't leak between accounts.
+ */
+export const GET = withAuth<{ id: string }>(async (_request, ctx) => {
   try {
-    const { id: userId } = await params
+    const userId = ctx.params.id
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    if (userId !== ctx.userId && ctx.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     let prefs = await prisma.userNotificationPreference.findUnique({
@@ -40,17 +45,18 @@ export async function GET(
       { status: 500 }
     )
   }
-}
+})
 
-/** Update notification preferences for a user. */
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** Update notification preferences for a user. Self or admin only. */
+export const PUT = withAuth<{ id: string }>(async (request, ctx) => {
   try {
-    const { id: userId } = await params
+    const userId = ctx.params.id
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    if (userId !== ctx.userId && ctx.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const parsed = await parseJsonBody(request, notificationPreferencesSchema)
@@ -93,4 +99,4 @@ export async function PUT(
       { status: 500 }
     )
   }
-}
+})

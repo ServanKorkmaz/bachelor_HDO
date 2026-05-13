@@ -1,19 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 
 /** Delete a team by id. Admin only. */
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
   try {
     await prisma.team.delete({
-      where: { id: params.id },
+      where: { id: ctx.params.id },
     })
 
     return NextResponse.json({ success: true })
@@ -21,4 +14,4 @@ export async function DELETE(
     console.error('Error deleting team:', error)
     return NextResponse.json({ error: 'Failed to delete team' }, { status: 500 })
   }
-}
+})

@@ -58,8 +58,9 @@ describe('GET /api/swap-requests', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
   })
 
-  it('returns 400 when teamId is missing', async () => {
-    const res = await GET(makeGet())
+  it('returns 400 when teamId is missing (authenticated caller)', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN', teamId: 'team-1' })
+    const res = await GET(makeGet({}, 'admin-1'))
     expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({ error: 'teamId is required' })
   })

@@ -7,6 +7,7 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
     },
     notification: { create: vi.fn() },
+    user:         { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
@@ -40,6 +41,11 @@ describe('POST /api/swap-requests/[id]/accept', () => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
+    // Reflect the caller's id back from the wrapper's user lookup so ownership
+    // checks see ctx.userId === the header value.
+    mockPrisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve({ id: where.id, role: 'EMPLOYEE' })
+    )
   })
 
   it('returns 401 when currentUserId is missing', async () => {
@@ -85,6 +91,11 @@ describe('POST /api/swap-requests/[id]/decline', () => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
+    // Reflect the caller's id back from the wrapper's user lookup so ownership
+    // checks see ctx.userId === the header value.
+    mockPrisma.user.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
+      Promise.resolve({ id: where.id, role: 'EMPLOYEE' })
+    )
   })
 
   it('returns 401 when currentUserId is missing', async () => {

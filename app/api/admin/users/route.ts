@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { createUserSchema } from '@/lib/admin/schemas'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/admin/users - List users with optional filters (teamId, q, status). Admin only. */
-export async function GET(request: Request) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-
+export const GET = withAdmin(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId') || undefined
@@ -69,15 +65,10 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-}
+})
 
 /** POST /api/admin/users - Create new user. Admin only. Creates User + TeamMembership + audit. */
-export async function POST(request: Request) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-  const actorId = authResult.currentUser!.id
-
+export const POST = withAdmin(async (request, ctx) => {
   try {
     const body = await request.json().catch(() => ({}))
     const parsed = createUserSchema.safeParse(body)
@@ -119,7 +110,7 @@ export async function POST(request: Request) {
         },
       })
       await createAuditLog(tx, {
-        actorUserId: actorId,
+        actorUserId: ctx.userId,
         action: AUDIT_ACTION.USER_CREATED,
         entityType: AUDIT_ENTITY_TYPE.USER,
         entityId: user.id,
@@ -136,5 +127,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
-
+})

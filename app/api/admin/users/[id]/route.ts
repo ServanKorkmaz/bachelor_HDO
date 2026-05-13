@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchUserStatusSchema } from '@/lib/admin/schemas'
 
 /** PATCH /api/admin/users/:id - Activate/deactivate user. Admin only. Soft only; writes audit log. */
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-  const actorId = authResult.currentUser!.id
-
+export const PATCH = withAdmin<{ id: string }>(async (request, ctx) => {
   try {
-    const { id: userId } = await params
+    const userId = ctx.params.id
     const body = await request.json().catch(() => ({}))
     const parsed = patchUserStatusSchema.safeParse(body)
     if (!parsed.success) {
@@ -49,7 +41,7 @@ export async function PATCH(
         data: { status },
       })
       await createAuditLog(tx, {
-        actorUserId: actorId,
+        actorUserId: ctx.userId,
         action: AUDIT_ACTION.USER_STATUS_CHANGED,
         entityType: AUDIT_ENTITY_TYPE.USER,
         entityId: userId,
@@ -67,5 +59,4 @@ export async function PATCH(
       { status: 500 }
     )
   }
-}
-
+})

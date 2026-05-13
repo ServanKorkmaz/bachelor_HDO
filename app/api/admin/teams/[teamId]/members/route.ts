@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { requireAdmin } from '@/lib/auth/requireAdmin'
+import { withAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { addMemberSchema } from '@/lib/admin/schemas'
 
 /** POST /api/admin/teams/:teamId/members - Add user to team. Admin only. */
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ teamId: string }> }
-) {
-  const authResult: { currentUser?: { id: string; role: string } } = {}
-  const err = await requireAdmin(request, authResult)
-  if (err) return err
-  const actorId = authResult.currentUser!.id
-
+export const POST = withAdmin<{ teamId: string }>(async (request, ctx) => {
   try {
-    const { teamId } = await params
+    const { teamId } = ctx.params
     const body = await request.json().catch(() => ({}))
     const parsed = addMemberSchema.safeParse(body)
     if (!parsed.success) {
@@ -62,7 +54,7 @@ export async function POST(
           include: { team: { select: { id: true, name: true } } },
         })
         await createAuditLog(tx, {
-          actorUserId: actorId,
+          actorUserId: ctx.userId,
           action: AUDIT_ACTION.MEMBER_ADDED,
           entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
           entityId: existing.id,
@@ -80,7 +72,7 @@ export async function POST(
         include: { team: { select: { id: true, name: true } } },
       })
       await createAuditLog(tx, {
-        actorUserId: actorId,
+        actorUserId: ctx.userId,
         action: AUDIT_ACTION.MEMBER_ADDED,
         entityType: AUDIT_ENTITY_TYPE.TEAM_MEMBERSHIP,
         entityId: m.id,
@@ -96,5 +88,4 @@ export async function POST(
       { status: 500 }
     )
   }
-}
-
+})

@@ -157,7 +157,7 @@ bachelor_HDO/
 ├── lib/
 │   ├── prisma.ts           # Prisma-klient
 │   ├── auth/               # Autentisering og autorisasjon
-│   │   ├── requireAdmin.ts # Admin-sjekk
+│   │   ├── withAuth.ts     # Wrapper-pattern + assertTeamMember
 │   │   └── getCurrentUserId.ts
 │   ├── admin/              # Admin-verktøy
 │   │   ├── audit.ts        # Revisjonslogg

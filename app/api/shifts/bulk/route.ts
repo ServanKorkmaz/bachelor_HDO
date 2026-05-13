@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
-import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
-import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
+import { assertTeamMember, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { bulkShiftSchema, type BulkShiftBody } from '@/lib/validation/schemas'
 import { applyRateLimit } from '@/lib/security/rateLimit'
 import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
-import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
+import { createShift, deleteShift, updateShift } from '@/lib/services/shift-service'
+import { ServiceError } from '@/lib/services/errors'
 
 type BulkShiftItem = BulkShiftBody['items'][number]
 
@@ -15,8 +14,19 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/
 const timeRegex = /^\d{2}:\d{2}$/
 const BATCH_SIZE = 20
 
-/** Bulk create, update, or delete shifts for multiple users and dates. */
-export async function POST(request: Request) {
+type ItemResult =
+  | { status: 'success'; userId: string; date: string; shiftId: string }
+  | { status: 'failure'; userId: string; date: string; error: string }
+
+/**
+ * Bulk create, update, or delete shifts for multiple users and dates.
+ *
+ * The route is the *batch coordinator*: it pre-fetches users and shift types
+ * once, then delegates each item to `lib/services/shift-service.ts` so the
+ * domain rules (time validation, duplicate-shift handling, notification +
+ * delivery) live in exactly one place.
+ */
+export const POST = withAuth(async (request, ctx) => {
   try {
     const limited = applyRateLimit(request, RATE_LIMITS.shiftsBulk)
     if (limited) return limited
@@ -25,13 +35,15 @@ export async function POST(request: Request) {
     if ('error' in parsed) return parsed.error
     const { action, items, teamId } = parsed.data
 
-    const auth = await requireTeamMembership(request, teamId, ['ADMIN', 'LEADER'])
-    if ('error' in auth) return auth.error
+    const forbidden = await assertTeamMember(ctx, teamId, ['ADMIN', 'LEADER'])
+    if (forbidden) return forbidden
 
     if (items.length === 0) {
       return NextResponse.json({ error: 'items is required' }, { status: 400 })
     }
 
+    // Batch-fetch the user/shift-type rows once so per-item processing can run
+    // in parallel without N round-trips for the same handful of ids.
     const uniqueUserIds = Array.from(
       new Set(items.map(item => item.userId).filter(Boolean)) as Set<string>
     )
@@ -51,23 +63,23 @@ export async function POST(request: Request) {
       : []
     const shiftTypeMap = new Map(shiftTypes.map(shiftType => [shiftType.id, shiftType]))
 
-    const successes: Array<{ userId: string; date: string; shiftId?: string }> = []
+    const successes: Array<{ userId: string; date: string; shiftId: string }> = []
     const failures: Array<{ userId: string; date: string; error: string }> = []
 
-    const processItem = async (item: BulkShiftItem) => {
+    const processItem = async (item: BulkShiftItem): Promise<ItemResult> => {
       let userId = item.userId
       let date = item.date
-      let existingShift = null as null | { id: string; userId: string; date: string }
+      let existingShift: { id: string; teamId: string; userId: string; date: string; user: { name: string } } | null = null
 
       if (item.shiftId) {
         const shift = await prisma.shift.findUnique({
           where: { id: item.shiftId },
-          select: { id: true, userId: true, date: true, teamId: true },
+          select: { id: true, userId: true, date: true, teamId: true, user: { select: { name: true } } },
         })
         if (!shift || shift.teamId !== teamId) {
           return { status: 'failure', userId: userId || '', date: date || '', error: 'Shift not found' }
         }
-        existingShift = { id: shift.id, userId: shift.userId, date: shift.date }
+        existingShift = shift
         userId = shift.userId
         date = shift.date
       }
@@ -106,116 +118,57 @@ export async function POST(request: Request) {
         }
       }
 
-      if (!existingShift) {
-        existingShift = await prisma.shift.findFirst({
+      if (!existingShift && action !== 'create') {
+        const found = await prisma.shift.findFirst({
           where: { userId, date, teamId },
-          select: { id: true, userId: true, date: true },
+          select: { id: true, teamId: true, userId: true, date: true, user: { select: { name: true } } },
         })
+        existingShift = found
       }
 
-      if (action === 'create') {
-        if (existingShift) {
-          return { status: 'failure', userId, date, error: 'Shift already exists' }
-        }
-
-        let startDateTime: Date
-        let endDateTime: Date
-        try {
-          ;({ startDateTime, endDateTime } = buildShiftDateTimes({
+      try {
+        if (action === 'create') {
+          const created = await createShift({
+            teamId,
+            userId,
             date,
+            shiftTypeId: shiftType!.id,
             startTime: item.startTime!,
             endTime: item.endTime!,
-            shiftType: shiftType!,
-          }))
-        } catch (e) {
-          if (e instanceof ShiftTimeError) {
-            return { status: 'failure', userId, date, error: e.message }
-          }
-          throw e
-        }
-
-        let created
-        try {
-          created = await prisma.shift.create({
-            data: {
-              teamId,
-              userId,
-              date,
-              startDateTime,
-              endDateTime,
-              shiftTypeId: shiftType!.id,
-              comment: item.comment || null,
-            },
+            comment: item.comment,
+            shiftType: shiftType ?? undefined,
           })
-        } catch (e) {
-          // P2002 = unique constraint violation on (userId, date) — concurrent insert won
-          if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-            return { status: 'failure', userId, date, error: 'Shift already exists' }
-          }
-          throw e
+          return { status: 'success', userId, date, shiftId: created.id }
         }
 
-        const title = 'Vakt opprettet'
-        const message = `Ny vakt opprettet for ${date}`
-        await prisma.notification.create({
-          data: { teamId, userId, type: 'SHIFT_CREATED', title, message },
-        })
-        void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_CREATED', title, message })
-        return { status: 'success', userId, date, shiftId: created.id }
-      }
+        if (action === 'update') {
+          if (!existingShift) {
+            return { status: 'failure', userId, date, error: 'Shift not found' }
+          }
+          const updated = await updateShift(existingShift, {
+            userId,
+            date,
+            shiftTypeId: shiftType!.id,
+            startTime: item.startTime!,
+            endTime: item.endTime!,
+            comment: item.comment,
+            shiftType: shiftType ?? undefined,
+          })
+          return { status: 'success', userId, date, shiftId: updated.id }
+        }
 
-      if (action === 'update') {
+        // action === 'delete'
         if (!existingShift) {
           return { status: 'failure', userId, date, error: 'Shift not found' }
         }
-
-        let startDateTime: Date
-        let endDateTime: Date
-        try {
-          ;({ startDateTime, endDateTime } = buildShiftDateTimes({
-            date,
-            startTime: item.startTime!,
-            endTime: item.endTime!,
-            shiftType: shiftType!,
-          }))
-        } catch (e) {
-          if (e instanceof ShiftTimeError) {
-            return { status: 'failure', userId, date, error: e.message }
-          }
-          throw e
+        await deleteShift(existingShift)
+        return { status: 'success', userId, date, shiftId: existingShift.id }
+      } catch (e) {
+        if (e instanceof ServiceError) {
+          return { status: 'failure', userId, date, error: e.message }
         }
-
-        const updated = await prisma.shift.update({
-          where: { id: existingShift.id },
-          data: {
-            startDateTime,
-            endDateTime,
-            shiftTypeId: shiftType!.id,
-            comment: item.comment || null,
-          },
-        })
-
-        const updTitle = 'Vakt oppdatert'
-        const updMessage = `Vakt oppdatert for ${date}`
-        await prisma.notification.create({
-          data: { teamId, userId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage },
-        })
-        void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_UPDATED', title: updTitle, message: updMessage })
-        return { status: 'success', userId, date, shiftId: updated.id }
+        throw e
       }
-
-      if (!existingShift) {
-        return { status: 'failure', userId, date, error: 'Shift not found' }
-      }
-
-      await prisma.shift.delete({ where: { id: existingShift.id } })
-      const delTitle = 'Vakt slettet'
-      const delMessage = `Vakt slettet for ${date}`
-      await prisma.notification.create({
-        data: { teamId, userId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage },
-      })
-      void deliverNotificationToChannels({ userId, teamId, type: 'SHIFT_DELETED', title: delTitle, message: delMessage })
-      return { status: 'success', userId, date, shiftId: existingShift.id }
     }
 
     for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -228,17 +181,9 @@ export async function POST(request: Request) {
         }
         const value = result.value
         if (value.status === 'success') {
-          successes.push({
-            userId: value.userId ?? '',
-            date: value.date ?? '',
-            shiftId: value.shiftId ?? '',
-          })
+          successes.push({ userId: value.userId, date: value.date, shiftId: value.shiftId })
         } else {
-          failures.push({
-            userId: value.userId ?? '',
-            date: value.date ?? '',
-            error: value.error ?? '',
-          })
+          failures.push({ userId: value.userId, date: value.date, error: value.error })
         }
       })
     }
@@ -248,5 +193,4 @@ export async function POST(request: Request) {
     console.error('Error processing bulk shifts:', error)
     return NextResponse.json({ error: 'Failed to process bulk shifts' }, { status: 500 })
   }
-}
-
+})

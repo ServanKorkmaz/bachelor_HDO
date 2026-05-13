@@ -9,6 +9,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     shift:        { update: vi.fn() },
     notification: { create: vi.fn() },
     auditLog:     { create: vi.fn() },
+    user:         { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
@@ -50,6 +51,7 @@ describe('POST /api/swap-requests/[id]/approve', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
@@ -92,6 +94,7 @@ describe('POST /api/swap-requests/[id]/execute', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
+    mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
