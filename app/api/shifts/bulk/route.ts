@@ -5,6 +5,8 @@ import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { bulkShiftSchema, type BulkShiftBody } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 type BulkShiftItem = BulkShiftBody['items'][number]
 
@@ -15,6 +17,9 @@ const BATCH_SIZE = 20
 /** Bulk create, update, or delete shifts for multiple users and dates. */
 export async function POST(request: Request) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.shiftsBulk)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, bulkShiftSchema)
     if ('error' in parsed) return parsed.error
     const { action, items, currentUserId } = parsed.data

@@ -5,6 +5,8 @@ import { holidayTypeToNorwegian } from '@/lib/i18n'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { noteApproveSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 /** Approve or reject a note by id and notify the creator. */
 export async function POST(
@@ -12,6 +14,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.notesApprove)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, noteApproveSchema)
     if ('error' in parsed) return parsed.error
     const { status } = parsed.data

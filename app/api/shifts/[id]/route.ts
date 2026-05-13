@@ -5,6 +5,8 @@ import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftUpdateSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 import { parse } from 'date-fns'
 
 /** Update a shift by id and notify the affected user. */
@@ -13,6 +15,9 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.shiftWrite)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, shiftUpdateSchema)
     if ('error' in parsed) return parsed.error
     const { date, userId, shiftTypeId, startTime, endTime, comment } = parsed.data
@@ -108,6 +113,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.shiftWrite)
+    if (limited) return limited
+
     const shift = await prisma.shift.findUnique({
       where: { id: params.id },
       include: { user: true },

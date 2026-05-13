@@ -5,6 +5,8 @@ import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftCreateSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 import { parse, format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -65,6 +67,9 @@ export async function GET(request: Request) {
 /** Create a shift and emit a notification for the affected user. */
 export async function POST(request: Request) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.shiftWrite)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, shiftCreateSchema)
     if ('error' in parsed) return parsed.error
     const { date, userId, shiftTypeId, startTime, endTime, comment, teamId } = parsed.data

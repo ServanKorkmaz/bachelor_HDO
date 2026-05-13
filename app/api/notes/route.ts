@@ -4,6 +4,8 @@ import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { noteCreateSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +58,9 @@ export async function GET(request: Request) {
 /** Create a note and notify the creator. */
 export async function POST(request: Request) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.notesWrite)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, noteCreateSchema)
     if ('error' in parsed) return parsed.error
     const { teamId, type, status, title, body: noteBody, dateFrom, dateTo } = parsed.data

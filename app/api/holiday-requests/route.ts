@@ -6,6 +6,8 @@ import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { holidayCreateSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +43,9 @@ export async function GET(request: Request) {
 /** Create a holiday / absence request. */
 export async function POST(request: Request) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, holidayCreateSchema)
     if ('error' in parsed) return parsed.error
     const { teamId: teamIdBody, userId: userIdBody, type, dateFrom, dateTo, message } = parsed.data

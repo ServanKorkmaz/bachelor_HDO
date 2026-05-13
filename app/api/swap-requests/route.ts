@@ -4,6 +4,8 @@ import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/aud
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { swapCreateSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,6 +62,9 @@ export async function GET(request: Request) {
 /** Create a swap request and notify the team. */
 export async function POST(request: Request) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.swapWrite)
+    if (limited) return limited
+
     const parsed = await parseJsonBody(request, swapCreateSchema)
     if ('error' in parsed) return parsed.error
     const { teamId, shiftId, toUserId, message } = parsed.data

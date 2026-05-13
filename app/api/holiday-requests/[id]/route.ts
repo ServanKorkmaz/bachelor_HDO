@@ -5,6 +5,8 @@ import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { holidayPatchSchema, holidayPutSchema } from '@/lib/validation/schemas'
+import { applyRateLimit } from '@/lib/security/rateLimit'
+import { RATE_LIMITS } from '@/lib/security/rateLimitConfigs'
 
 /** Get a single holiday request or update its status (approve/reject). */
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -24,6 +26,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
+    if (limited) return limited
+
     const { id } = params
     const currentUserId = await getCurrentUserId(request)
     if (!currentUserId) {
@@ -80,6 +85,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 /** Edit a PENDING holiday request — only the owner can do this. */
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
+    if (limited) return limited
+
     const { id } = params
     const currentUserId = await getCurrentUserId(request)
     if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
@@ -108,6 +116,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 /** Cancel (delete) a PENDING holiday request — only the owner can do this. */
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
+    const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
+    if (limited) return limited
+
     const { id } = params
     const currentUserId = await getCurrentUserId(request)
     if (!currentUserId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 401 })
