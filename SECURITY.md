@@ -105,11 +105,25 @@ decisions, holiday decisions) are recorded in the `AuditLog` table via
 `createAuditLog` inside the same Prisma transaction as the underlying
 mutation, so audit entries cannot disappear if the mutation succeeds.
 
+## Calendar dates as strings
+
+`Shift.date`, `Note.dateFrom/dateTo`, and `HolidayRequest.dateFrom/dateTo`
+are stored as `String "YYYY-MM-DD"` rather than `@db.Date`. This is a
+deliberate choice, not legacy debt:
+
+- A "shift day" is a wall-clock calendar concept; it should not be
+  re-interpreted across timezones. Storing as `DateTime` would mean Prisma
+  returns a `Date` at midnight UTC, which becomes the previous or next
+  calendar day in many user timezones once the browser parses it back.
+- ISO 8601 date strings sort lexicographically the same way they sort
+  chronologically, so DB queries (`gte`/`lte`) work without conversion.
+- The Zod schemas validate both *format* (regex) and *validity* (refines
+  via `date-fns.parse + isValid`), so impossible inputs like `2026-13-45`
+  or `2026-02-30` are rejected at the API boundary, not at the DB.
+
 ## Known gaps
 
 - Mock auth — production must replace with Azure AD.
 - Rate limit is process-local (see above).
 - No CSP, HSTS, or other response headers are configured. These should be
   added via `next.config.js` or Vercel `headers` config before going live.
-- `dateFrom`/`dateTo` on shifts are stored as `String "YYYY-MM-DD"` rather than
-  `@db.Date`; not a security issue but worth normalising.

@@ -1,8 +1,31 @@
 import { z } from 'zod'
+import { parse, isValid } from 'date-fns'
 
 const id = z.string().min(1)
-const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Ugyldig dato (YYYY-MM-DD)')
-const timeString = z.string().regex(/^\d{2}:\d{2}$/, 'Ugyldig tid (HH:MM)')
+
+/**
+ * Calendar-date string (YYYY-MM-DD). We intentionally keep dates as strings
+ * rather than `Date` objects so they cannot be shifted across timezones when
+ * serialised through JSON or rendered by React. The refine step rejects
+ * impossible values such as "2026-13-45" or "2026-02-30".
+ */
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ugyldig dato (YYYY-MM-DD)')
+  .refine((s) => isValid(parse(s, 'yyyy-MM-dd', new Date())), 'Ugyldig dato')
+
+/**
+ * Wall-clock time string (HH:MM, 24-hour). Rejects impossible values such as
+ * "25:00" or "08:99" so they never reach the DB or notification messages.
+ */
+const timeString = z
+  .string()
+  .regex(/^\d{2}:\d{2}$/, 'Ugyldig tid (HH:MM)')
+  .refine((s) => {
+    const [h, m] = s.split(':').map(Number)
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59
+  }, 'Ugyldig tid')
+
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Ugyldig farge (#RRGGBB)')
 
 const HOLIDAY_TYPES = ['HOLIDAY', 'ABSENCE', 'SICKNESS'] as const

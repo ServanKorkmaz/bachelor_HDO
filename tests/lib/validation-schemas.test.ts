@@ -38,6 +38,53 @@ describe('validation schemas', () => {
       }
     })
 
+    it('rejects an impossible calendar date (month 13)', () => {
+      const r = shiftCreateSchema.safeParse({
+        date: '2026-13-01',
+        userId: 'u1',
+        shiftTypeId: 't1',
+        startTime: '08:00',
+        endTime: '16:00',
+      })
+      expect(r.success).toBe(false)
+      if (!r.success) expect(r.error.flatten().fieldErrors.date).toBeDefined()
+    })
+
+    it('rejects an impossible calendar date (Feb 30)', () => {
+      const r = shiftCreateSchema.safeParse({
+        date: '2026-02-30',
+        userId: 'u1',
+        shiftTypeId: 't1',
+        startTime: '08:00',
+        endTime: '16:00',
+      })
+      expect(r.success).toBe(false)
+      if (!r.success) expect(r.error.flatten().fieldErrors.date).toBeDefined()
+    })
+
+    it('rejects an impossible wall-clock time', () => {
+      const r = shiftCreateSchema.safeParse({
+        date: '2026-05-01',
+        userId: 'u1',
+        shiftTypeId: 't1',
+        startTime: '25:99',
+        endTime: '16:00',
+      })
+      expect(r.success).toBe(false)
+      if (!r.success) expect(r.error.flatten().fieldErrors.startTime).toBeDefined()
+    })
+
+    it('accepts Feb 29 in a leap year', () => {
+      const r = shiftCreateSchema.safeParse({
+        date: '2028-02-29',
+        userId: 'u1',
+        shiftTypeId: 't1',
+        startTime: '08:00',
+        endTime: '16:00',
+      })
+      expect(r.success).toBe(true)
+    })
+
     it('rejects comment longer than 2000 chars', () => {
       const r = shiftCreateSchema.safeParse({
         date: '2026-05-01',

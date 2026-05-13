@@ -107,6 +107,11 @@ model Shift {
   id            String   @id @default(cuid())
   teamId        String
   userId        String
+  // `date` is the calendar day the shift belongs to (YYYY-MM-DD). It is
+  // stored as a String rather than a DateTime / @db.Date so it can never be
+  // shifted across timezones at the JSON/React boundary — a shift on the 27th
+  // is the 27th regardless of where the user is reading from. Format and
+  // validity are enforced by Zod (`dateString` in lib/validation/schemas.ts).
   date          String
   startDateTime DateTime
   endDateTime   DateTime
