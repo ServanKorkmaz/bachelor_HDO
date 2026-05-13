@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     const auth = await requireTeamMembership(request, teamId)
     if ('error' in auth) return auth.error
 
-    const where: any = { teamId }
+    const where: Prisma.NoteWhereInput = { teamId }
 
     // Employees can read ALL and TEAM notes, but never LEADERS-only ones.
     // ADMIN/LEADER see everything.

@@ -27,8 +27,8 @@ const weekDates = [
 ]
 
 const users = [
-  { id: 'u1', name: 'Alice Test', role: 'EMPLOYEE' },
-  { id: 'u2', name: 'Bob Test', role: 'EMPLOYEE' },
+  { id: 'u1', name: 'Alice Test', role: 'EMPLOYEE' as const, teamId: 't1' },
+  { id: 'u2', name: 'Bob Test', role: 'EMPLOYEE' as const, teamId: 't1' },
 ]
 
 const baseShift: Shift = {

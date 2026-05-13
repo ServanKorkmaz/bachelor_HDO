@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { axiosInstance } from '@/lib/axios'
+import type { TeamSummary, UserSummary, Shift } from '@/lib/types'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -30,7 +31,7 @@ export default function StandardPlanPage() {
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
   const weekDates = useMemo(() => getWeekDatesUtil(selectedDate), [selectedDate])
 
-  const { data: teams = [] } = useQuery<any[]>({
+  const { data: teams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const response = await axiosInstance.get('/api/teams')
@@ -54,19 +55,19 @@ export default function StandardPlanPage() {
   }, [teams, searchParams, router])
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
-  const { data: users = [] } = useQuery<any[]>({
+  const { data: users = [] } = useQuery<UserSummary[]>({
     queryKey: ['users', selectedTeamId, 'non-admin'],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/users?teamId=${selectedTeamId}`)
-      const list = Array.isArray(response.data) ? response.data : []
-      return list.filter((u: any) => u.role !== 'ADMIN')
+      const list: UserSummary[] = Array.isArray(response.data) ? response.data : []
+      return list.filter((u) => u.role !== 'ADMIN')
     },
     enabled: Boolean(selectedTeamId),
   })
 
   const startDate = format(weekStart, 'yyyy-MM-dd')
   const endDate = format(weekDates[6], 'yyyy-MM-dd')
-  const { data: shifts = [] } = useQuery<any[]>({
+  const { data: shifts = [] } = useQuery<Shift[]>({
     queryKey: ['shifts', selectedTeamId, startDate, endDate],
     queryFn: async () => {
       const response = await axiosInstance.get(
@@ -79,7 +80,7 @@ export default function StandardPlanPage() {
 
   const futureDateFrom = format(selectedDate, 'yyyy-MM-dd')
   const futureDateTo = format(addDays(selectedDate, 365), 'yyyy-MM-dd')
-  const { data: futureShifts = [] } = useQuery<any[]>({
+  const { data: futureShifts = [] } = useQuery<Shift[]>({
     queryKey: ['shifts', selectedTeamId, selectedUserId, futureDateFrom, futureDateTo],
     queryFn: async () => {
       const response = await axiosInstance.get(
@@ -117,7 +118,7 @@ export default function StandardPlanPage() {
 
     const sorted = [...futureShifts].sort((a, b) => a.date.localeCompare(b.date) || a.startDateTime.localeCompare(b.startDateTime))
     const entries: Array<
-      | { type: 'shift'; shift: any }
+      | { type: 'shift'; shift: Shift }
       | { type: 'free'; from: string; to: string }
     > = []
 

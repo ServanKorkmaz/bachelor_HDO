@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const auth = await requireTeamMembership(request, teamId)
     if ('error' in auth) return auth.error
 
-    const where: any = { teamId }
+    const where: Prisma.ShiftWhereInput = { teamId }
 
     if (dateFrom && dateTo) {
       where.date = {

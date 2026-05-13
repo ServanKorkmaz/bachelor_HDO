@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'userId or teamId is required' }, { status: 400 })
     }
 
-    const where: any = {}
+    const where: Prisma.NotificationWhereInput = {}
     if (userId) {
       where.userId = userId
     }

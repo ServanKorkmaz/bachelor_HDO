@@ -8,9 +8,11 @@ import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
+import type { UserSummary } from '@/lib/types'
+
 interface WeekGridProps {
   weekDates: Date[]
-  users: any[]
+  users: UserSummary[]
   shifts: Shift[]
   currentUser: MockUser | null
   highlightedUserId?: string
