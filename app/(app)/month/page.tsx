@@ -21,6 +21,7 @@ import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay, formatTime } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
+import { ExportMenu } from '@/components/schedule/ExportMenu'
 import { axiosInstance } from '@/lib/axios'
 
 /** Monthly calendar view of shifts with per-day summaries. */
@@ -137,6 +138,15 @@ export default function MonthPage() {
           <Button variant="outline" onClick={handleNextMonth} size="icon">
             <ChevronRight className="h-4 w-4" />
           </Button>
+          {selectedTeamId && (
+            <ExportMenu
+              shifts={fetchedShifts}
+              teamName={fetchedTeams.find((t) => t.id === selectedTeamId)?.name ?? 'plan'}
+              dateFrom={startDate}
+              dateTo={endDate}
+              disabled={fetchedShifts.length === 0}
+            />
+          )}
         </div>
       </div>
 

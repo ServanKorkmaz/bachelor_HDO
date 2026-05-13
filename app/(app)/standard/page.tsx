@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
+import { ExportMenu } from '@/components/schedule/ExportMenu'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
@@ -175,6 +176,15 @@ export default function StandardPlanPage() {
             <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
               Endre vakt
             </Button>
+          )}
+          {selectedTeamId && (
+            <ExportMenu
+              shifts={shifts}
+              teamName={teams.find((t) => t.id === selectedTeamId)?.name ?? 'plan'}
+              dateFrom={startDate}
+              dateTo={endDate}
+              disabled={shifts.length === 0}
+            />
           )}
         </div>
       </div>

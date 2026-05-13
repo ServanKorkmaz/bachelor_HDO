@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
+import { ExportMenu } from '@/components/schedule/ExportMenu'
 
 /** Agenda view showing upcoming shifts and notes. */
 export default function AgendaPage() {
@@ -100,7 +101,18 @@ export default function AgendaPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-3xl font-bold">Agenda</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Agenda</h1>
+        {selectedTeamId && (
+          <ExportMenu
+            shifts={filteredShifts}
+            teamName={teams.find((t) => t.id === selectedTeamId)?.name ?? 'plan'}
+            dateFrom={today}
+            dateTo={futureDate}
+            disabled={filteredShifts.length === 0}
+          />
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
