@@ -39,20 +39,25 @@ export default function StandardPlanPage() {
     },
   })
 
+  // Pick the initial team once `/api/teams` resolves: honour ?teamId= if it
+  // points at a real team, otherwise fall back to the first one in the list.
   useEffect(() => {
-    if (teams.length === 0) return
+    if (teams.length === 0 || selectedTeamId) return
     const fromUrl = searchParams.get(TEAM_ID_PARAM)
-    const validId = fromUrl && teams.some((t: { id: string }) => t.id === fromUrl) ? fromUrl : null
-    const nextId = validId ?? teams[0].id
-    if (!selectedTeamId) {
-      setSelectedTeamId(nextId)
-    }
-    if (!validId || fromUrl !== nextId) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set(TEAM_ID_PARAM, nextId)
-      router.replace(`/standard?${params.toString()}`, { scroll: false })
-    }
-  }, [teams, searchParams, router])
+    const validId = fromUrl && teams.some((t) => t.id === fromUrl) ? fromUrl : null
+    setSelectedTeamId(validId ?? teams[0].id)
+  }, [teams, selectedTeamId, searchParams])
+
+  // Keep the URL's ?teamId= in sync with the current selection so a refresh
+  // or share-link preserves the chosen team.
+  useEffect(() => {
+    if (!selectedTeamId) return
+    const current = searchParams.get(TEAM_ID_PARAM)
+    if (current === selectedTeamId) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.set(TEAM_ID_PARAM, selectedTeamId)
+    router.replace(`/standard?${params.toString()}`, { scroll: false })
+  }, [selectedTeamId, searchParams, router])
 
   // Hent kun ansatte som tilhører valgt team (via TeamMembership)
   const { data: users = [] } = useQuery<UserSummary[]>({
