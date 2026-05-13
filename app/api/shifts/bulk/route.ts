@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { parse } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
@@ -128,17 +129,26 @@ export async function POST(request: Request) {
           endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000)
         }
 
-        const created = await prisma.shift.create({
-          data: {
-            teamId,
-            userId,
-            date,
-            startDateTime,
-            endDateTime,
-            shiftTypeId: shiftType!.id,
-            comment: item.comment || null,
-          },
-        })
+        let created
+        try {
+          created = await prisma.shift.create({
+            data: {
+              teamId,
+              userId,
+              date,
+              startDateTime,
+              endDateTime,
+              shiftTypeId: shiftType!.id,
+              comment: item.comment || null,
+            },
+          })
+        } catch (e) {
+          // P2002 = unique constraint violation on (userId, date) — concurrent insert won
+          if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+            return { status: 'failure', userId, date, error: 'Shift already exists' }
+          }
+          throw e
+        }
 
         const title = 'Vakt opprettet'
         const message = `Ny vakt opprettet for ${date}`

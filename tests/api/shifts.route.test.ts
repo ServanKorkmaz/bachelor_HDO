@@ -129,4 +129,28 @@ describe('POST /api/shifts', () => {
     expect(mockPrisma.shift.create).toHaveBeenCalledTimes(1)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
   })
+
+  it('returns 409 when the (userId, date) unique constraint is violated', async () => {
+    const { Prisma } = await import('@prisma/client')
+    mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })
+    mockPrisma.shift.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('unique violation', {
+        code: 'P2002',
+        clientVersion: '5',
+      })
+    )
+
+    const res = await POST(makePost({
+      teamId: 'team-1',
+      userId: 'user-1',
+      date: '2026-04-28',
+      shiftTypeId: 'type-1',
+      startTime: '08:00',
+      endTime: '16:00',
+    }))
+
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/allerede/i)
+  })
 })

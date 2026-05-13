@@ -116,8 +116,8 @@ model Shift {
   shiftType    ShiftType     @relation(fields: [shiftTypeId], references: [id], onDelete: Restrict)
   swapRequests SwapRequest[]
 
+  @@unique([userId, date])
   @@index([teamId, date])
-  @@index([userId, date])
   @@map("shifts")
 }
 

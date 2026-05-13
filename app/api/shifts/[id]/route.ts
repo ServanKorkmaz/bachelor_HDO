@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
 import { parseJsonBody } from '@/lib/validation/parseJson'
@@ -38,26 +39,37 @@ export async function PUT(
       endDateTime = new Date(endDateTime.getTime() + 24 * 60 * 60 * 1000)
     }
 
-    const shift = await prisma.shift.update({
-      where: { id: params.id },
-      data: {
-        userId,
-        date,
-        startDateTime,
-        endDateTime,
-        shiftTypeId,
-        comment: comment || null,
-      },
-      include: {
-        shiftType: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
+    let shift
+    try {
+      shift = await prisma.shift.update({
+        where: { id: params.id },
+        data: {
+          userId,
+          date,
+          startDateTime,
+          endDateTime,
+          shiftTypeId,
+          comment: comment || null,
+        },
+        include: {
+          shiftType: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-    })
+      })
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'Brukeren har allerede en vakt på denne datoen' },
+          { status: 409 }
+        )
+      }
+      throw e
+    }
 
     // Create notification
     const updateTitle = 'Vakt oppdatert'
