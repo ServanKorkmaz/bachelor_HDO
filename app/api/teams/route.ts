@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { teamCreateSchema } from '@/lib/validation/schemas'
 
@@ -19,25 +20,16 @@ export async function GET() {
   }
 }
 
-/** Create a team and default notification settings. */
+/** Create a team and default notification settings. Admin only. */
 export async function POST(request: Request) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
     const parsed = await parseJsonBody(request, teamCreateSchema)
     if ('error' in parsed) return parsed.error
-    const { name, currentUserId } = parsed.data
-
-    if (!currentUserId) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      select: { role: true },
-    })
-
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
+    const { name } = parsed.data
 
     const team = await prisma.team.create({
       data: { name },

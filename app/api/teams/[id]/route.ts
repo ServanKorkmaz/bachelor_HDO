@@ -1,27 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 
-/** Delete a team by id. */
+/** Delete a team by id. Admin only. */
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
-    const currentUserId = await getCurrentUserId(request)
-    if (!currentUserId) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      select: { role: true },
-    })
-
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
-
     await prisma.team.delete({
       where: { id: params.id },
     })
@@ -32,4 +22,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to delete team' }, { status: 500 })
   }
 }
-

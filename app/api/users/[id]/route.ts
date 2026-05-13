@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/auth/requireAdmin'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { userRoleUpdateSchema } from '@/lib/validation/schemas'
 
@@ -30,28 +31,19 @@ export async function GET(
   }
 }
 
-/** Update a user's role by id. */
+/** Update a user's role by id. Admin only. */
 export async function PUT(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const authResult: { currentUser?: { id: string; role: string } } = {}
+  const err = await requireAdmin(request, authResult)
+  if (err) return err
+
   try {
     const parsed = await parseJsonBody(request, userRoleUpdateSchema)
     if ('error' in parsed) return parsed.error
-    const { role, currentUserId } = parsed.data
-
-    if (!currentUserId) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 401 })
-    }
-
-    const currentUser = await prisma.user.findUnique({
-      where: { id: currentUserId },
-      select: { role: true },
-    })
-
-    if (!currentUser || currentUser.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
+    const { role } = parsed.data
 
     const user = await prisma.user.update({
       where: { id: params.id },

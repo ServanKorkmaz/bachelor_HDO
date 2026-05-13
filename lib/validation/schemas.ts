@@ -87,8 +87,7 @@ export const shiftUpdateSchema = z.object({
 
 export const bulkShiftSchema = z.object({
   action: z.enum(['create', 'update', 'delete']),
-  teamId: id.optional(),
-  currentUserId: id.optional(),
+  teamId: id,
   items: z
     .array(
       z.object({

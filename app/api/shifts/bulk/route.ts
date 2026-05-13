@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { deliverNotificationToChannels } from '@/lib/notifications/deliver'
+import { requireTeamMembership } from '@/lib/auth/requireTeamMembership'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { bulkShiftSchema, type BulkShiftBody } from '@/lib/validation/schemas'
 import { applyRateLimit } from '@/lib/security/rateLimit'
@@ -22,21 +23,10 @@ export async function POST(request: Request) {
 
     const parsed = await parseJsonBody(request, bulkShiftSchema)
     if ('error' in parsed) return parsed.error
-    const { action, items, currentUserId } = parsed.data
+    const { action, items, teamId } = parsed.data
 
-    if (!currentUserId) {
-      return NextResponse.json({ error: 'currentUserId is required' }, { status: 401 })
-    }
-
-    const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } })
-    if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'LEADER')) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
-
-    const teamId = parsed.data.teamId || currentUser.teamId
-    if (!teamId) {
-      return NextResponse.json({ error: 'teamId is required' }, { status: 400 })
-    }
+    const auth = await requireTeamMembership(request, teamId, ['ADMIN', 'LEADER'])
+    if ('error' in auth) return auth.error
 
     if (items.length === 0) {
       return NextResponse.json({ error: 'items is required' }, { status: 400 })

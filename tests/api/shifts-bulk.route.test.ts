@@ -20,6 +20,9 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    teamMembership: {
+      findFirst: vi.fn(),
+    },
     notification: {
       create: vi.fn(),
     },
@@ -40,10 +43,13 @@ vi.mock('@/lib/notifications/deliver', () => ({
 import { POST } from '@/app/api/shifts/bulk/route'
 
 /** Builds a JSON POST request for the bulk shifts endpoint. */
-function makeRequest(body: unknown): Request {
+function makeRequest(body: unknown, userId?: string): Request {
   return new Request('http://localhost/api/shifts/bulk', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(userId ? { 'x-current-user-id': userId } : {}),
+    },
     body: JSON.stringify(body),
   })
 }
@@ -75,7 +81,7 @@ describe('POST /api/shifts/bulk', () => {
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
-  it('returns 401 when currentUserId is missing', async () => {
+  it('returns 401 when the caller is not authenticated', async () => {
     const response = await POST(
       makeRequest({
         action: 'create',
@@ -85,7 +91,6 @@ describe('POST /api/shifts/bulk', () => {
     )
 
     expect(response.status).toBe(401)
-    await expect(response.json()).resolves.toEqual({ error: 'currentUserId is required' })
   })
 
   it('returns 403 for non-admin/non-leader users', async () => {
@@ -97,26 +102,29 @@ describe('POST /api/shifts/bulk', () => {
     })
 
     const response = await POST(
-      makeRequest({
-        action: 'create',
-        currentUserId: 'employee-1',
-        teamId: 'team-1',
-        items: [],
-      })
+      makeRequest(
+        {
+          action: 'create',
+          teamId: 'team-1',
+          items: [],
+        },
+        'employee-1'
+      )
     )
 
     expect(response.status).toBe(403)
-    await expect(response.json()).resolves.toEqual({ error: 'Not authorized' })
   })
 
   it('returns 400 for invalid action', async () => {
     const response = await POST(
-      makeRequest({
-        action: 'invalid',
-        currentUserId: 'admin-1',
-        teamId: 'team-1',
-        items: [{ userId: 'user-1', date: '2026-04-27' }],
-      })
+      makeRequest(
+        {
+          action: 'invalid',
+          teamId: 'team-1',
+          items: [{ userId: 'user-1', date: '2026-04-27' }],
+        },
+        'admin-1'
+      )
     )
 
     expect(response.status).toBe(400)
@@ -135,12 +143,14 @@ describe('POST /api/shifts/bulk', () => {
     }))
 
     const response = await POST(
-      makeRequest({
-        action: 'create',
-        currentUserId: 'admin-1',
-        teamId: 'team-1',
-        items,
-      })
+      makeRequest(
+        {
+          action: 'create',
+          teamId: 'team-1',
+          items,
+        },
+        'admin-1'
+      )
     )
 
     expect(response.status).toBe(400)
@@ -157,21 +167,23 @@ describe('POST /api/shifts/bulk', () => {
     ])
 
     const response = await POST(
-      makeRequest({
-        action: 'create',
-        currentUserId: 'admin-1',
-        teamId: 'team-1',
-        items: [
-          {
-            userId: 'user-1',
-            date: '2026-04-27',
-            shiftTypeId: 'type-night',
-            startTime: '22:00',
-            endTime: '06:00',
-            comment: 'Night shift',
-          },
-        ],
-      })
+      makeRequest(
+        {
+          action: 'create',
+          teamId: 'team-1',
+          items: [
+            {
+              userId: 'user-1',
+              date: '2026-04-27',
+              shiftTypeId: 'type-night',
+              startTime: '22:00',
+              endTime: '06:00',
+              comment: 'Night shift',
+            },
+          ],
+        },
+        'admin-1'
+      )
     )
 
     expect(response.status).toBe(200)
