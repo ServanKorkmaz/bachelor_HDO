@@ -210,22 +210,17 @@ async function main() {
       { day: 0, shiftType: shiftTypes[1] },
       { day: 1, shiftType: shiftTypes[1] },
       { day: 2, shiftType: shiftTypes[1] },
-      { day: 4, shiftType: shiftTypes[0] },
       { day: 5, shiftType: shiftTypes[6] },
       { day: 6, shiftType: shiftTypes[6] },
     ],
-    // Ole Hansen: N1 Mon-Wed, off rest
+    // Ole Hansen: N1 Mon-Wed
     [
       { day: 0, shiftType: shiftTypes[3] },
       { day: 1, shiftType: shiftTypes[3] },
       { day: 2, shiftType: shiftTypes[3] },
-      { day: 5, shiftType: shiftTypes[0] },
-      { day: 6, shiftType: shiftTypes[0] },
     ],
-    // Per Olsen: off Mon-Tue, N1 Thu-Fri, N2 Sat-Sun
+    // Per Olsen: N1 Thu-Fri, N2 Sat-Sun
     [
-      { day: 0, shiftType: shiftTypes[0] },
-      { day: 1, shiftType: shiftTypes[0] },
       { day: 3, shiftType: shiftTypes[3] },
       { day: 4, shiftType: shiftTypes[3] },
       { day: 5, shiftType: shiftTypes[4] },
@@ -246,8 +241,6 @@ async function main() {
       { day: 2, shiftType: shiftTypes[5] },
       { day: 3, shiftType: shiftTypes[5] },
       { day: 4, shiftType: shiftTypes[5] },
-      { day: 5, shiftType: shiftTypes[0] },
-      { day: 6, shiftType: shiftTypes[0] },
     ],
     // Ingrid Larsen: K1 Tue-Thu, D2 Sat-Sun
     [
