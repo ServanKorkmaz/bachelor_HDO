@@ -34,12 +34,16 @@ export function buildShiftDateTimes(args: {
 }): { startDateTime: Date; endDateTime: Date } {
   const { date, startTime, endTime, shiftType } = args
 
-  if (startTime === endTime) {
-    throw new ShiftTimeError('Start- og sluttid kan ikke være like')
-  }
-
   const startDateTime = parse(`${date}T${startTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
   let endDateTime = parse(`${date}T${endTime}`, "yyyy-MM-dd'T'HH:mm", new Date())
+
+  if (startTime === endTime) {
+    if (startTime !== '00:00') {
+      throw new ShiftTimeError('Start- og sluttid kan ikke være like')
+    }
+    // 00:00 → 00:00 is a full-day placeholder used for off/free shift types
+    return { startDateTime, endDateTime: new Date(startDateTime.getTime() + ONE_DAY_MS) }
+  }
 
   if (shiftType.crossesMidnight || endDateTime < startDateTime) {
     endDateTime = new Date(endDateTime.getTime() + ONE_DAY_MS)
