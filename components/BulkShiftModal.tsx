@@ -442,14 +442,15 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl flex flex-col max-h-[85vh] overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Bulk vaktendring</DialogTitle>
           <DialogDescription>
             Opprett, oppdater eller slett vakter i en tabell med ulike datoer og tider.
           </DialogDescription>
         </DialogHeader>
 
+        <div className="overflow-y-auto flex-1 min-h-0 pr-1">
           <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label>Handling</Label>
@@ -738,6 +739,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
               </div>
             </div>
           )}
+        </div>
         </div>
 
         <DialogFooter>
