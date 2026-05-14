@@ -69,6 +69,26 @@ export default function AgendaPage() {
     enabled: Boolean(selectedTeamId),
   })
 
+  const { data: allHolidayRequests = [] } = useQuery<any[]>({
+    queryKey: ['holiday-requests', selectedTeamId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  const approvedHolidayByUser = useMemo(() => {
+    const map = new Map<string, any[]>()
+    allHolidayRequests
+      .filter((r: any) => r.status === 'APPROVED')
+      .forEach((r: any) => {
+        if (!map.has(r.userId)) map.set(r.userId, [])
+        map.get(r.userId)!.push(r)
+      })
+    return map
+  }, [allHolidayRequests])
+
   const filteredShifts = useMemo(() => {
     let filtered = shifts
 
@@ -167,26 +187,39 @@ export default function AgendaPage() {
             {filteredShifts.length === 0 ? (
               <p className="text-muted-foreground">Ingen kommende vakter</p>
             ) : (
-              filteredShifts.map((shift: any) => (
+              filteredShifts.map((shift: any) => {
+                const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
+                const approvedHoliday = userHolidays.find(
+                  (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
+                ) ?? null
+                return (
                 <div
                   key={shift.id}
                   className="p-4 bg-card rounded-lg border flex items-center justify-between"
                 >
                   <div className="flex-1">
-                    <div className="font-medium">{shift.user.name}</div>
-                    <div className="text-sm text-muted-foreground">
+                    {approvedHoliday && (
+                      <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        {holidayTypeToNorwegian(approvedHoliday.type)}
+                      </span>
+                    )}
+                    <div className={`font-medium ${approvedHoliday ? 'opacity-40' : ''}`}>
+                      {shift.user.name}
+                    </div>
+                    <div className={`text-sm text-muted-foreground ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
                       {formatDateDisplay(shift.date)} - {shift.shiftType.label}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className={`text-xs text-muted-foreground ${approvedHoliday ? 'line-through opacity-30' : ''}`}>
                       {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
                     </div>
                   </div>
                   <div
-                    className="h-7 w-7 rounded-md"
+                    className={`h-7 w-7 rounded-md ${approvedHoliday ? 'opacity-30' : ''}`}
                     style={getShiftChipStyle(shift.shiftType.color)}
                   />
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </section>

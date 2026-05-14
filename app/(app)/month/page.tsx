@@ -24,6 +24,13 @@ import { ShiftModal } from '@/components/schedule/ShiftModal'
 import { ExportMenu } from '@/components/schedule/ExportMenu'
 import { axiosInstance } from '@/lib/axios'
 
+function holidayLabel(type: string): string {
+  if (type === 'HOLIDAY') return 'Ferie'
+  if (type === 'ABSENCE') return 'Fravær'
+  if (type === 'SICKNESS') return 'Sykdom'
+  return 'Permisjon'
+}
+
 /** Monthly calendar view of shifts with per-day summaries. */
 export default function MonthPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -89,6 +96,26 @@ export default function MonthPage() {
     })
     return map
   }, [fetchedShifts])
+
+  const { data: allHolidayRequests = [] } = useQuery<any[]>({
+    queryKey: ['holiday-requests', selectedTeamId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  const approvedHolidayByUser = useMemo(() => {
+    const map = new Map<string, any[]>()
+    allHolidayRequests
+      .filter((r: any) => r.status === 'APPROVED')
+      .forEach((r: any) => {
+        if (!map.has(r.userId)) map.set(r.userId, [])
+        map.get(r.userId)!.push(r)
+      })
+    return map
+  }, [allHolidayRequests])
 
   const handlePrevMonth = () => {
     setSelectedDate(subMonths(selectedDate, 1))
@@ -203,7 +230,12 @@ export default function MonthPage() {
                   {format(date, 'd')}
                 </div>
                 <div className="space-y-1.5">
-                  {dayShifts.slice(0, 3).map((shift: any) => (
+                  {dayShifts.slice(0, 3).map((shift: any) => {
+                    const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
+                    const approvedHoliday = userHolidays.find(
+                      (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
+                    ) ?? null
+                    return (
                     <button
                       key={shift.id}
                       type="button"
@@ -214,20 +246,28 @@ export default function MonthPage() {
                         handleShiftClick(shift)
                       }}
                     >
-                      <div className="font-semibold leading-tight">{shift.shiftType.label}</div>
-                      <div className="mt-1.5 text-base font-semibold leading-tight">
+                      {approvedHoliday && (
+                        <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          {holidayLabel(approvedHoliday.type)}
+                        </span>
+                      )}
+                      <div className={`font-semibold leading-tight ${approvedHoliday ? 'line-through opacity-50' : ''}`}>
+                        {shift.shiftType.label}
+                      </div>
+                      <div className={`mt-1.5 text-base font-semibold leading-tight ${approvedHoliday ? 'opacity-40' : ''}`}>
                         {shift.user?.name || 'Ukjent ansatt'}
                       </div>
-                      <div className="mt-1 text-sm leading-tight opacity-80">
+                      <div className={`mt-1 text-sm leading-tight opacity-80 ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
                         {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
                       </div>
-                      {shift.comment && (
+                      {shift.comment && !approvedHoliday && (
                         <div className="mt-2 text-xs leading-snug whitespace-pre-wrap break-words opacity-70 italic">
                           {shift.comment}
                         </div>
                       )}
                     </button>
-                  ))}
+                    )
+                  })}
                   {dayShifts.length > 3 && (
                     <div className="text-xs text-muted-foreground">
                       +{dayShifts.length - 3} flere
@@ -263,33 +303,44 @@ export default function MonthPage() {
             </DialogHeader>
 
             <div className="space-y-3 py-2">
-              {selectedDayShifts.shifts.map((shift) => (
+              {selectedDayShifts.shifts.map((shift) => {
+                const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
+                const approvedHoliday = userHolidays.find(
+                  (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
+                ) ?? null
+                return (
                 <button
                   key={shift.id}
                   type="button"
                   onClick={() => handleShiftClick(shift)}
                   className="w-full rounded-lg border p-4 text-left transition hover:bg-accent"
                 >
+                  {approvedHoliday && (
+                    <span className="mb-2 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      {holidayLabel(approvedHoliday.type)}
+                    </span>
+                  )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
-                      <div className="text-base font-semibold">
+                      <div className={`text-base font-semibold ${approvedHoliday ? 'line-through opacity-50' : ''}`}>
                         {shift.shiftType?.label || 'Vakt'}
                       </div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className={`text-sm text-muted-foreground ${approvedHoliday ? 'opacity-40' : ''}`}>
                         {shift.user?.name || 'Ukjent ansatt'}
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-muted-foreground">
+                    <div className={`text-sm font-medium text-muted-foreground ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
                       {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
                     </div>
                   </div>
-                  {shift.comment && (
+                  {shift.comment && !approvedHoliday && (
                     <div className="mt-3 text-sm leading-snug text-muted-foreground whitespace-pre-wrap break-words">
                       {shift.comment}
                     </div>
                   )}
                 </button>
-              ))}
+                )
+              })}
             </div>
           </DialogContent>
         </Dialog>

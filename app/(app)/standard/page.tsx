@@ -84,6 +84,20 @@ export default function StandardPlanPage() {
     enabled: Boolean(selectedTeamId),
   })
 
+  const { data: allHolidayRequests = [] } = useQuery({
+    queryKey: ['holiday-requests', selectedTeamId],
+    queryFn: async () => {
+      const response = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
+      return Array.isArray(response.data) ? response.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  const approvedHolidayRequests = useMemo(
+    () => allHolidayRequests.filter((r: any) => r.status === 'APPROVED'),
+    [allHolidayRequests]
+  )
+
   const futureDateFrom = format(selectedDate, 'yyyy-MM-dd')
   const futureDateTo = format(addDays(selectedDate, 365), 'yyyy-MM-dd')
   const { data: futureShifts = [] } = useQuery<Shift[]>({
@@ -303,6 +317,7 @@ export default function StandardPlanPage() {
         currentUser={currentUser}
         onSelectUser={setSelectedUserId}
         highlightedUserId={selectedUserId}
+        holidayRequests={approvedHolidayRequests}
       />
 
       {isBulkModalOpen && selectedTeamId && (

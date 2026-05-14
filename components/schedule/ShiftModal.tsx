@@ -221,7 +221,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg flex flex-col max-h-[80vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
             Detaljer for dag {displayDate ? formatDateDisplay(displayDate) : ''}
@@ -231,6 +231,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
           </DialogDescription>
         </DialogHeader>
 
+        <div className="overflow-y-auto flex-1 min-h-0">
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label>Dato</Label>
@@ -355,6 +356,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
               </div>
             </div>
           )}
+        </div>
         </div>
 
         <DialogFooter>
