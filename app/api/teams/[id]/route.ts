@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 
 /** Delete a team by id. Admin only. */
-export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
+export const DELETE = withLeaderOrAdmin<{ id: string }>(async (_request, ctx) => {
   try {
     await prisma.team.delete({
       where: { id: ctx.params.id },

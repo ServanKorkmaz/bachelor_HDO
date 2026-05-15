@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { createUserSchema } from '@/lib/admin/schemas'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/admin/users - List users with optional filters (teamId, q, status). Admin only. */
-export const GET = withAdmin(async (request) => {
+export const GET = withLeaderOrAdmin(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId') || undefined
@@ -68,7 +68,7 @@ export const GET = withAdmin(async (request) => {
 })
 
 /** POST /api/admin/users - Create new user. Admin only. Creates User + TeamMembership + audit. */
-export const POST = withAdmin(async (request, ctx) => {
+export const POST = withLeaderOrAdmin(async (request, ctx) => {
   try {
     const body = await request.json().catch(() => ({}))
     const parsed = createUserSchema.safeParse(body)

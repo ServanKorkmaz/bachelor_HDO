@@ -42,11 +42,19 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
   'x-current-user-id': currentUserId,
 })
 
+/** Translates a system role enum value to its Norwegian display label. */
+function roleLabel(role: string): string {
+  if (role === 'ADMIN') return 'Admin'
+  if (role === 'LEADER') return 'Leder'
+  return 'Ansatt'
+}
+
 /**
- * Admin > Brukere: alt bruker- og tilgangsstyring samlet.
+ * Admin > Users page: full user and access management hub.
  *
  * Reachable only when the parent `AdminLayout` has confirmed the caller is
- * an admin; the API still enforces it independently via `withAdmin`.
+ * an admin or leader; the API still enforces it independently via
+ * `withLeaderOrAdmin`.
  */
 export default function AdminUsersPage() {
   const { currentUser } = useAuth()
@@ -180,7 +188,7 @@ export default function AdminUsersPage() {
     setBusy(true)
     try {
       await axiosInstance.patch(`/api/admin/teams/${roleDialog.membership.teamId}/members/${roleDialog.membership.membershipId}`, { role: newRole, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
-      toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${newRole}.` })
+      toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${roleLabel(newRole)}.` })
       setRoleDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
     } catch (e: any) {
@@ -312,7 +320,7 @@ export default function AdminUsersPage() {
                           key={t.teamId}
                           className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs"
                         >
-                          {t.teamName} ({t.role})
+                          {t.teamName} ({roleLabel(t.role)})
                         </span>
                       ))}
                       {user.teams.length === 0 && (
@@ -429,8 +437,8 @@ export default function AdminUsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="LEADER">Leader</SelectItem>
-                  <SelectItem value="EMPLOYEE">Employee</SelectItem>
+                  <SelectItem value="LEADER">Leder</SelectItem>
+                  <SelectItem value="EMPLOYEE">Ansatt</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -476,8 +484,8 @@ export default function AdminUsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                  <SelectItem value="LEADER">Leader</SelectItem>
+                  <SelectItem value="EMPLOYEE">Ansatt</SelectItem>
+                  <SelectItem value="LEADER">Leder</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -507,8 +515,8 @@ export default function AdminUsersPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                <SelectItem value="LEADER">Leader</SelectItem>
+                <SelectItem value="EMPLOYEE">Ansatt</SelectItem>
+                <SelectItem value="LEADER">Leder</SelectItem>
               </SelectContent>
             </Select>
           </div>

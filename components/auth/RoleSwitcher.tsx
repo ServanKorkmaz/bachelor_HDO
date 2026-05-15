@@ -71,7 +71,7 @@ export function RoleSwitcher() {
             <div className="flex flex-col">
               <span>{user.name}</span>
               <span className="text-xs text-muted-foreground">
-                {user.role}
+                {user.role === 'ADMIN' ? 'Admin' : user.role === 'LEADER' ? 'Leder' : 'Ansatt'}
               </span>
             </div>
           </DropdownMenuItem>

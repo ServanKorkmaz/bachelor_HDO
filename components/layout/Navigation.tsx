@@ -24,9 +24,9 @@ const baseNavItems = [
  */
 export function Navigation() {
   const pathname = usePathname()
-  const { isAdmin } = useAuth()
+  const { isAdmin, isLeader } = useAuth()
 
-  const settingsItem = isAdmin()
+  const settingsItem = (isAdmin() || isLeader())
     ? { href: '/admin', label: 'Innstillinger', icon: Lock }
     : { href: '/settings', label: 'Min konto', icon: User }
 

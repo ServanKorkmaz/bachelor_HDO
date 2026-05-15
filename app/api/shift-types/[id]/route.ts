@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 
 /** Update a shift type by id. Admin only. */
-export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
+export const PUT = withLeaderOrAdmin<{ id: string }>(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, shiftTypeBodySchema)
     if ('error' in parsed) return parsed.error
@@ -31,7 +31,7 @@ export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
 })
 
 /** Delete a shift type by id. Admin only. */
-export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
+export const DELETE = withLeaderOrAdmin<{ id: string }>(async (_request, ctx) => {
   try {
     await prisma.shiftType.delete({
       where: { id: ctx.params.id },

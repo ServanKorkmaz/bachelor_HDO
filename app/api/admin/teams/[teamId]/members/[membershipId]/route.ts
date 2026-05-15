@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeader } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchMembershipSchema } from '@/lib/admin/schemas'
 
 /** PATCH /api/admin/teams/:teamId/members/:membershipId - Update role/status. Admin only. */
-export const PATCH = withAdmin<{ teamId: string; membershipId: string }>(async (request, ctx) => {
+export const PATCH = withLeader<{ teamId: string; membershipId: string }>(async (request, ctx) => {
   try {
     const { teamId, membershipId } = ctx.params
     const body = await request.json().catch(() => ({}))
@@ -68,7 +68,7 @@ export const PATCH = withAdmin<{ teamId: string; membershipId: string }>(async (
 })
 
 /** DELETE /api/admin/teams/:teamId/members/:membershipId - Soft remove (set status inactive). Admin only. */
-export const DELETE = withAdmin<{ teamId: string; membershipId: string }>(async (_request, ctx) => {
+export const DELETE = withLeader<{ teamId: string; membershipId: string }>(async (_request, ctx) => {
   try {
     const { teamId, membershipId } = ctx.params
 

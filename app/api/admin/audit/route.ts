@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
 /** GET /api/admin/audit - List audit log entries. Admin only. Optional entityType, entityId. */
-export const GET = withAdmin(async (request) => {
+export const GET = withLeaderOrAdmin(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entityType') || undefined

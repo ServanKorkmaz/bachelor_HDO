@@ -79,6 +79,13 @@ export function withAdmin<TParams = Record<string, never>>(
   return withAuth<TParams>(handler, { roles: ['ADMIN'] })
 }
 
+/** Convenience wrapper for routes accessible to ADMIN or LEADER. */
+export function withLeaderOrAdmin<TParams = Record<string, never>>(
+  handler: AuthedHandler<TParams>
+) {
+  return withAuth<TParams>(handler, { roles: ['ADMIN', 'LEADER'] })
+}
+
 /**
  * Verify that an already-authenticated caller is a member of `teamId`. Returns
  * a forbidden response that the handler should return as-is, or `null` when

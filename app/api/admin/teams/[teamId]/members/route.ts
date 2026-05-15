@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withAdmin } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { addMemberSchema } from '@/lib/admin/schemas'
 
 /** POST /api/admin/teams/:teamId/members - Add user to team. Admin only. */
-export const POST = withAdmin<{ teamId: string }>(async (request, ctx) => {
+export const POST = withLeaderOrAdmin<{ teamId: string }>(async (request, ctx) => {
   try {
     const { teamId } = ctx.params
     const body = await request.json().catch(() => ({}))
