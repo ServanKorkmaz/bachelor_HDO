@@ -32,6 +32,7 @@ export default function SwapPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedShiftId, setSelectedShiftId] = useState<string>('')
   const [selectedToUserId, setSelectedToUserId] = useState<string>('')
+  const [selectedToShiftId, setSelectedToShiftId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
   const { currentUser, canApproveSwaps } = useAuth()
 
@@ -122,6 +123,7 @@ export default function SwapPage() {
         teamId: selectedTeamId,
         requestedByUserId: currentUser.id,
         shiftId: selectedShiftId,
+        toShiftId: selectedToShiftId || null,
         toUserId: selectedToUserId,
         message: message || undefined,
       })
@@ -129,6 +131,7 @@ export default function SwapPage() {
       setIsCreateModalOpen(false)
       setSelectedShiftId('')
       setSelectedToUserId('')
+      setSelectedToShiftId('')
       setMessage('')
       await refreshSwapData()
     } catch (error) {
@@ -500,7 +503,7 @@ export default function SwapPage() {
             </div>
             <div className="space-y-2">
               <Label>Bytt med</Label>
-              <Select value={selectedToUserId} onValueChange={setSelectedToUserId}>
+              <Select value={selectedToUserId} onValueChange={(v) => { setSelectedToUserId(v); setSelectedToShiftId('') }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Velg ansatt" />
                 </SelectTrigger>
@@ -518,21 +521,35 @@ export default function SwapPage() {
             {selectedToUserId && (
               <div className="space-y-2">
                 <Label>
-                  {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'Valgt person'} sine vakter i perioden
+                  Velg vakt fra {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'kollegaen'} (valgfritt)
                 </Label>
-                <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                <div className="rounded-md border bg-muted/30 max-h-48 overflow-y-auto">
                   {colleagueShifts.length === 0 ? (
-                    <p className="text-muted-foreground">Ingen vakter i perioden</p>
+                    <p className="p-3 text-sm text-muted-foreground">Ingen vakter i perioden</p>
                   ) : (
-                    <ul className="space-y-1">
+                    <ul className="divide-y divide-border">
                       {colleagueShifts.map((shift: any) => (
-                        <li key={shift.id}>
+                        <li
+                          key={shift.id}
+                          onClick={() => setSelectedToShiftId(shift.id === selectedToShiftId ? '' : shift.id)}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
+                            selectedToShiftId === shift.id ? 'bg-primary/10 font-medium' : ''
+                          }`}
+                        >
+                          <span className={`h-3 w-3 rounded-full border-2 shrink-0 ${
+                            selectedToShiftId === shift.id ? 'border-primary bg-primary' : 'border-muted-foreground'
+                          }`} />
                           {formatDateDisplay(shift.date)} – {shift.shiftType?.label ?? 'Vakt'} ({formatTime(shift.startDateTime)}–{formatTime(shift.endDateTime)})
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
+                {selectedToShiftId && (
+                  <p className="text-xs text-muted-foreground">
+                    Valgt: klikk igjen for å fjerne valget
+                  </p>
+                )}
               </div>
             )}
             <div className="space-y-2">

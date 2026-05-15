@@ -9,6 +9,7 @@ const swapInclude = {
   fromUser: { select: { id: true, name: true } },
   toUser: { select: { id: true, name: true } },
   shift: { include: { shiftType: true } },
+  toShift: { include: { shiftType: true } },
 } satisfies Prisma.SwapRequestInclude
 
 export type SwapWithRelations = Prisma.SwapRequestGetPayload<{ include: typeof swapInclude }>
@@ -17,6 +18,7 @@ export interface CreateSwapInput {
   teamId: string
   requestedByUserId: string
   shiftId: string
+  toShiftId?: string | null
   toUserId: string
   message?: string | null
 }
@@ -63,6 +65,7 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
         fromUserId: shift.userId,
         toUserId: input.toUserId,
         shiftId: input.shiftId,
+        toShiftId: input.toShiftId || null,
         status: 'AWAITING_ACCEPTANCE',
         message: input.message || null,
       },
@@ -264,10 +267,18 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
   )
 
   return withEvents(async (tx, emit) => {
+    // Reassign fromUser's shift to toUser.
     await tx.shift.update({
       where: { id: sr.shiftId },
       data: { userId: sr.toUserId },
     })
+    // If a specific toShift was selected, also reassign it to fromUser (true two-way swap).
+    if (sr.toShiftId) {
+      await tx.shift.update({
+        where: { id: sr.toShiftId },
+        data: { userId: sr.fromUserId },
+      })
+    }
     const updated = await tx.swapRequest.update({
       where: { id: swapRequestId },
       data: { status: 'EXECUTED', decidedAt: new Date() },

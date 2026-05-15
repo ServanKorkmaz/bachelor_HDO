@@ -138,10 +138,11 @@ model Shift {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shiftType    ShiftType     @relation(fields: [shiftTypeId], references: [id], onDelete: Restrict)
-  swapRequests SwapRequest[]
+  team            Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shiftType       ShiftType     @relation(fields: [shiftTypeId], references: [id], onDelete: Restrict)
+  swapRequests    SwapRequest[] @relation("SwapFromShift")
+  swapRequestsTo  SwapRequest[] @relation("SwapToShift")
 
   @@unique([userId, date])
   @@index([teamId, date])
@@ -176,18 +177,20 @@ model SwapRequest {
   fromUserId        String
   toUserId          String
   shiftId           String
+  toShiftId         String?
   status            RequestStatus @default(PENDING)
   message           String?
   createdAt         DateTime      @default(now())
   decidedBy         String?
   decidedAt         DateTime?
 
-  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  requestedBy   User  @relation("SwapRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
-  fromUser      User  @relation("SwapFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
-  toUser        User  @relation("SwapToUser", fields: [toUserId], references: [id], onDelete: Cascade)
-  shift         Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  decidedByUser User? @relation("SwapDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
+  team          Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  requestedBy   User   @relation("SwapRequester", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  fromUser      User   @relation("SwapFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser        User   @relation("SwapToUser", fields: [toUserId], references: [id], onDelete: Cascade)
+  shift         Shift  @relation("SwapFromShift", fields: [shiftId], references: [id], onDelete: Cascade)
+  toShift       Shift? @relation("SwapToShift", fields: [toShiftId], references: [id], onDelete: SetNull)
+  decidedByUser User?  @relation("SwapDecider", fields: [decidedBy], references: [id], onDelete: SetNull)
 
   @@index([teamId, status])
   @@index([requestedByUserId])

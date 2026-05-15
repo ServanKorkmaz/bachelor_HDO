@@ -151,6 +151,7 @@ export const holidayPutSchema = z.object({
 export const swapCreateSchema = z.object({
   teamId: id,
   shiftId: id,
+  toShiftId: id.optional().nullable(),
   toUserId: id,
   message: z.string().max(2000).optional().nullable(),
 })

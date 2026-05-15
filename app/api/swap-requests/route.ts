@@ -30,6 +30,7 @@ export const GET = withAuth(async (request, ctx) => {
         fromUser: { select: { id: true, name: true } },
         toUser: { select: { id: true, name: true } },
         shift: { include: { shiftType: true } },
+        toShift: { include: { shiftType: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -49,7 +50,7 @@ export const POST = withAuth(async (request, ctx) => {
 
     const parsed = await parseJsonBody(request, swapCreateSchema)
     if ('error' in parsed) return parsed.error
-    const { teamId, shiftId, toUserId, message } = parsed.data
+    const { teamId, shiftId, toShiftId, toUserId, message } = parsed.data
 
     const forbidden = await assertTeamMember(ctx, teamId)
     if (forbidden) return forbidden
@@ -59,6 +60,7 @@ export const POST = withAuth(async (request, ctx) => {
       // requestedByUserId always comes from the authenticated caller — never trust the body
       requestedByUserId: ctx.userId,
       shiftId,
+      toShiftId,
       toUserId,
       message,
     })
