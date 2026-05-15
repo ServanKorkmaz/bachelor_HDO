@@ -6,25 +6,11 @@ import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
 import { ShiftModal } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
-
-interface Shift {
-  id: string
-  userId: string
-  date: string
-  startDateTime: string
-  endDateTime: string
-  shiftType: {
-    id: string
-    code: string
-    label: string
-    color: string
-  }
-  user: {
-    id: string
-    name: string
-  }
-  comment?: string
-}
+// Use the canonical Shift type so the modal handoff at `<ShiftModal shift={...} />`
+// type-checks. Defining a narrower local type here drops `defaultStartTime` /
+// `defaultEndTime` / `crossesMidnight` from `shiftType`, which produces the
+// "Two different types with this name exist" build error.
+import type { Shift } from '@/lib/types'
 
 interface WeekGridProps {
   weekDates: Date[]
