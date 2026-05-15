@@ -1,8 +1,112 @@
 import { Prisma } from '@prisma/client'
+import { format, parseISO, subDays, addDays } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
 import { withEvents } from '@/lib/notifications/events'
+import { evaluateShiftIssues, type Conflict } from '@/lib/domain/shift-issues'
 import { ServiceError } from './errors'
+
+/**
+ * Placeholder id used as the target for AML evaluation in a CREATE flow,
+ * before the row has been inserted and assigned a real cuid. Any string that
+ * cannot collide with a real cuid works — the only thing the evaluator does
+ * with target.id is filter it out of the "other shifts" list, and that list
+ * doesn't contain this placeholder either.
+ */
+const CREATE_TARGET_ID = '__create_pending__'
+
+/**
+ * Look up the user's nearby shifts and active approved holidays, then run the
+ * AML §10-8 evaluator. Throws a typed ServiceError when a hard conflict is
+ * detected. Runs inside the surrounding transaction so the validation is
+ * serialised with the write — no TOCTOU window where two parallel callers
+ * each see "clean" and both insert a violating shift.
+ *
+ * The 14-day window is deliberately wider than the 7-day rolling window the
+ * evaluator needs: covers the streak probe and absorbs end-of-window edge
+ * cases without forcing per-call windowing logic here.
+ */
+async function assertNoAmlConflict(
+  tx: Prisma.TransactionClient,
+  args: {
+    targetId: string
+    userId: string
+    date: string
+    startDateTime: Date
+    endDateTime: Date
+  }
+): Promise<void> {
+  const parsedDate = parseISO(args.date)
+  const windowFrom = format(subDays(parsedDate, 14), 'yyyy-MM-dd')
+  const windowTo = format(addDays(parsedDate, 1), 'yyyy-MM-dd')
+
+  const [otherShifts, holidays] = await Promise.all([
+    tx.shift.findMany({
+      where: {
+        userId: args.userId,
+        date: { gte: windowFrom, lte: windowTo },
+        NOT: { id: args.targetId },
+      },
+      select: { id: true, date: true, startDateTime: true, endDateTime: true },
+    }),
+    tx.holidayRequest.findMany({
+      where: {
+        userId: args.userId,
+        status: 'APPROVED',
+        dateFrom: { lte: args.date },
+        OR: [
+          { AND: [{ dateTo: null }, { dateFrom: args.date }] },
+          { dateTo: { gte: args.date } },
+        ],
+      },
+      select: { id: true, dateFrom: true, dateTo: true },
+    }),
+  ])
+
+  const issues = evaluateShiftIssues(
+    {
+      id: args.targetId,
+      date: args.date,
+      startDateTime: args.startDateTime,
+      endDateTime: args.endDateTime,
+    },
+    otherShifts,
+    holidays
+  )
+
+  if (issues.hardConflict) {
+    throw amlError(issues.hardConflict)
+  }
+}
+
+function amlError(c: Conflict): ServiceError {
+  switch (c.kind) {
+    case 'Holiday':
+      return new ServiceError(
+        'AML_HOLIDAY',
+        'Brukeren har godkjent fravær på denne datoen.',
+        422
+      )
+    case 'Overlap':
+      return new ServiceError(
+        'AML_OVERLAP',
+        'Vakten overlapper i tid med en annen vakt brukeren har.',
+        422
+      )
+    case 'RestPeriod':
+      return new ServiceError(
+        'AML_DAILY_REST',
+        `For lite hvile mellom vakter — kun ${c.hoursBetween} timer (AML §10-8(1) krever 11).`,
+        422
+      )
+    case 'WeeklyRest':
+      return new ServiceError(
+        'AML_WEEKLY_REST',
+        `For lite ukentlig hvile — lengste sammenhengende hvile er ${c.hoursInWindow} timer (AML §10-8(2) krever 35).`,
+        422
+      )
+  }
+}
 
 const shiftInclude = {
   shiftType: true,
@@ -95,6 +199,14 @@ export async function createShift(input: CreateShiftInput): Promise<ShiftWithRel
   })
 
   return withEvents(async (tx, emit) => {
+    await assertNoAmlConflict(tx, {
+      targetId: CREATE_TARGET_ID,
+      userId: input.userId,
+      date: input.date,
+      startDateTime,
+      endDateTime,
+    })
+
     let shift: ShiftWithRelations
     try {
       shift = await tx.shift.create({
@@ -143,6 +255,14 @@ export async function updateShift(
   })
 
   return withEvents(async (tx, emit) => {
+    await assertNoAmlConflict(tx, {
+      targetId: existing.id,
+      userId: input.userId,
+      date: input.date,
+      startDateTime,
+      endDateTime,
+    })
+
     let shift: ShiftWithRelations
     try {
       shift = await tx.shift.update({

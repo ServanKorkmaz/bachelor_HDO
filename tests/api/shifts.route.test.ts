@@ -7,6 +7,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     shiftType:      { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
     notification:   { create: vi.fn() },
+    holidayRequest: { findMany: vi.fn() },
     $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
@@ -83,6 +84,9 @@ describe('POST /api/shifts', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
+    // AML validation needs both lookups; default to "clean" — no neighbouring shifts, no holidays.
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
@@ -153,6 +157,42 @@ describe('POST /api/shifts', () => {
     expect(res.status).toBe(400)
     const body = await res.json()
     expect(body.error).toMatch(/like/i)
+    expect(mockPrisma.shift.create).not.toHaveBeenCalled()
+  })
+
+  it('returns 422 AML_DAILY_REST when there is < 11h rest from a nearby shift', async () => {
+    mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })
+    // Other shift ends 2026-04-27 22:00 → new shift starts 2026-04-28 06:00 → 8h gap.
+    mockPrisma.shift.findMany.mockResolvedValue([
+      {
+        id: 'other-1',
+        date: '2026-04-27',
+        startDateTime: new Date('2026-04-27T14:00:00Z'),
+        endDateTime: new Date('2026-04-27T22:00:00Z'),
+      },
+    ])
+
+    const res = await POST(
+      makePost({ ...validBody, date: '2026-04-28', startTime: '06:00', endTime: '14:00' }, 'admin-1')
+    )
+
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.error).toMatch(/hvile mellom vakter/i)
+    expect(mockPrisma.shift.create).not.toHaveBeenCalled()
+  })
+
+  it('returns 422 AML_HOLIDAY when target date is covered by an approved holiday', async () => {
+    mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([
+      { id: 'hol-1', dateFrom: '2026-04-28', dateTo: null },
+    ])
+
+    const res = await POST(makePost(validBody, 'admin-1'))
+
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.error).toMatch(/godkjent fravær/i)
     expect(mockPrisma.shift.create).not.toHaveBeenCalled()
   })
 

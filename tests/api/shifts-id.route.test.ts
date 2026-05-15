@@ -4,6 +4,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
   mockPrisma: {
     shift: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
     },
@@ -11,6 +12,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     user:           { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
     notification:   { create: vi.fn() },
+    holidayRequest: { findMany: vi.fn() },
     $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
@@ -68,6 +70,9 @@ describe('PUT /api/shifts/[id]', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
+    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
@@ -128,6 +133,9 @@ describe('DELETE /api/shifts/[id]', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
+    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 

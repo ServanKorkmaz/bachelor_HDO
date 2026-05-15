@@ -16,6 +16,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     shift: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -25,6 +26,9 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     },
     notification: {
       create: vi.fn(),
+    },
+    holidayRequest: {
+      findMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -77,6 +81,9 @@ describe('POST /api/shifts/bulk', () => {
     mockPrisma.shiftType.findMany.mockResolvedValue([])
     mockPrisma.shift.findUnique.mockResolvedValue(null)
     mockPrisma.shift.findFirst.mockResolvedValue(null)
+    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     // Bulk now delegates to shift-service.createShift, which calls
     // prisma.shift.create with `include: { shiftType, user }`. The mock must
     // return that shape so the service can build its notification message.
