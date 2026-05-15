@@ -1,27 +1,21 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { axiosInstance } from '@/lib/axios'
 import { format } from 'date-fns'
 
 /** Profile page showing the current user's information. */
 export default function ProfilePage() {
   const { currentUser } = useAuth()
-  const [userData, setUserData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (!currentUser?.id) return
-    fetch(`/api/users/${currentUser.id}`)
-      .then(res => res.json())
-      .then(data => {
-        setUserData(data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [currentUser?.id])
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ['user', currentUser?.id],
+    queryFn: () => axiosInstance.get(`/api/users/${currentUser!.id}`).then(r => r.data),
+    enabled: Boolean(currentUser?.id),
+  })
 
-  if (loading) {
+  if (isLoading) {
     return <div className="text-muted-foreground">Laster profil...</div>
   }
 
