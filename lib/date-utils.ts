@@ -1,4 +1,4 @@
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, parse, isSameDay, addDays, differenceInHours, differenceInMinutes } from 'date-fns'
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, parse, isSameDay, addDays, differenceInHours, differenceInMinutes, getISOWeek, getISOWeekYear, setISOWeek, setISOWeekYear } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 
 /** Date-only format used across the app (YYYY-MM-DD). */
@@ -90,6 +90,29 @@ export function calculateShiftHours(startDateTime: Date | string, endDateTime: D
   
   const minutes = differenceInMinutes(end, start)
   return minutes / 60
+}
+
+/** ISO week-year and week-number identifier. Used for keying week notes
+ * and rendering "Uke 11 - 2026"-style headers. ISO year may differ from
+ * the calendar year at January/December boundaries (e.g. 2024-12-30 is
+ * 2025-W01) — always use the ISO year together with the ISO week. */
+export interface IsoWeek {
+  year: number
+  week: number
+}
+
+/** Get the ISO week and ISO week-year for a date. */
+export function getIsoWeek(date: Date): IsoWeek {
+  return { year: getISOWeekYear(date), week: getISOWeek(date) }
+}
+
+/** Build a Date pointing at the Monday of a given ISO (year, week). */
+export function fromIsoWeek(year: number, week: number): Date {
+  // setISOWeekYear must run before setISOWeek because the former resets the
+  // week to 1 if the source date's week doesn't exist in the target year.
+  const base = setISOWeekYear(new Date(), year)
+  const monday = setISOWeek(base, week)
+  return getWeekStart(monday)
 }
 
 /** Format decimal hours as H:mm for display. */

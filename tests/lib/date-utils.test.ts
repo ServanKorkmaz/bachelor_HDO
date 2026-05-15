@@ -85,4 +85,35 @@ describe('date-utils', () => {
 
     vi.useRealTimers()
   })
+
+  describe('ISO week helpers', () => {
+    it('getIsoWeek returns ISO year/week for a mid-year date', async () => {
+      const { getIsoWeek } = await import('@/lib/date-utils')
+      const result = getIsoWeek(new Date('2026-03-10T00:00:00.000Z'))
+      expect(result).toEqual({ year: 2026, week: 11 })
+    })
+
+    it('getIsoWeek handles the Jan/Dec ISO year-boundary correctly', async () => {
+      const { getIsoWeek } = await import('@/lib/date-utils')
+      // 2024-12-30 is a Monday and belongs to ISO 2025-W01, not 2024.
+      const result = getIsoWeek(new Date('2024-12-30T00:00:00.000Z'))
+      expect(result).toEqual({ year: 2025, week: 1 })
+    })
+
+    it('fromIsoWeek returns the Monday of the requested ISO week', async () => {
+      const { fromIsoWeek, formatDate } = await import('@/lib/date-utils')
+      const monday = fromIsoWeek(2026, 11)
+      // ISO week 11 of 2026 starts Monday 2026-03-09.
+      expect(formatDate(monday)).toBe('2026-03-09')
+    })
+
+    it('getIsoWeek + fromIsoWeek round-trip', async () => {
+      const { getIsoWeek, fromIsoWeek, formatDate } = await import('@/lib/date-utils')
+      const original = new Date('2026-07-15T00:00:00.000Z')
+      const iso = getIsoWeek(original)
+      const back = fromIsoWeek(iso.year, iso.week)
+      // We expect the Monday of the week that contained the original date.
+      expect(formatDate(back)).toBe('2026-07-13')
+    })
+  })
 })

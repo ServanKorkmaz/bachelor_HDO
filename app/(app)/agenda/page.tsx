@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { axiosInstance } from '@/lib/axios'
-import { format } from 'date-fns'
+import { useEffect, useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { addDays, addWeeks, format, parseISO, subWeeks } from 'date-fns'
+import { nb } from 'date-fns/locale/nb'
+import { ChevronLeft, ChevronRight, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/auth/mockAuth'
-import { formatDateDisplay } from '@/lib/date-utils'
-import { getShiftChipStyle } from '@/lib/shift-colors'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -15,18 +15,92 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAuth } from '@/lib/auth/mockAuth'
+import { useToast } from '@/components/ui/use-toast'
+import { axiosInstance } from '@/lib/axios'
+import {
+  formatDateDisplay,
+  fromIsoWeek,
+  getIsoWeek,
+  getWeekDates,
+  getWeekStart,
+  DATE_FORMAT,
+} from '@/lib/date-utils'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
-import { ExportMenu } from '@/components/schedule/ExportMenu'
 
-/** Agenda view showing upcoming shifts and notes. */
+const WEEKS_VISIBLE = 4 // four weeks per page — matches old HDO Agenda pattern
+
+type TeamSummary = { id: string; name: string }
+type UserSummary = { id: string; name: string; teamId?: string }
+type ShiftType = { id: string; code: string; label: string; color: string }
+type Shift = {
+  id: string
+  userId: string
+  date: string
+  startDateTime: string
+  endDateTime: string
+  shiftType: ShiftType
+  comment?: string | null
+}
+type HolidayRequest = {
+  id: string
+  userId: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  type: string
+  dateFrom: string
+  dateTo: string | null
+}
+type WeekNote = {
+  id: string
+  teamId: string
+  isoYear: number
+  isoWeek: number
+  body: string
+}
+
+/** Agenda page — per-employee weekly view with editable "fokus for uka" notes
+ * above each week card. The selected employee, team and reference date are
+ * persisted in the URL so a shared link reproduces the same view. */
 export default function AgendaPage() {
-  const [selectedTeamId, setSelectedTeamId] = useState<string>('')
-  // Use a non-empty sentinel for 'all' to satisfy Radix SelectItem requirements
-  const [selectedUserId, setSelectedUserId] = useState<string>('all')
-  const [selectedType, setSelectedType] = useState<string>('all')
   const { currentUser } = useAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  const { data: teams = [] } = useQuery<any[]>({
+  const userRole = currentUser?.role
+  const canEditWeekNotes = userRole === 'ADMIN' || userRole === 'LEADER'
+  const canSwitchEmployee = userRole === 'ADMIN' || userRole === 'LEADER'
+
+  // URL-backed state: ?employee, ?date, ?teamId. Defaults applied once the
+  // initial team list / current user resolves.
+  const [selectedTeamId, setSelectedTeamId] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [anchorDate, setAnchorDate] = useState<Date>(() => {
+    const dateParam = searchParams.get('date')
+    const parsed = dateParam ? parseISO(dateParam) : new Date()
+    return getWeekStart(Number.isNaN(parsed.getTime()) ? new Date() : parsed)
+  })
+
+  const weeks = useMemo(() => {
+    return Array.from({ length: WEEKS_VISIBLE }, (_, i) => {
+      const monday = addWeeks(anchorDate, i)
+      const iso = getIsoWeek(monday)
+      const dates = getWeekDates(monday)
+      return { monday, isoYear: iso.year, isoWeek: iso.week, dates }
+    })
+  }, [anchorDate])
+
+  // Compute the date range we need shifts/holidays for so the queries can be
+  // cached and not re-fetch on every render.
+  const rangeStart = weeks[0].dates[0]
+  const rangeEnd = weeks[weeks.length - 1].dates[6]
+  const rangeStartStr = format(rangeStart, DATE_FORMAT)
+  const rangeEndStr = format(rangeEnd, DATE_FORMAT)
+
+  // === Data fetching ===
+  const { data: teams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')
@@ -34,237 +108,399 @@ export default function AgendaPage() {
     },
   })
 
+  const { data: users = [] } = useQuery<UserSummary[]>({
+    queryKey: ['users', selectedTeamId],
+    queryFn: async () => {
+      const url = selectedTeamId ? `/api/users?teamId=${selectedTeamId}` : '/api/users'
+      const res = await axiosInstance.get(url)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(currentUser),
+  })
+
+  const { data: shifts = [] } = useQuery<Shift[]>({
+    queryKey: ['agenda-shifts', selectedTeamId, selectedUserId, rangeStartStr, rangeEndStr],
+    queryFn: async () => {
+      if (!selectedTeamId || !selectedUserId) return []
+      const res = await axiosInstance.get(
+        `/api/shifts?teamId=${selectedTeamId}&dateFrom=${rangeStartStr}&dateTo=${rangeEndStr}`,
+      )
+      const all: Shift[] = Array.isArray(res.data) ? res.data : []
+      return all.filter((s) => s.userId === selectedUserId)
+    },
+    enabled: Boolean(selectedTeamId && selectedUserId),
+  })
+
+  const { data: holidayRequests = [] } = useQuery<HolidayRequest[]>({
+    queryKey: ['agenda-holidays', selectedTeamId, selectedUserId],
+    queryFn: async () => {
+      if (!selectedTeamId) return []
+      const res = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
+      const all: HolidayRequest[] = Array.isArray(res.data) ? res.data : []
+      return all.filter((r) => r.userId === selectedUserId && r.status === 'APPROVED')
+    },
+    enabled: Boolean(selectedTeamId && selectedUserId),
+  })
+
+  const { data: weekNotes = [] } = useQuery<WeekNote[]>({
+    queryKey: [
+      'week-notes',
+      selectedTeamId,
+      weeks[0].isoYear,
+      weeks[0].isoWeek,
+      weeks[weeks.length - 1].isoYear,
+      weeks[weeks.length - 1].isoWeek,
+    ],
+    queryFn: async () => {
+      if (!selectedTeamId) return []
+      const params = new URLSearchParams({
+        teamId: selectedTeamId,
+        fromYear: String(weeks[0].isoYear),
+        fromWeek: String(weeks[0].isoWeek),
+        toYear: String(weeks[weeks.length - 1].isoYear),
+        toWeek: String(weeks[weeks.length - 1].isoWeek),
+      })
+      const res = await axiosInstance.get(`/api/week-notes?${params.toString()}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(selectedTeamId),
+  })
+
+  // === Initial defaults ===
   useEffect(() => {
-    if (Array.isArray(teams) && teams.length > 0 && !selectedTeamId) {
+    if (!currentUser) return
+    if (selectedTeamId) return
+    const urlTeam = searchParams.get('teamId')
+    if (urlTeam && teams.some((t) => t.id === urlTeam)) {
+      setSelectedTeamId(urlTeam)
+    } else if (currentUser.teamId) {
+      setSelectedTeamId(currentUser.teamId)
+    } else if (teams.length > 0) {
       setSelectedTeamId(teams[0].id)
     }
-  }, [teams, selectedTeamId])
+  }, [currentUser, teams, selectedTeamId, searchParams])
 
-  const { data: users = [] } = useQuery<any[]>({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const res = await axiosInstance.get('/api/users')
-      return Array.isArray(res.data) ? res.data : []
-    },
-  })
+  useEffect(() => {
+    if (!currentUser) return
+    if (selectedUserId) return
+    const urlUser = searchParams.get('employee')
+    // Employees can only view themselves. The server-side authorization is the
+    // real gate; this just keeps the UI honest.
+    if (urlUser && canSwitchEmployee && users.some((u) => u.id === urlUser)) {
+      setSelectedUserId(urlUser)
+    } else {
+      setSelectedUserId(currentUser.id)
+    }
+  }, [currentUser, users, selectedUserId, searchParams, canSwitchEmployee])
 
-  const today = format(new Date(), 'yyyy-MM-dd')
-  const futureDate = format(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+  // Keep the URL in sync so refresh/share reproduces the view.
+  useEffect(() => {
+    if (!selectedTeamId || !selectedUserId) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('teamId', selectedTeamId)
+    params.set('employee', selectedUserId)
+    params.set('date', format(anchorDate, DATE_FORMAT))
+    const next = params.toString()
+    if (next !== searchParams.toString()) {
+      router.replace(`/agenda?${next}`, { scroll: false })
+    }
+  }, [selectedTeamId, selectedUserId, anchorDate, router, searchParams])
 
-  const { data: shifts = [] } = useQuery<any[]>({
-    queryKey: ['shifts', selectedTeamId, today, futureDate],
-    queryFn: async () => {
-      const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
-      return Array.isArray(res.data) ? res.data : []
-    },
-    enabled: Boolean(selectedTeamId),
-  })
-
-  const { data: notes = [] } = useQuery<any[]>({
-    queryKey: ['notes', selectedTeamId, today, futureDate],
-    queryFn: async () => {
-      const res = await axiosInstance.get(`/api/notes?teamId=${selectedTeamId}&dateFrom=${today}&dateTo=${futureDate}`)
-      return Array.isArray(res.data) ? res.data : []
-    },
-    enabled: Boolean(selectedTeamId),
-  })
-
-  const { data: allHolidayRequests = [] } = useQuery<any[]>({
-    queryKey: ['holiday-requests', selectedTeamId],
-    queryFn: async () => {
-      const res = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
-      return Array.isArray(res.data) ? res.data : []
-    },
-    enabled: Boolean(selectedTeamId),
-  })
-
-  const approvedHolidayByUser = useMemo(() => {
-    const map = new Map<string, any[]>()
-    allHolidayRequests
-      .filter((r: any) => r.status === 'APPROVED')
-      .forEach((r: any) => {
-        if (!map.has(r.userId)) map.set(r.userId, [])
-        map.get(r.userId)!.push(r)
-      })
+  // === Derived maps for fast per-day lookup ===
+  const shiftsByDate = useMemo(() => {
+    const map = new Map<string, Shift>()
+    for (const s of shifts) map.set(s.date, s)
     return map
-  }, [allHolidayRequests])
+  }, [shifts])
 
-  const filteredShifts = useMemo(() => {
-    let filtered = shifts
-
-    if (selectedUserId && selectedUserId !== 'all') {
-      filtered = filtered.filter((s: any) => s.userId === selectedUserId)
+  const holidayForDate = (dateStr: string): HolidayRequest | null => {
+    for (const r of holidayRequests) {
+      const to = r.dateTo ?? r.dateFrom
+      if (dateStr >= r.dateFrom && dateStr <= to) return r
     }
+    return null
+  }
 
-    return filtered.sort((a: any, b: any) => {
-      const dateCompare = a.date.localeCompare(b.date)
-      if (dateCompare !== 0) return dateCompare
-      return a.startDateTime.localeCompare(b.startDateTime)
-    })
-  }, [shifts, selectedUserId])
+  const weekNoteFor = (isoYear: number, isoWeek: number): WeekNote | undefined =>
+    weekNotes.find((n) => n.isoYear === isoYear && n.isoWeek === isoWeek)
 
-  const filteredNotes = useMemo(() => {
-    let filtered = notes
+  // === Save week note ===
+  const upsertWeekNote = useMutation({
+    mutationFn: async (input: { isoYear: number; isoWeek: number; body: string }) => {
+      await axiosInstance.put('/api/week-notes', {
+        teamId: selectedTeamId,
+        isoYear: input.isoYear,
+        isoWeek: input.isoWeek,
+        body: input.body,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['week-notes', selectedTeamId] })
+      toast({ title: 'Lagret', description: 'Ukenotat oppdatert.' })
+    },
+    onError: () => {
+      toast({
+        title: 'Kunne ikke lagre',
+        description: 'Prøv igjen, eller kontakt en administrator.',
+        variant: 'destructive',
+      })
+    },
+  })
 
-    if (selectedType !== 'all') {
-      filtered = filtered.filter((n: any) => n.type === selectedType)
-    }
+  if (!currentUser) return null
 
-    if (selectedUserId && selectedUserId !== 'all') {
-      filtered = filtered.filter((n: any) => n.createdByUserId === selectedUserId)
-    }
-
-    return filtered.sort((a: any, b: any) => {
-      return a.dateFrom.localeCompare(b.dateFrom)
-    })
-  }, [notes, selectedType, selectedUserId])
+  const selectedUser = users.find((u) => u.id === selectedUserId)
+  const selectedTeam = teams.find((t) => t.id === selectedTeamId)
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Agenda</h1>
-        {selectedTeamId && (
-          <ExportMenu
-            shifts={filteredShifts}
-            teamName={teams.find((t) => t.id === selectedTeamId)?.name ?? 'plan'}
-            dateFrom={today}
-            dateTo={futureDate}
-            disabled={filteredShifts.length === 0}
-          />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Agenda</h1>
+          <p className="text-muted-foreground mt-1">
+            Ukentlig oversikt for{' '}
+            <span className="font-medium text-foreground">{selectedUser?.name ?? '...'}</span>
+            {selectedTeam ? ` · ${selectedTeam.name}` : ''}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 rounded-lg border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setAnchorDate(subWeeks(anchorDate, WEEKS_VISIBLE))}
+            aria-label="Forrige periode"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setAnchorDate(getWeekStart(new Date()))}
+          >
+            I dag
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => setAnchorDate(addWeeks(anchorDate, WEEKS_VISIBLE))}
+            aria-label="Neste periode"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {canSwitchEmployee && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Ansatt</label>
+            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+              <SelectTrigger className="w-[220px]">
+                <SelectValue placeholder="Velg ansatt" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {teams.length > 1 && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium">Team</label>
+            <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {teams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Plan:</label>
-          <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Velg plan" />
-            </SelectTrigger>
-            <SelectContent>
-              {teams.map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Ansatt:</label>
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Alle" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle</SelectItem>
-              {users.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Type:</label>
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle</SelectItem>
-              <SelectItem value="GENERAL">Generelt</SelectItem>
-              <SelectItem value="ABSENCE">Fravær</SelectItem>
-              <SelectItem value="SICKNESS">Sykdom</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Kommende vakter</h2>
-          <div className="space-y-2">
-            {filteredShifts.length === 0 ? (
-              <p className="text-muted-foreground">Ingen kommende vakter</p>
-            ) : (
-              filteredShifts.map((shift: any) => {
-                const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
-                const approvedHoliday = userHolidays.find(
-                  (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
-                ) ?? null
-                return (
-                <div
-                  key={shift.id}
-                  className="p-4 bg-card rounded-lg border flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    {approvedHoliday && (
-                      <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                        {holidayTypeToNorwegian(approvedHoliday.type)}
-                      </span>
-                    )}
-                    <div className={`font-medium ${approvedHoliday ? 'opacity-40' : ''}`}>
-                      {shift.user.name}
-                    </div>
-                    <div className={`text-sm text-muted-foreground ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
-                      {formatDateDisplay(shift.date)} - {shift.shiftType.label}
-                    </div>
-                    <div className={`text-xs text-muted-foreground ${approvedHoliday ? 'line-through opacity-30' : ''}`}>
-                      {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
-                    </div>
-                  </div>
-                  <div
-                    className={`h-7 w-7 rounded-md ${approvedHoliday ? 'opacity-30' : ''}`}
-                    style={getShiftChipStyle(shift.shiftType.color)}
-                  />
-                </div>
-                )
-              })
-            )}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Notater</h2>
-          <div className="space-y-2">
-            {filteredNotes.length === 0 ? (
-              <p className="text-muted-foreground">Ingen notater</p>
-            ) : (
-              filteredNotes.map((note: any) => (
-                <div
-                  key={note.id}
-                  className="p-4 bg-card rounded-lg border"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium">{note.title || 'Ingen tittel'}</span>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          note.type === 'ABSENCE' ? 'bg-yellow-500/20 text-yellow-500' :
-                          note.type === 'SICKNESS' ? 'bg-red-500/20 text-red-500' :
-                          'bg-blue-500/20 text-blue-500'
-                        }`}>
-                          {holidayTypeToNorwegian(note.type)}
-                        </span>
-                        {note.status === 'PENDING' && (
-                          <span className="text-xs px-2 py-1 rounded bg-orange-500/20 text-orange-500">
-                            Venter på godkjenning
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground mb-2">
-                        {formatDateDisplay(note.dateFrom)} - {formatDateDisplay(note.dateTo)}
-                      </div>
-                      <div className="text-sm">{note.body}</div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
+      <div className="space-y-4">
+        {weeks.map((w) => (
+          <WeekCard
+            key={`${w.isoYear}-${w.isoWeek}`}
+            isoYear={w.isoYear}
+            isoWeek={w.isoWeek}
+            dates={w.dates}
+            note={weekNoteFor(w.isoYear, w.isoWeek)}
+            canEdit={canEditWeekNotes}
+            onSaveNote={(body) =>
+              upsertWeekNote.mutate({ isoYear: w.isoYear, isoWeek: w.isoWeek, body })
+            }
+            shiftsByDate={shiftsByDate}
+            holidayFor={holidayForDate}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
+// === Week card ===
+
+interface WeekCardProps {
+  isoYear: number
+  isoWeek: number
+  dates: Date[]
+  note: WeekNote | undefined
+  canEdit: boolean
+  onSaveNote: (body: string) => void
+  shiftsByDate: Map<string, Shift>
+  holidayFor: (date: string) => HolidayRequest | null
+}
+
+function WeekCard({
+  isoYear,
+  isoWeek,
+  dates,
+  note,
+  canEdit,
+  onSaveNote,
+  shiftsByDate,
+  holidayFor,
+}: WeekCardProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  const monday = dates[0]
+  const sunday = dates[6]
+
+  const handleStartEdit = () => {
+    setDraft(note?.body ?? '')
+    setEditing(true)
+  }
+
+  const handleSave = () => {
+    onSaveNote(draft)
+    setEditing(false)
+  }
+
+  return (
+    <section className="rounded-lg border bg-card overflow-hidden">
+      <header className="border-b bg-muted/40 px-4 py-2 flex items-center justify-between gap-2">
+        <div className="text-sm font-semibold">
+          Uke {isoWeek} – {isoYear}
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            {format(monday, 'dd.MM.', { locale: nb })} – {format(sunday, 'dd.MM.yyyy', { locale: nb })}
+          </span>
+        </div>
+        {canEdit && !editing && (
+          <Button type="button" size="sm" variant="ghost" onClick={handleStartEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1" />
+            {note ? 'Rediger ukenotat' : 'Legg til ukenotat'}
+          </Button>
+        )}
+      </header>
+
+      {editing ? (
+        <div className="px-4 py-3 bg-muted/20 border-b space-y-2">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Fokus for uka, instruks, eller annen relevant info."
+            rows={3}
+            maxLength={1000}
+          />
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+              <X className="h-3.5 w-3.5 mr-1" />
+              Avbryt
+            </Button>
+            <Button type="button" size="sm" onClick={handleSave}>
+              <Save className="h-3.5 w-3.5 mr-1" />
+              Lagre
+            </Button>
+          </div>
+        </div>
+      ) : (
+        note?.body && (
+          <div className="px-4 py-3 bg-muted/20 border-b text-sm whitespace-pre-wrap">
+            {note.body}
+          </div>
+        )
+      )}
+
+      <ul className="divide-y">
+        {dates.map((date) => {
+          const dateStr = format(date, DATE_FORMAT)
+          const shift = shiftsByDate.get(dateStr)
+          const holiday = holidayFor(dateStr)
+          return (
+            <DayRow key={dateStr} date={date} shift={shift} holiday={holiday} />
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+// === Day row ===
+
+interface DayRowProps {
+  date: Date
+  shift: Shift | undefined
+  holiday: HolidayRequest | null
+}
+
+function DayRow({ date, shift, holiday }: DayRowProps) {
+  const weekday = format(date, 'EEEE', { locale: nb })
+  const dateLabel = formatDateDisplay(date)
+  const struckOut = Boolean(holiday)
+
+  return (
+    <li className="flex items-center gap-4 px-4 py-2">
+      <div className="w-32 shrink-0">
+        <div className="text-sm font-medium capitalize">{weekday}</div>
+        <div className="text-xs text-muted-foreground">{dateLabel}</div>
+      </div>
+
+      {shift ? (
+        <div className="flex flex-1 items-center gap-3">
+          <span
+            className="inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium"
+            style={getShiftChipStyle(shift.shiftType.color)}
+          >
+            {format(new Date(shift.startDateTime), 'HH:mm')} –{' '}
+            {format(new Date(shift.endDateTime), 'HH:mm')}
+          </span>
+          <span className={`text-sm ${struckOut ? 'line-through opacity-50' : ''}`}>
+            {shift.shiftType.label}
+          </span>
+          {holiday && (
+            <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              {holidayTypeToNorwegian(holiday.type)}
+            </span>
+          )}
+          {shift.comment && (
+            <span className="text-xs italic text-muted-foreground">{shift.comment}</span>
+          )}
+        </div>
+      ) : holiday ? (
+        <div className="flex flex-1 items-center gap-2">
+          <span className="rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            {holidayTypeToNorwegian(holiday.type)}
+          </span>
+          <span className="text-sm text-muted-foreground">Hele dagen</span>
+        </div>
+      ) : (
+        <div className="flex-1 text-sm text-muted-foreground italic">Fri</div>
+      )}
+    </li>
+  )
+}

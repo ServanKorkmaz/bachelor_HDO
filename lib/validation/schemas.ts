@@ -237,3 +237,22 @@ export type ShiftTypeBody = z.infer<typeof shiftTypeBodySchema>
 export type NotificationSettingsBody = z.infer<typeof notificationSettingsSchema>
 export type NotificationPreferencesBody = z.infer<typeof notificationPreferencesSchema>
 export type UserRoleUpdateBody = z.infer<typeof userRoleUpdateSchema>
+
+// === Week notes ===
+
+/**
+ * Body for the `PUT /api/week-notes` upsert. ISO year is required separately
+ * from ISO week because ISO weeks at the year boundary belong to a different
+ * ISO year than their calendar year (see `WeekNote` model comment).
+ *
+ * `body` is capped at 1000 chars — these are short "fokus for uka"-style
+ * notices, not free-form journals.
+ */
+export const weekNoteUpsertSchema = z.object({
+  teamId: id,
+  isoYear: z.number().int().min(1900).max(2200),
+  isoWeek: z.number().int().min(1).max(53),
+  body: z.string().max(1000),
+})
+
+export type WeekNoteUpsertBody = z.infer<typeof weekNoteUpsertSchema>
