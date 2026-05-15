@@ -108,56 +108,17 @@ export function buildShiftPdf(
   }
 }
 
-/** Minimal slice of the pdfmake browser API this module relies on. */
-interface PdfMakeInstance {
-  createPdf(def: TDocumentDefinitions): { download(filename: string): void }
-  addVirtualFileSystem(vfs: Record<string, string>): void
-}
-
-/**
- * Memoised loader for pdfmake. We dynamic-import the library (~1MB of font
- * data lives in `vfs_fonts`) so users who never export don't pay for it on
- * first paint, and we cache the result because pdfmake registers fonts on
- * a process-global singleton — re-running setup on every click is wasted
- * work. The cache lives for the page-load lifetime of the SPA.
- */
-let pdfMakePromise: Promise<PdfMakeInstance> | null = null
-
-async function loadPdfMake(): Promise<PdfMakeInstance> {
-  const [pdfMakeMod, vfsMod] = await Promise.all([
-    import('pdfmake/build/pdfmake'),
-    import('pdfmake/build/vfs_fonts'),
-  ])
-  // `vfs_fonts` is a CJS module: `module.exports = { 'Roboto-Regular.ttf': '<base64>', ... }`.
-  // Webpack wraps that object under `.default` when it's dynamic-imported as ESM.
-  // Note: `pdfMake.vfs = ...` is a silent no-op in pdfmake 0.3.x — `addVirtualFileSystem`
-  // is the supported entry point and writes into pdfmake's internal vfs.
-  const fonts =
-    (vfsMod as { default?: Record<string, string> }).default ??
-    (vfsMod as unknown as Record<string, string>)
-  const pdfMake = pdfMakeMod.default as unknown as PdfMakeInstance
-  pdfMake.addVirtualFileSystem(fonts)
-  return pdfMake
-}
-
 /**
  * Build the document and trigger a browser download. Safe to call repeatedly;
- * pdfmake and its fonts are loaded and registered exactly once per page-load.
+ * pdfmake and its fonts are loaded and registered exactly once per page-load
+ * by the shared loader.
  */
 export async function downloadShiftPdf(
   shifts: ShiftForExport[],
   meta: PdfMetadata,
   filename: string,
 ): Promise<void> {
-  if (!pdfMakePromise) {
-    pdfMakePromise = loadPdfMake().catch((err) => {
-      // Allow a retry on the next click if the first load failed (e.g. transient
-      // chunk load error after a deploy). Without this, a single failure would
-      // permanently disable PDF export for the rest of the page-load.
-      pdfMakePromise = null
-      throw err
-    })
-  }
-  const pdfMake = await pdfMakePromise
+  const { getPdfMake } = await import('./pdfmake-loader')
+  const pdfMake = await getPdfMake()
   pdfMake.createPdf(buildShiftPdf(shifts, meta)).download(filename)
 }

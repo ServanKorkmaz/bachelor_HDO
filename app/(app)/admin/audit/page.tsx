@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { ChevronLeft, Download } from 'lucide-react'
+import { ChevronLeft, Download, FileSpreadsheet, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,12 +14,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { axiosInstance } from '@/lib/axios'
 import { downloadCsv } from '@/lib/export/csv'
+
+/** Live-entity snapshot the API attaches when the audit row points at a
+ * swap_request or holiday_request that still exists. Used as a fallback when
+ * the historical JSON snapshot stored on the audit row predates the fields
+ * the display layer needs (older revoke rows in particular). */
+type EntitySnapshot =
+  | { fromUserId: string; toUserId: string; shiftDate: string }
+  | { userId: string; type: string; dateFrom: string; dateTo: string }
+  | null
 
 type AuditEntry = {
   id: string
@@ -30,6 +45,7 @@ type AuditEntry = {
   beforeJson: string | null
   afterJson: string | null
   createdAt: string
+  entitySnapshot?: EntitySnapshot
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -161,20 +177,34 @@ export default function AdminAuditPage() {
     }
   }
 
-  /** Human-readable description of the affected entity. Reads from the JSON
-   * snapshot stored at audit time; falls back to "(uten detaljer)" rather
-   * than leaking the raw CUID when the snapshot lacks display fields. */
+  /** Merge the historical JSON snapshot with the live-entity snapshot the API
+   * attaches when the entity still exists. The historical snapshot wins on
+   * conflicts because it represents what was true at the time of the action,
+   * but its gaps are filled from the live entity — that's what lets older
+   * "(uten detaljer)" revoke rows display the right names and dates. */
+  const resolveFields = (e: AuditEntry): Record<string, unknown> => {
+    const snap = parseSnapshot(e)
+    const live = (e.entitySnapshot ?? null) as Record<string, unknown> | null
+    if (!live) return snap
+    const merged: Record<string, unknown> = { ...live }
+    for (const [k, v] of Object.entries(snap)) {
+      if (v !== undefined && v !== null) merged[k] = v
+    }
+    return merged
+  }
+
+  /** Human-readable description of the affected entity. */
   const entityDisplay = (e: AuditEntry): string => {
     const type = (e.entityType ?? '').toLowerCase()
-    const snap = parseSnapshot(e)
+    const fields = resolveFields(e)
 
     if (type === 'user') {
       return userNames[e.entityId] ?? '(uten detaljer)'
     }
 
     if (type === 'team_membership') {
-      const userId = typeof snap.userId === 'string' ? snap.userId : undefined
-      const teamId = typeof snap.teamId === 'string' ? snap.teamId : undefined
+      const userId = typeof fields.userId === 'string' ? fields.userId : undefined
+      const teamId = typeof fields.teamId === 'string' ? fields.teamId : undefined
       if (userId || teamId) {
         const userName = userId ? (userNames[userId] ?? '(ukjent bruker)') : '?'
         const teamName = teamId ? (teamNames[teamId] ?? '(ukjent team)') : '?'
@@ -184,9 +214,9 @@ export default function AdminAuditPage() {
     }
 
     if (type === 'swap_request') {
-      const fromUserId = typeof snap.fromUserId === 'string' ? snap.fromUserId : undefined
-      const toUserId = typeof snap.toUserId === 'string' ? snap.toUserId : undefined
-      const shiftDate = typeof snap.shiftDate === 'string' ? snap.shiftDate : undefined
+      const fromUserId = typeof fields.fromUserId === 'string' ? fields.fromUserId : undefined
+      const toUserId = typeof fields.toUserId === 'string' ? fields.toUserId : undefined
+      const shiftDate = typeof fields.shiftDate === 'string' ? fields.shiftDate : undefined
       if (!fromUserId && !toUserId && !shiftDate) return '(uten detaljer)'
       const fromName = fromUserId ? (userNames[fromUserId] ?? '(ukjent)') : '?'
       const toName = toUserId ? (userNames[toUserId] ?? '(ukjent)') : '?'
@@ -195,10 +225,10 @@ export default function AdminAuditPage() {
     }
 
     if (type === 'holiday_request') {
-      const userId = typeof snap.userId === 'string' ? snap.userId : undefined
-      const holidayType = typeof snap.type === 'string' ? snap.type : undefined
-      const dateFromVal = typeof snap.dateFrom === 'string' ? snap.dateFrom : undefined
-      const dateToVal = typeof snap.dateTo === 'string' ? snap.dateTo : undefined
+      const userId = typeof fields.userId === 'string' ? fields.userId : undefined
+      const holidayType = typeof fields.type === 'string' ? fields.type : undefined
+      const dateFromVal = typeof fields.dateFrom === 'string' ? fields.dateFrom : undefined
+      const dateToVal = typeof fields.dateTo === 'string' ? fields.dateTo : undefined
       if (!userId && !holidayType && !dateFromVal) return '(uten detaljer)'
       const userName = userId ? (userNames[userId] ?? '(ukjent)') : '?'
       const typeLabel = holidayType ? (HOLIDAY_TYPE_LABELS[holidayType] ?? holidayType) : ''
@@ -214,30 +244,81 @@ export default function AdminAuditPage() {
     return '(uten detaljer)'
   }
 
+  const ENTITY_FILTER_OPTIONS: Record<string, string> = {
+    all: 'Alle',
+    user: 'Bruker',
+    team_membership: 'Teammedlemskap',
+    swap_request: 'Vaktbytte',
+    holiday_request: 'Ferie',
+  }
+
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null)
+
+  /** Build a filename suffix from the active filters so downloads are easy
+   * to tell apart in a downloads folder. */
+  const filenameRange = () => {
+    if (dateFrom && dateTo) return `${dateFrom}_${dateTo}`
+    if (dateFrom) return dateFrom
+    if (dateTo) return dateTo
+    return format(new Date(), 'yyyy-MM-dd')
+  }
+
   const handleDownloadCsv = async () => {
-    if (entries.length === 0) {
-      toast({ title: 'Tom logg', description: 'Ingen oppføringer å laste ned.' })
-      return
+    if (entries.length === 0 || exporting) return
+    setExporting('csv')
+    try {
+      await downloadCsv(
+        entries,
+        [
+          {
+            header: 'Dato og tid',
+            accessor: (row) => format(new Date(row.createdAt), 'dd.MM.yyyy HH:mm', { locale: nb }),
+          },
+          { header: 'Utført av', accessor: (row) => actorName(row.actorUserId) },
+          { header: 'Handling', accessor: (row) => actionLabel(row.action) },
+          { header: 'Entitet-type', accessor: (row) => entityTypeLabel(row.entityType) },
+          { header: 'Entitet', accessor: (row) => entityDisplay(row) },
+          { header: 'Entitet-ID', accessor: (row) => row.entityId },
+          { header: 'Før (JSON)', accessor: (row) => row.beforeJson ?? '' },
+          { header: 'Etter (JSON)', accessor: (row) => row.afterJson ?? '' },
+        ],
+        `revisjonslogg_${filenameRange()}.csv`,
+      )
+    } catch (error) {
+      console.error('CSV export failed:', error)
+      toast({ title: 'Eksport feilet', description: 'Kunne ikke lage CSV-fil.', variant: 'destructive' })
+    } finally {
+      setExporting(null)
     }
-    const today = format(new Date(), 'yyyy-MM-dd')
-    const range = dateFrom && dateTo ? `${dateFrom}_${dateTo}` : dateFrom || dateTo || today
-    await downloadCsv(
-      entries,
-      [
+  }
+
+  const handleDownloadPdf = async () => {
+    if (entries.length === 0 || exporting) return
+    setExporting('pdf')
+    try {
+      const { downloadAuditPdf } = await import('@/lib/export/audit-pdf')
+      await downloadAuditPdf(
+        entries.map((row) => ({
+          timestamp: format(new Date(row.createdAt), 'dd.MM.yyyy HH:mm', { locale: nb }),
+          actor: actorName(row.actorUserId),
+          action: actionLabel(row.action),
+          entityType: entityTypeLabel(row.entityType),
+          entity: entityDisplay(row),
+        })),
         {
-          header: 'Dato og tid',
-          accessor: (row) => format(new Date(row.createdAt), 'dd.MM.yyyy HH:mm', { locale: nb }),
+          dateFrom,
+          dateTo,
+          entityFilterLabel: ENTITY_FILTER_OPTIONS[entityFilter] ?? entityFilter,
+          downloadedBy: currentUser?.name ?? actorName(currentUser?.id ?? ''),
         },
-        { header: 'Utført av', accessor: (row) => actorName(row.actorUserId) },
-        { header: 'Handling', accessor: (row) => actionLabel(row.action) },
-        { header: 'Entitet-type', accessor: (row) => entityTypeLabel(row.entityType) },
-        { header: 'Entitet', accessor: (row) => entityDisplay(row) },
-        { header: 'Entitet-ID', accessor: (row) => row.entityId },
-        { header: 'Før (JSON)', accessor: (row) => row.beforeJson ?? '' },
-        { header: 'Etter (JSON)', accessor: (row) => row.afterJson ?? '' },
-      ],
-      `revisjonslogg_${range}.csv`,
-    )
+        `revisjonslogg_${filenameRange()}.pdf`,
+      )
+    } catch (error) {
+      console.error('PDF export failed:', error)
+      toast({ title: 'Eksport feilet', description: 'Kunne ikke lage PDF-fil.', variant: 'destructive' })
+    } finally {
+      setExporting(null)
+    }
   }
 
   if (!currentUser) return null
@@ -320,15 +401,32 @@ export default function AdminAuditPage() {
         )}
 
         <div className="ml-auto">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDownloadCsv}
-            disabled={loading || entries.length === 0}
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Last ned CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading || entries.length === 0 || exporting !== null}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Last ned
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleDownloadCsv} disabled={exporting !== null}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Som CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDownloadPdf} disabled={exporting !== null}>
+                <FileText className="h-4 w-4 mr-2" />
+                Som PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

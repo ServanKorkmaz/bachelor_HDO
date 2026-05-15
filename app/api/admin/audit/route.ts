@@ -39,7 +39,75 @@ export const GET = withLeaderOrAdmin(async (request) => {
       orderBy: { createdAt: 'desc' },
       take: 1000,
     })
-    return NextResponse.json(logs)
+
+    // Live-entity enrichment. Audit rows are written with a snapshot of the
+    // fields the display layer needs, but older rows pre-date this and only
+    // contain `{ status }` — and rather than rewriting append-only audit
+    // data (which would be wrong), we join with the live entity at read time
+    // so the UI can show "Anne Berg → Ingrid Larsen, 13.05.2026" instead of
+    // "(uten detaljer)". If the entity has been deleted, no enrichment is
+    // attached and the page falls back to the snapshot (which is the right
+    // behaviour — the historical record is the source of truth).
+    const swapIds = new Set<string>()
+    const holidayIds = new Set<string>()
+    for (const log of logs) {
+      if (log.entityType === 'swap_request') swapIds.add(log.entityId)
+      else if (log.entityType === 'holiday_request') holidayIds.add(log.entityId)
+    }
+
+    const [swaps, holidays] = await Promise.all([
+      swapIds.size > 0
+        ? prisma.swapRequest.findMany({
+            where: { id: { in: Array.from(swapIds) } },
+            select: {
+              id: true,
+              fromUserId: true,
+              toUserId: true,
+              shift: { select: { date: true } },
+            },
+          })
+        : Promise.resolve([]),
+      holidayIds.size > 0
+        ? prisma.holidayRequest.findMany({
+            where: { id: { in: Array.from(holidayIds) } },
+            select: { id: true, userId: true, type: true, dateFrom: true, dateTo: true },
+          })
+        : Promise.resolve([]),
+    ])
+
+    const swapById = new Map(
+      swaps.map((s) => [
+        s.id,
+        {
+          fromUserId: s.fromUserId,
+          toUserId: s.toUserId,
+          shiftDate: s.shift.date,
+        },
+      ]),
+    )
+    const holidayById = new Map(
+      holidays.map((h) => [
+        h.id,
+        {
+          userId: h.userId,
+          type: h.type,
+          dateFrom: h.dateFrom,
+          dateTo: h.dateTo,
+        },
+      ]),
+    )
+
+    const enriched = logs.map((log) => ({
+      ...log,
+      entitySnapshot:
+        log.entityType === 'swap_request'
+          ? swapById.get(log.entityId) ?? null
+          : log.entityType === 'holiday_request'
+            ? holidayById.get(log.entityId) ?? null
+            : null,
+    }))
+
+    return NextResponse.json(enriched)
   } catch (e) {
     console.error('GET /api/admin/audit', e)
     return NextResponse.json(
