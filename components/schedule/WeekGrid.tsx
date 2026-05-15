@@ -9,6 +9,14 @@ import { ShiftModal } from './ShiftModal'
 import type { Shift } from './ShiftModal'
 import { MockUser } from '@/lib/auth/mockAuth'
 import type { UserSummary } from '@/lib/types'
+import {
+  evaluateShiftIssues,
+  isClean,
+  type IssueHoliday,
+  type IssueShift,
+  type ShiftIssues,
+} from '@/lib/domain/shift-issues'
+import { ShiftIssueDot } from './ShiftIssueIndicator'
 
 export interface HolidayRequest {
   id: string
@@ -59,6 +67,50 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
     })
     return map
   }, [holidayRequests])
+
+  /**
+   * AML §10-8 issues per visible shift, computed from the same `shifts` and
+   * `holidayRequests` props the grid already has. Limitation: the rolling
+   * 7-day weekly-rest window only looks at shifts loaded by the parent — a
+   * gap that straddles the start of the visible window won't be flagged
+   * here. The server-side check at save time is still authoritative.
+   */
+  const issuesByShift = useMemo(() => {
+    const shiftsByUser = new Map<string, IssueShift[]>()
+    shifts.forEach((s) => {
+      if (!shiftsByUser.has(s.userId)) shiftsByUser.set(s.userId, [])
+      shiftsByUser.get(s.userId)!.push({
+        id: s.id,
+        date: s.date,
+        startDateTime: new Date(s.startDateTime),
+        endDateTime: new Date(s.endDateTime),
+      })
+    })
+    const holidaysByUser = new Map<string, IssueHoliday[]>()
+    holidayRequests.forEach((h) => {
+      if (h.status !== 'APPROVED') return
+      if (!holidaysByUser.has(h.userId)) holidaysByUser.set(h.userId, [])
+      holidaysByUser.get(h.userId)!.push({
+        id: h.id,
+        dateFrom: h.dateFrom,
+        dateTo: h.dateTo,
+      })
+    })
+    const map = new Map<string, ShiftIssues>()
+    shifts.forEach((s) => {
+      const userShifts = shiftsByUser.get(s.userId) ?? []
+      const userHolidays = holidaysByUser.get(s.userId) ?? []
+      const target: IssueShift = {
+        id: s.id,
+        date: s.date,
+        startDateTime: new Date(s.startDateTime),
+        endDateTime: new Date(s.endDateTime),
+      }
+      const issues = evaluateShiftIssues(target, userShifts, userHolidays)
+      if (!isClean(issues)) map.set(s.id, issues)
+    })
+    return map
+  }, [shifts, holidayRequests])
 
   const weeklyHours = useMemo(() => {
     const hoursByUser = new Map<string, number>()
@@ -149,6 +201,12 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                           className="group relative min-h-[72px] rounded-md p-2 text-sm"
                           style={getShiftChipStyle(shift.shiftType.color)}
                         >
+                          {issuesByShift.has(shift.id) && (
+                            <ShiftIssueDot
+                              issues={issuesByShift.get(shift.id)!}
+                              className="absolute right-1 top-1"
+                            />
+                          )}
                           {approvedHoliday && (
                             <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                               {holidayLabel(approvedHoliday.type)}

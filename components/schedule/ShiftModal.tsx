@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { addDays, format, parseISO, subDays } from 'date-fns'
 
 import {
   Dialog,
@@ -25,6 +26,17 @@ import { MockUser } from '@/lib/auth/mockAuth'
 import { useAuth } from '@/lib/auth/mockAuth'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 import { axiosInstance } from '@/lib/axios'
+import {
+  evaluateShiftIssues,
+  type IssueHoliday,
+  type IssueShift,
+  type ShiftIssues,
+} from '@/lib/domain/shift-issues'
+import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
+import { ShiftIssueBanner } from './ShiftIssueIndicator'
+
+const PREVIEW_TARGET_ID = '__preview__'
+const EMPTY_ISSUES: ShiftIssues = { hardConflict: null, warnings: [] }
 
 /** Shift type metadata used for labeling and default times. */
 export interface ShiftType {
@@ -85,6 +97,97 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     queryFn: () => axiosInstance.get('/api/users').then(res => res.data),
   })
 
+  // ---- AML §10-8 client-side preview ----
+  // Mirrors the server-side check in lib/services/shift-service.ts so the
+  // leader sees a banner with the exact rule before submitting, instead of
+  // getting a 422 back from the API. The server remains authoritative — this
+  // is purely a UX shortcut.
+
+  const effectiveDate = shift?.date ?? date
+  const teamId = currentUser?.teamId
+
+  const selectedShiftType = useMemo(
+    () => shiftTypes.find((t) => t.id === selectedShiftTypeId) ?? null,
+    [shiftTypes, selectedShiftTypeId]
+  )
+
+  const windowDates = useMemo(() => {
+    if (!effectiveDate) return null
+    const d = parseISO(effectiveDate)
+    return {
+      from: format(subDays(d, 14), 'yyyy-MM-dd'),
+      to: format(addDays(d, 1), 'yyyy-MM-dd'),
+    }
+  }, [effectiveDate])
+
+  const { data: neighbourShifts = [] } = useQuery<Shift[]>({
+    queryKey: ['shifts-window', teamId, selectedUserId, windowDates?.from, windowDates?.to],
+    enabled: Boolean(teamId && selectedUserId && windowDates),
+    queryFn: () =>
+      axiosInstance
+        .get(
+          `/api/shifts?teamId=${teamId}&userId=${selectedUserId}&dateFrom=${windowDates!.from}&dateTo=${windowDates!.to}`
+        )
+        .then((res) => res.data),
+  })
+
+  const { data: holidayRequests = [] } = useQuery<Array<{
+    id: string
+    userId: string
+    status: string
+    dateFrom: string
+    dateTo: string | null
+  }>>({
+    queryKey: ['holiday-requests', teamId],
+    enabled: Boolean(teamId),
+    queryFn: () => axiosInstance.get(`/api/holiday-requests?teamId=${teamId}`).then((res) => res.data),
+  })
+
+  const issues: ShiftIssues = useMemo(() => {
+    if (!effectiveDate || !selectedShiftType || !startTime || !endTime || !selectedUserId) {
+      return EMPTY_ISSUES
+    }
+    let times
+    try {
+      times = buildShiftDateTimes({
+        date: effectiveDate,
+        startTime,
+        endTime,
+        shiftType: selectedShiftType,
+      })
+    } catch (e) {
+      // Bad time input (e.g. start === end on a non-overnight type) — let the
+      // existing time validation report that, not the AML banner.
+      if (e instanceof ShiftTimeError) return EMPTY_ISSUES
+      throw e
+    }
+    const target: IssueShift = {
+      id: shift?.id ?? PREVIEW_TARGET_ID,
+      date: effectiveDate,
+      startDateTime: times.startDateTime,
+      endDateTime: times.endDateTime,
+    }
+    const others: IssueShift[] = neighbourShifts.map((s) => ({
+      id: s.id,
+      date: s.date,
+      startDateTime: new Date(s.startDateTime),
+      endDateTime: new Date(s.endDateTime),
+    }))
+    const userHolidays: IssueHoliday[] = holidayRequests
+      .filter((h) => h.userId === selectedUserId && h.status === 'APPROVED')
+      .map((h) => ({ id: h.id, dateFrom: h.dateFrom, dateTo: h.dateTo }))
+    return evaluateShiftIssues(target, others, userHolidays)
+  }, [
+    effectiveDate,
+    selectedShiftType,
+    startTime,
+    endTime,
+    selectedUserId,
+    neighbourShifts,
+    holidayRequests,
+    shift?.id,
+  ])
+
   // Save shift mutation (POST or PUT)
   const saveShiftMutation = useMutation({
     mutationFn: async (shiftData: any) => {
@@ -110,8 +213,19 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       queryClient.invalidateQueries({ queryKey: ['shifts'] })
       onClose()
     },
-    onError: () => {
-      alert('Kunne ikke lagre vakt')
+    onError: (error: unknown) => {
+      // Surface the server's message (e.g. AML §10-8 violation text) instead
+      // of a generic "Kunne ikke lagre vakt", so the leader sees the same
+      // explanation the banner shows.
+      const fallback = 'Kunne ikke lagre vakt'
+      let message = fallback
+      if (error && typeof error === 'object' && 'response' in error) {
+        const resp = (error as { response?: { data?: { error?: string } } }).response
+        if (typeof resp?.data?.error === 'string') {
+          message = resp.data.error
+        }
+      }
+      alert(message)
     },
   })
 
@@ -233,6 +347,8 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
 
         <div className="overflow-y-auto flex-1 min-h-0">
         <div className="grid gap-4 py-4">
+          {canEditShifts() && <ShiftIssueBanner issues={issues} />}
+
           <div className="grid gap-2">
             <Label>Dato</Label>
             <div className="p-3 bg-muted rounded-md text-sm font-medium">
@@ -367,7 +483,15 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
                   Slett
                 </Button>
               )}
-              <Button onClick={handleSave} disabled={saveShiftMutation.isPending}>
+              <Button
+                onClick={handleSave}
+                disabled={saveShiftMutation.isPending || issues.hardConflict !== null}
+                title={
+                  issues.hardConflict !== null
+                    ? 'Kan ikke lagre — vakten bryter en hard regel (se varsel over).'
+                    : undefined
+                }
+              >
                 {saveShiftMutation.isPending ? 'Lagrer...' : 'Lagre'}
               </Button>
             </>
