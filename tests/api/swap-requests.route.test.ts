@@ -4,18 +4,22 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
   mockPrisma: {
     swapRequest: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
     },
     shift: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
       update: vi.fn(),
     },
     user:           { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
     notification:   { create: vi.fn() },
     auditLog:       { create: vi.fn() },
+    holidayRequest: { findMany: vi.fn() },
     $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
@@ -89,6 +93,13 @@ describe('POST /api/swap-requests', () => {
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(EMPLOYEE_USER)
     mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'membership-1' })
+    // No duplicate active request by default.
+    mockPrisma.swapRequest.findFirst.mockResolvedValue(null)
+    // No conflicting shift on the recipient by default.
+    mockPrisma.shift.findFirst.mockResolvedValue(null)
+    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
@@ -120,7 +131,13 @@ describe('POST /api/swap-requests', () => {
   })
 
   it('forces requestedByUserId to the authenticated caller, ignoring the body value', async () => {
-    mockPrisma.shift.findUnique.mockResolvedValue({ id: 'shift-1', userId: 'user-3' })
+    mockPrisma.shift.findUnique.mockResolvedValue({
+      id: 'shift-1',
+      userId: 'user-3',
+      date: '2026-04-28',
+      startDateTime: new Date('2026-04-28T08:00:00Z'),
+      endDateTime: new Date('2026-04-28T16:00:00Z'),
+    })
     mockPrisma.swapRequest.create.mockResolvedValue({
       id: 'sr-1', requestedBy: { id: 'user-1', name: 'Alice' },
       fromUser: { id: 'user-3', name: '' }, toUser: { id: 'user-2', name: '' },
@@ -143,8 +160,40 @@ describe('POST /api/swap-requests', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Shift not found' })
   })
 
+  it('returns 422 AML_DAILY_REST when the recipient would lose required rest', async () => {
+    mockPrisma.shift.findUnique.mockResolvedValue({
+      id: 'shift-1',
+      userId: 'user-1',
+      date: '2026-04-28',
+      startDateTime: new Date('2026-04-28T06:00:00Z'),
+      endDateTime: new Date('2026-04-28T14:00:00Z'),
+    })
+    // Recipient (user-2) already has a shift ending 22:00 the night before — only 8h rest.
+    mockPrisma.shift.findMany.mockResolvedValue([
+      {
+        id: 'other-1',
+        date: '2026-04-27',
+        startDateTime: new Date('2026-04-27T14:00:00Z'),
+        endDateTime: new Date('2026-04-27T22:00:00Z'),
+      },
+    ])
+
+    const res = await POST(makePost(validBody, 'user-1'))
+
+    expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.error).toMatch(/hvile mellom vakter/i)
+    expect(mockPrisma.swapRequest.create).not.toHaveBeenCalled()
+  })
+
   it('creates swap request and notifies recipient', async () => {
-    mockPrisma.shift.findUnique.mockResolvedValue({ id: 'shift-1', userId: 'user-1' })
+    mockPrisma.shift.findUnique.mockResolvedValue({
+      id: 'shift-1',
+      userId: 'user-1',
+      date: '2026-04-28',
+      startDateTime: new Date('2026-04-28T08:00:00Z'),
+      endDateTime: new Date('2026-04-28T16:00:00Z'),
+    })
     const fakeSwapRequest = {
       id: 'sr-1',
       requestedBy: { id: 'user-1', name: 'Alice' },

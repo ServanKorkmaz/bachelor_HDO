@@ -6,11 +6,16 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    shift:        { update: vi.fn() },
-    notification: { create: vi.fn() },
-    auditLog:     { create: vi.fn() },
-    user:         { findUnique: vi.fn() },
-    $transaction: vi.fn(),
+    shift: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
+    notification:   { create: vi.fn() },
+    auditLog:       { create: vi.fn() },
+    user:           { findUnique: vi.fn() },
+    holidayRequest: { findMany: vi.fn() },
+    $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -38,10 +43,17 @@ const baseSwapRequest = {
   fromUserId: 'user-1',
   toUserId: 'user-2',
   shiftId: 'shift-1',
+  toShiftId: null,
+  toShift: null,
   requestedBy: { id: 'user-1', name: 'Alice' },
   fromUser:    { id: 'user-1', name: 'Alice' },
   toUser:      { id: 'user-2', name: 'Bob' },
-  shift:       { id: 'shift-1', date: '2026-04-28' },
+  shift: {
+    id: 'shift-1',
+    date: '2026-04-28',
+    startDateTime: new Date('2026-04-28T08:00:00Z'),
+    endDateTime: new Date('2026-04-28T16:00:00Z'),
+  },
 }
 
 /** Tests for the approve and execute lifecycle of a swap request. */
@@ -52,6 +64,10 @@ describe('POST /api/swap-requests/[id]/approve', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
+    // executeSwap re-checks time overlap + AML against current state; default everything to "clean".
+    mockPrisma.shift.findFirst.mockResolvedValue(null)
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 
@@ -95,6 +111,10 @@ describe('POST /api/swap-requests/[id]/execute', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
+    // executeSwap re-checks time overlap + AML against current state; default everything to "clean".
+    mockPrisma.shift.findFirst.mockResolvedValue(null)
+    mockPrisma.shift.findMany.mockResolvedValue([])
+    mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 

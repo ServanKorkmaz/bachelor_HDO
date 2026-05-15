@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { withEvents } from '@/lib/notifications/events'
+import { assertNoAmlConflict } from './aml'
 import { ServiceError } from './errors'
 
 const swapInclude = {
@@ -98,32 +99,55 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
   }
 
   // For two-way swap: check that fromUser does not have a time-overlapping shift on toShift's slot.
-  if (input.toShiftId) {
-    const toShift = await prisma.shift.findUnique({
-      where: { id: input.toShiftId },
-      select: { date: true, startDateTime: true, endDateTime: true },
-    })
-    if (toShift) {
-      const fromUserConflict = await prisma.shift.findFirst({
-        where: {
-          userId: shift.userId,
-          startDateTime: { lt: toShift.endDateTime },
-          endDateTime: { gt: toShift.startDateTime },
-          id: { not: shift.id },
-        },
-        select: { id: true },
+  const toShift = input.toShiftId
+    ? await prisma.shift.findUnique({
+        where: { id: input.toShiftId },
+        select: { date: true, startDateTime: true, endDateTime: true },
       })
-      if (fromUserConflict) {
-        throw new ServiceError(
-          'SWAP_DATE_CONFLICT',
-          `Du har allerede en overlappende vakt den ${toShift.date} — toveisbyttet er ikke mulig`,
-          409
-        )
-      }
+    : null
+
+  if (input.toShiftId && toShift) {
+    const fromUserConflict = await prisma.shift.findFirst({
+      where: {
+        userId: shift.userId,
+        startDateTime: { lt: toShift.endDateTime },
+        endDateTime: { gt: toShift.startDateTime },
+        id: { not: shift.id },
+      },
+      select: { id: true },
+    })
+    if (fromUserConflict) {
+      throw new ServiceError(
+        'SWAP_DATE_CONFLICT',
+        `Du har allerede en overlappende vakt den ${toShift.date} — toveisbyttet er ikke mulig`,
+        409
+      )
     }
   }
 
   return withEvents(async (tx, emit) => {
+    // AML §10-8 check for the post-swap schedule of each affected user.
+    // toUser gains `shift`; if two-way, they also lose `toShiftId`.
+    await assertNoAmlConflict(tx, {
+      targetId: shift.id,
+      userId: input.toUserId,
+      date: shift.date,
+      startDateTime: shift.startDateTime,
+      endDateTime: shift.endDateTime,
+      excludeShiftIds: input.toShiftId ? [input.toShiftId] : [],
+    })
+    // fromUser gains `toShift` (only in two-way) and always loses `shift`.
+    if (input.toShiftId && toShift) {
+      await assertNoAmlConflict(tx, {
+        targetId: input.toShiftId,
+        userId: shift.userId,
+        date: toShift.date,
+        startDateTime: toShift.startDateTime,
+        endDateTime: toShift.endDateTime,
+        excludeShiftIds: [shift.id],
+      })
+    }
+
     const sr = await tx.swapRequest.create({
       data: {
         teamId: input.teamId,
@@ -378,6 +402,28 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
 
   try {
   return await withEvents(async (tx, emit) => {
+    // AML §10-8 re-check at execution time. The hourly state of either
+    // user's schedule may have changed between approval and execution; the
+    // create-time check is necessary but not sufficient.
+    await assertNoAmlConflict(tx, {
+      targetId: sr.shiftId,
+      userId: sr.toUserId,
+      date: sr.shift.date,
+      startDateTime: sr.shift.startDateTime,
+      endDateTime: sr.shift.endDateTime,
+      excludeShiftIds: sr.toShiftId ? [sr.toShiftId] : [],
+    })
+    if (sr.toShiftId && sr.toShift) {
+      await assertNoAmlConflict(tx, {
+        targetId: sr.toShiftId,
+        userId: sr.fromUserId,
+        date: sr.toShift.date,
+        startDateTime: sr.toShift.startDateTime,
+        endDateTime: sr.toShift.endDateTime,
+        excludeShiftIds: [sr.shiftId],
+      })
+    }
+
     // Reassign fromUser's shift to toUser.
     await tx.shift.update({
       where: { id: sr.shiftId },
