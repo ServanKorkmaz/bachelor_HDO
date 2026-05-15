@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
 const normalizeHexColor = (value: string): string | null => {
@@ -35,9 +36,11 @@ const normalizeHexColor = (value: string): string | null => {
  */
 export default function ShiftTypesPage() {
   const { currentUser } = useAuth()
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingShiftType, setEditingShiftType] = useState<any>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string; label: string }>({ open: false, id: '', label: '' })
   const [colorInput, setColorInput] = useState('#000000')
   const [formData, setFormData] = useState({
     code: '',
@@ -100,9 +103,8 @@ export default function ShiftTypesPage() {
     if (!formData.code || !formData.label || !currentUser) return
     try {
       await createMutation.mutateAsync()
-    } catch (error) {
-      console.error('Error creating shift type:', error)
-      alert('Kunne ikke opprette vakttype')
+    } catch {
+      toast({ title: 'Feil', description: 'Kunne ikke opprette vakttype', variant: 'destructive' })
     }
   }
 
@@ -110,20 +112,17 @@ export default function ShiftTypesPage() {
     if (!editingShiftType || !formData.code || !formData.label || !currentUser) return
     try {
       await updateMutation.mutateAsync()
-    } catch (error) {
-      console.error('Error updating shift type:', error)
-      alert('Kunne ikke oppdatere vakttype')
+    } catch {
+      toast({ title: 'Feil', description: 'Kunne ikke oppdatere vakttype', variant: 'destructive' })
     }
   }
 
-  const handleDelete = async (shiftTypeId: string) => {
+  const handleDelete = async () => {
     if (!currentUser) return
-    if (!confirm('Er du sikker på at du vil slette denne vakttypen?')) return
     try {
-      await deleteMutation.mutateAsync(shiftTypeId)
-    } catch (error) {
-      console.error('Error deleting shift type:', error)
-      alert('Kunne ikke slette vakttype')
+      await deleteMutation.mutateAsync(deleteDialog.id)
+    } catch {
+      toast({ title: 'Feil', description: 'Kunne ikke slette vakttype', variant: 'destructive' })
     }
   }
 
@@ -192,7 +191,7 @@ export default function ShiftTypesPage() {
               <Button
                 variant="destructive"
                 size="icon"
-                onClick={() => handleDelete(shiftType.id)}
+                onClick={() => setDeleteDialog({ open: true, id: shiftType.id, label: shiftType.label })}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -200,6 +199,21 @@ export default function ShiftTypesPage() {
           </div>
         ))}
       </div>
+
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog(d => ({ ...d, open: false }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Slett vakttype</DialogTitle>
+            <DialogDescription>
+              Er du sikker på at du vil slette <strong>{deleteDialog.label}</strong>? Dette kan ikke angres.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog(d => ({ ...d, open: false }))}>Avbryt</Button>
+            <Button variant="destructive" onClick={async () => { setDeleteDialog(d => ({ ...d, open: false })); await handleDelete() }}>Slett</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateModalOpen || !!editingShiftType} onOpenChange={(open) => {
         if (!open) {

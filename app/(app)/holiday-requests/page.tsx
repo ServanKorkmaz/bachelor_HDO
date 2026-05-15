@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
@@ -31,6 +32,7 @@ export default function HolidayRequestsPage() {
 
   // Edit dialog state
   const [editItem, setEditItem] = useState<RequestRow | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
   const [editType, setEditType] = useState('')
   const [editDateFrom, setEditDateFrom] = useState('')
   const [editDateTo, setEditDateTo] = useState('')
@@ -151,11 +153,12 @@ export default function HolidayRequestsPage() {
   }
 
   // Employee view handlers
-  const handleDelete = async (id: string) => {
-    if (!confirm('Er du sikker på at du vil slette denne forespørselen?')) return
+  const handleDelete = async () => {
+    if (!deleteId) return
     try {
-      await axiosInstance.delete(`/api/holiday-requests/${id}?currentUserId=${currentUser.id}`)
+      await axiosInstance.delete(`/api/holiday-requests/${deleteId}?currentUserId=${currentUser.id}`)
       toast({ title: 'Slettet' })
+      setDeleteId(null)
       await refreshItems()
     } catch (e) {
       const errorMessage =
@@ -238,7 +241,7 @@ export default function HolidayRequestsPage() {
                     {r.status === 'PENDING' && (
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEdit(r)}>Endre</Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(r.id)}>Slett</Button>
+                        <Button variant="destructive" size="sm" onClick={() => setDeleteId(r.id)}>Slett</Button>
                       </div>
                     )}
                   </td>
@@ -248,6 +251,19 @@ export default function HolidayRequestsPage() {
           </table>
         </div>
       )}
+
+      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Slett forespørsel</DialogTitle>
+            <DialogDescription>Er du sikker på at du vil slette denne forespørselen? Dette kan ikke angres.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Avbryt</Button>
+            <Button variant="destructive" onClick={handleDelete}>Slett</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit modal */}
       {editItem && (

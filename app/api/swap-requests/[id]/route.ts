@@ -4,14 +4,16 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { swapMessageSchema } from '@/lib/validation/schemas'
 
-/** Cancel (delete) a PENDING swap request — only the requester can do this. */
+/** Cancel (delete) a swap request that is still open — only the requester can do this. */
 export const DELETE = withAuth<{ id: string }>(async (_request, ctx) => {
   try {
     const { id } = ctx.params
 
     const sr = await prisma.swapRequest.findUnique({ where: { id } })
     if (!sr) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (sr.status !== 'PENDING') return NextResponse.json({ error: 'Kan bare avbestille ventende forespørsler' }, { status: 400 })
+    if (sr.status !== 'PENDING' && sr.status !== 'AWAITING_ACCEPTANCE') {
+      return NextResponse.json({ error: 'Kan bare avbestille forespørsler som ikke er behandlet ennå' }, { status: 400 })
+    }
     if (sr.requestedByUserId !== ctx.userId) return NextResponse.json({ error: 'Ikke autorisert' }, { status: 403 })
 
     await prisma.swapRequest.delete({ where: { id } })

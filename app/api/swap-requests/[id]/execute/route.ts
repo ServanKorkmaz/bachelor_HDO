@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { executeSwap } from '@/lib/services/swap-service'
 import { serviceErrorResponse } from '@/lib/services/errors'
 
-/** Execute an approved swap request and notify both users. */
-export const POST = withAuth<{ id: string }>(async (_request, ctx) => {
+/** Execute an approved swap request and notify both users. Leader or admin only. */
+export const POST = withLeaderOrAdmin<{ id: string }>(async (_request, ctx) => {
   try {
     const updated = await executeSwap(ctx.params.id, ctx.userId)
     return NextResponse.json(updated)

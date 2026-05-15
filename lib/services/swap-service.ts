@@ -57,6 +57,72 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
     throw new ServiceError('SHIFT_NOT_FOUND', 'Shift not found', 404)
   }
 
+  // Cannot swap a shift with yourself.
+  if (shift.userId === input.toUserId) {
+    throw new ServiceError('SWAP_SELF', 'Du kan ikke bytte vakt med deg selv', 400)
+  }
+
+  // Block duplicate: at most one active (non-rejected, non-executed) request per shift.
+  const active = await prisma.swapRequest.findFirst({
+    where: {
+      shiftId: input.shiftId,
+      status: { notIn: ['REJECTED', 'EXECUTED'] },
+    },
+    select: { id: true },
+  })
+  if (active) {
+    throw new ServiceError(
+      'SWAP_DUPLICATE',
+      'Det finnes allerede en aktiv vaktbytteforespørsel for denne vakten',
+      409
+    )
+  }
+
+  // Check that toUser does not already have a shift that overlaps in time with the from-shift.
+  // If a toShift is provided, exclude it — it will be moved to fromUser instead.
+  const toUserConflict = await prisma.shift.findFirst({
+    where: {
+      userId: input.toUserId,
+      startDateTime: { lt: shift.endDateTime },
+      endDateTime: { gt: shift.startDateTime },
+      ...(input.toShiftId ? { id: { not: input.toShiftId } } : {}),
+    },
+    select: { id: true },
+  })
+  if (toUserConflict) {
+    throw new ServiceError(
+      'SWAP_DATE_CONFLICT',
+      `Mottakeren har allerede en overlappende vakt den ${shift.date} — byttet er ikke mulig`,
+      409
+    )
+  }
+
+  // For two-way swap: check that fromUser does not have a time-overlapping shift on toShift's slot.
+  if (input.toShiftId) {
+    const toShift = await prisma.shift.findUnique({
+      where: { id: input.toShiftId },
+      select: { date: true, startDateTime: true, endDateTime: true },
+    })
+    if (toShift) {
+      const fromUserConflict = await prisma.shift.findFirst({
+        where: {
+          userId: shift.userId,
+          startDateTime: { lt: toShift.endDateTime },
+          endDateTime: { gt: toShift.startDateTime },
+          id: { not: shift.id },
+        },
+        select: { id: true },
+      })
+      if (fromUserConflict) {
+        throw new ServiceError(
+          'SWAP_DATE_CONFLICT',
+          `Du har allerede en overlappende vakt den ${toShift.date} — toveisbyttet er ikke mulig`,
+          409
+        )
+      }
+    }
+  }
+
   return withEvents(async (tx, emit) => {
     const sr = await tx.swapRequest.create({
       data: {
@@ -273,7 +339,45 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     'Swap request must be approved before execution'
   )
 
-  return withEvents(async (tx, emit) => {
+  // Re-validate time-overlap conflicts at execution time — a shift may have been added
+  // between approval and execution.
+  const toUserConflict = await prisma.shift.findFirst({
+    where: {
+      userId: sr.toUserId,
+      startDateTime: { lt: sr.shift.endDateTime },
+      endDateTime: { gt: sr.shift.startDateTime },
+      ...(sr.toShiftId ? { id: { not: sr.toShiftId } } : {}),
+    },
+    select: { id: true },
+  })
+  if (toUserConflict) {
+    throw new ServiceError(
+      'SWAP_DATE_CONFLICT',
+      `${sr.toUser.name} har fått en overlappende vakt den ${sr.shift.date} siden godkjenningen — byttet kan ikke gjennomføres`,
+      409
+    )
+  }
+  if (sr.toShiftId && sr.toShift) {
+    const fromUserConflict = await prisma.shift.findFirst({
+      where: {
+        userId: sr.fromUserId,
+        startDateTime: { lt: sr.toShift.endDateTime },
+        endDateTime: { gt: sr.toShift.startDateTime },
+        id: { not: sr.shiftId },
+      },
+      select: { id: true },
+    })
+    if (fromUserConflict) {
+      throw new ServiceError(
+        'SWAP_DATE_CONFLICT',
+        `${sr.fromUser.name} har fått en overlappende vakt den ${sr.toShift.date} siden godkjenningen — byttet kan ikke gjennomføres`,
+        409
+      )
+    }
+  }
+
+  try {
+  return await withEvents(async (tx, emit) => {
     // Reassign fromUser's shift to toUser.
     await tx.shift.update({
       where: { id: sr.shiftId },
@@ -318,4 +422,15 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     })
     return updated
   })
+  } catch (e) {
+    if (e instanceof ServiceError) throw e
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      throw new ServiceError(
+        'SWAP_CONFLICT',
+        'En av partene fikk en ny vakt på byttetidspunktet — byttet kan ikke gjennomføres',
+        409
+      )
+    }
+    throw e
+  }
 }

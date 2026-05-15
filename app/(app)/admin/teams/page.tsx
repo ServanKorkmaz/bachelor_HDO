@@ -16,6 +16,7 @@ import {
 import { Plus, Trash2, Users } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
 /**
@@ -27,9 +28,11 @@ import { axiosInstance } from '@/lib/axios'
  */
 export default function TeamsPage() {
   const { currentUser } = useAuth()
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [newTeamName, setNewTeamName] = useState('')
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; teamId: string; teamName: string }>({ open: false, teamId: '', teamName: '' })
 
   const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['teams'],
@@ -47,23 +50,19 @@ export default function TeamsPage() {
       setNewTeamName('')
       await queryClient.invalidateQueries({ queryKey: ['teams'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-    } catch (error) {
-      console.error('Error creating team:', error)
-      alert('Kunne ikke opprette team')
+    } catch {
+      toast({ title: 'Feil', description: 'Kunne ikke opprette team', variant: 'destructive' })
     }
   }
 
-  const handleDelete = async (teamId: string) => {
+  const handleDelete = async () => {
     if (!currentUser) return
-    if (!confirm('Er du sikker på at du vil slette dette teamet?')) return
-
     try {
-      await axiosInstance.delete(`/api/teams/${teamId}`, { data: { currentUserId: currentUser.id } })
+      await axiosInstance.delete(`/api/teams/${deleteDialog.teamId}`, { data: { currentUserId: currentUser.id } })
       await queryClient.invalidateQueries({ queryKey: ['teams'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-    } catch (error) {
-      console.error('Error deleting team:', error)
-      alert('Kunne ikke slette team')
+    } catch {
+      toast({ title: 'Feil', description: 'Kunne ikke slette team', variant: 'destructive' })
     }
   }
 
@@ -99,7 +98,7 @@ export default function TeamsPage() {
               <Button
                 variant="destructive"
                 size="icon"
-                onClick={() => handleDelete(team.id)}
+                onClick={() => setDeleteDialog({ open: true, teamId: team.id, teamName: team.name })}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -107,6 +106,21 @@ export default function TeamsPage() {
           </div>
         ))}
       </div>
+
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog(d => ({ ...d, open: false }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Slett team</DialogTitle>
+            <DialogDescription>
+              Er du sikker på at du vil slette <strong>{deleteDialog.teamName}</strong>? Dette kan ikke angres.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialog(d => ({ ...d, open: false }))}>Avbryt</Button>
+            <Button variant="destructive" onClick={async () => { setDeleteDialog(d => ({ ...d, open: false })); await handleDelete() }}>Slett</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent>

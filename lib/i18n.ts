@@ -17,11 +17,15 @@ export function statusToNorwegian(status: string | undefined): string {
   if (!status) return ''
   switch (status.toUpperCase()) {
     case 'PENDING':
-      return 'VENTER...'
+      return 'Venter'
+    case 'AWAITING_ACCEPTANCE':
+      return 'Venter på svar'
     case 'APPROVED':
-      return 'GODKJENT'
+      return 'Godkjent'
     case 'REJECTED':
-      return 'AVVIST'
+      return 'Avvist'
+    case 'EXECUTED':
+      return 'Gjennomført'
     default:
       return status
   }

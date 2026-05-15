@@ -23,7 +23,60 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/use-toast'
+import { statusToNorwegian } from '@/lib/i18n'
 import { axiosInstance } from '@/lib/axios'
+
+/** Compact shift picker: shows a scrollable list when nothing is selected, collapses to the selected item when one is chosen. Double-click the selected item to deselect and expand again. */
+function ShiftPickerList({
+  shifts,
+  value,
+  onChange,
+  emptyLabel = 'Ingen vakter i perioden',
+}: {
+  shifts: any[]
+  value: string
+  onChange: (id: string) => void
+  emptyLabel?: string
+}) {
+  const selected = shifts.find((s: any) => s.id === value)
+
+  if (selected) {
+    return (
+      <div
+        onDoubleClick={() => onChange('')}
+        className="rounded-md border bg-primary/10 px-3 py-2 text-sm font-medium cursor-pointer flex items-center gap-2 select-none"
+      >
+        <span className="h-3 w-3 rounded-full border-2 border-primary bg-primary shrink-0" />
+        <span className="flex-1">
+          {formatDateDisplay(selected.date)} – {selected.shiftType?.label ?? 'Vakt'} ({formatTime(selected.startDateTime)}–{formatTime(selected.endDateTime)})
+        </span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Dobbeltklikk for å fjerne</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border bg-muted/30 max-h-44 overflow-y-auto">
+      {shifts.length === 0 ? (
+        <p className="p-3 text-sm text-muted-foreground">{emptyLabel}</p>
+      ) : (
+        <ul className="divide-y divide-border">
+          {shifts.map((shift: any) => (
+            <li
+              key={shift.id}
+              onClick={() => onChange(shift.id)}
+              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors"
+            >
+              <span className="h-3 w-3 rounded-full border-2 border-muted-foreground shrink-0" />
+              {formatDateDisplay(shift.date)} – {shift.shiftType?.label ?? 'Vakt'} ({formatTime(shift.startDateTime)}–{formatTime(shift.endDateTime)})
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 /** Shift swap request page with create/approve flows. */
 export default function SwapPage() {
@@ -35,6 +88,16 @@ export default function SwapPage() {
   const [selectedToShiftId, setSelectedToShiftId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
   const { currentUser, canApproveSwaps } = useAuth()
+  const { toast } = useToast()
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    description: string
+    destructive?: boolean
+    onConfirm: () => Promise<void>
+  }>({ open: false, title: '', description: '', onConfirm: async () => {} })
+
+  const closeConfirm = () => setConfirmDialog(d => ({ ...d, open: false }))
 
   const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['teams'],
@@ -134,9 +197,9 @@ export default function SwapPage() {
       setSelectedToShiftId('')
       setMessage('')
       await refreshSwapData()
-    } catch (error) {
-      console.error('Error creating swap request:', error)
-      alert('Kunne ikke opprette vaktbytteforespørsel')
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Kunne ikke opprette vaktbytteforespørsel'
+      toast({ title: 'Feil', description: msg, variant: 'destructive' })
     }
   }
 
@@ -149,9 +212,9 @@ export default function SwapPage() {
         { headers: { 'x-current-user-id': currentUser.id } }
       )
       await refreshSwapData()
-    } catch (error) {
-      console.error('Error approving swap request:', error)
-      alert('Kunne ikke godkjenne forespørsel')
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Kunne ikke godkjenne forespørsel'
+      toast({ title: 'Feil', description: msg, variant: 'destructive' })
     }
   }
 
@@ -164,18 +227,28 @@ export default function SwapPage() {
         { headers: { 'x-current-user-id': currentUser.id } }
       )
       await refreshSwapData()
-    } catch (error) {
-      console.error('Error rejecting swap request:', error)
-      alert('Kunne ikke avvise forespørsel')
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Kunne ikke avvise forespørsel'
+      toast({ title: 'Feil', description: msg, variant: 'destructive' })
     }
   }
 
-  const handleCancel = async (requestId: string) => {
-    if (!confirm('Er du sikker på at du vil avbryte denne forespørselen?')) return
-    try {
-      await axiosInstance.delete(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`)
-      await refreshSwapData()
-    } catch { alert('Kunne ikke avbryte forespørsel') }
+  const handleCancel = (requestId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Avbryt forespørsel',
+      description: 'Er du sikker på at du vil avbryte denne vaktbytteforespørselen?',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await axiosInstance.delete(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`)
+          await refreshSwapData()
+        } catch (error: any) {
+          const msg = error?.response?.data?.error || 'Kunne ikke avbryte forespørsel'
+          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const handleAccept = async (requestId: string) => {
@@ -186,19 +259,32 @@ export default function SwapPage() {
         { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
       )
       await refreshSwapData()
-    } catch { alert('Nettverksfeil') }
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Kunne ikke godta forespørsel'
+      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    }
   }
 
-  const handleDecline = async (requestId: string) => {
-    if (!confirm('Er du sikker på at du vil avslå denne forespørselen?')) return
-    try {
-      await axiosInstance.post(
-        `/api/swap-requests/${requestId}/decline`,
-        {},
-        { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
-      )
-      await refreshSwapData()
-    } catch { alert('Nettverksfeil') }
+  const handleDecline = (requestId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Avslå forespørsel',
+      description: 'Er du sikker på at du vil avslå denne vaktbytteforespørselen?',
+      destructive: true,
+      onConfirm: async () => {
+        try {
+          await axiosInstance.post(
+            `/api/swap-requests/${requestId}/decline`,
+            {},
+            { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
+          )
+          await refreshSwapData()
+        } catch (error: any) {
+          const msg = error?.response?.data?.error || 'Kunne ikke avslå forespørsel'
+          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const handleRevoke = async (requestId: string) => {
@@ -210,27 +296,32 @@ export default function SwapPage() {
         { headers: { 'x-current-user-id': currentUser.id } }
       )
       await refreshSwapData()
-    } catch (error) {
-      console.error('Error revoking swap decision:', error)
-      alert('Kunne ikke trekke tilbake beslutningen')
+    } catch (error: any) {
+      const msg = error?.response?.data?.error || 'Kunne ikke trekke tilbake beslutningen'
+      toast({ title: 'Feil', description: msg, variant: 'destructive' })
     }
   }
 
-  const handleExecute = async (requestId: string) => {
+  const handleExecute = (requestId: string) => {
     if (!currentUser?.id) return
-    if (!confirm('Er du sikker på at du vil utføre dette vaktbyttet?')) return
-
-    try {
-      await axiosInstance.post(
-        `/api/swap-requests/${requestId}/execute`,
-        { currentUserId: currentUser.id },
-        { headers: { 'x-current-user-id': currentUser.id } }
-      )
-      await refreshSwapData()
-    } catch (error) {
-      console.error('Error executing swap request:', error)
-      alert('Kunne ikke utføre vaktbytte')
-    }
+    setConfirmDialog({
+      open: true,
+      title: 'Utfør vaktbytte',
+      description: 'Vakten blir overført til ny person. Dette kan ikke angres etter utførelse.',
+      onConfirm: async () => {
+        try {
+          await axiosInstance.post(
+            `/api/swap-requests/${requestId}/execute`,
+            { currentUserId: currentUser.id },
+            { headers: { 'x-current-user-id': currentUser.id } }
+          )
+          await refreshSwapData()
+        } catch (error: any) {
+          const msg = error?.response?.data?.error || 'Kunne ikke utføre vaktbytte'
+          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const pendingRequests = swapRequests.filter((r: any) => r.status === 'PENDING')
@@ -424,11 +515,7 @@ export default function SwapPage() {
                         request.status === 'AWAITING_ACCEPTANCE' ? 'bg-amber-100 text-amber-700' :
                         'bg-muted text-muted-foreground'
                       }`}>
-                        {request.status === 'PENDING' ? 'Venter på leder' :
-                         request.status === 'AWAITING_ACCEPTANCE' ? 'Venter svar' :
-                         request.status === 'APPROVED' ? 'Godkjent' :
-                         request.status === 'REJECTED' ? 'Avslått' :
-                         request.status}
+                        {statusToNorwegian(request.status)}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground mb-2">
@@ -477,6 +564,24 @@ export default function SwapPage() {
         </div>
       </section>
 
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && closeConfirm()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogDescription>{confirmDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeConfirm}>Avbryt</Button>
+            <Button
+              variant={confirmDialog.destructive ? 'destructive' : 'default'}
+              onClick={async () => { closeConfirm(); await confirmDialog.onConfirm() }}
+            >
+              Bekreft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -487,19 +592,12 @@ export default function SwapPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Velg vakt</Label>
-              <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Velg vakt" />
-                </SelectTrigger>
-                <SelectContent>
-                  {myShifts.map((shift: any) => (
-                    <SelectItem key={shift.id} value={shift.id}>
-                      {formatDateDisplay(shift.date)} - {shift.shiftType.label} ({formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Din vakt du vil bytte bort</Label>
+              <ShiftPickerList
+                shifts={myShifts}
+                value={selectedShiftId}
+                onChange={setSelectedShiftId}
+              />
             </div>
             <div className="space-y-2">
               <Label>Bytt med</Label>
@@ -521,35 +619,14 @@ export default function SwapPage() {
             {selectedToUserId && (
               <div className="space-y-2">
                 <Label>
-                  Velg vakt fra {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'kollegaen'} (valgfritt)
+                  Vakt fra {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'kollegaen'} (valgfritt)
                 </Label>
-                <div className="rounded-md border bg-muted/30 max-h-48 overflow-y-auto">
-                  {colleagueShifts.length === 0 ? (
-                    <p className="p-3 text-sm text-muted-foreground">Ingen vakter i perioden</p>
-                  ) : (
-                    <ul className="divide-y divide-border">
-                      {colleagueShifts.map((shift: any) => (
-                        <li
-                          key={shift.id}
-                          onClick={() => setSelectedToShiftId(shift.id === selectedToShiftId ? '' : shift.id)}
-                          className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
-                            selectedToShiftId === shift.id ? 'bg-primary/10 font-medium' : ''
-                          }`}
-                        >
-                          <span className={`h-3 w-3 rounded-full border-2 shrink-0 ${
-                            selectedToShiftId === shift.id ? 'border-primary bg-primary' : 'border-muted-foreground'
-                          }`} />
-                          {formatDateDisplay(shift.date)} – {shift.shiftType?.label ?? 'Vakt'} ({formatTime(shift.startDateTime)}–{formatTime(shift.endDateTime)})
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {selectedToShiftId && (
-                  <p className="text-xs text-muted-foreground">
-                    Valgt: klikk igjen for å fjerne valget
-                  </p>
-                )}
+                <ShiftPickerList
+                  shifts={colleagueShifts}
+                  value={selectedToShiftId}
+                  onChange={setSelectedToShiftId}
+                  emptyLabel="Ingen vakter i perioden"
+                />
               </div>
             )}
             <div className="space-y-2">

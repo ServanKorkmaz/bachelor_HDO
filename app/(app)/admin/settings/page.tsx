@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
 /**
@@ -19,6 +20,7 @@ import { axiosInstance } from '@/lib/axios'
  * non-admins. Personal per-user preferences live at `/settings/notifications`.
  */
 export default function AdminNotificationSettingsPage() {
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [teams, setTeams] = useState<any[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
@@ -67,11 +69,11 @@ export default function AdminNotificationSettingsPage() {
       })
     },
     onSuccess: async () => {
-      alert('Innstillinger lagret')
+      toast({ title: 'Innstillinger lagret' })
       await queryClient.invalidateQueries({ queryKey: ['notification-settings', selectedTeamId] })
     },
     onError: () => {
-      alert('Kunne ikke lagre innstillinger')
+      toast({ title: 'Feil', description: 'Kunne ikke lagre innstillinger', variant: 'destructive' })
     },
   })
 

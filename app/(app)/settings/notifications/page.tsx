@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/lib/auth/mockAuth'
+import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
 interface Prefs {
@@ -24,6 +25,7 @@ interface Prefs {
  */
 export default function NotificationPreferencesPage() {
   const { currentUser } = useAuth()
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [saving, setSaving] = useState(false)
@@ -56,11 +58,11 @@ export default function NotificationPreferencesPage() {
       return axiosInstance.put(`/api/users/${currentUser.id}/notification-preferences`, next)
     },
     onSuccess: async () => {
-      alert('Varslingspreferanser lagret')
+      toast({ title: 'Varslingspreferanser lagret' })
       await queryClient.invalidateQueries({ queryKey: ['notification-preferences', currentUser?.id] })
     },
     onError: () => {
-      alert('Kunne ikke lagre varslingspreferanser')
+      toast({ title: 'Feil', description: 'Kunne ikke lagre varslingspreferanser', variant: 'destructive' })
     },
   })
 
