@@ -108,64 +108,56 @@ export function buildShiftPdf(
   }
 }
 
+/** Minimal slice of the pdfmake browser API this module relies on. */
+interface PdfMakeInstance {
+  createPdf(def: TDocumentDefinitions): { download(filename: string): void }
+  addVirtualFileSystem(vfs: Record<string, string>): void
+}
+
 /**
- * Lazy-load pdfmake (it ships ~1MB of font data) and trigger a download.
- * Anything that wants this on screen pulls it via dynamic import so it stays
- * out of the initial bundle for users who never click "Last ned".
+ * Memoised loader for pdfmake. We dynamic-import the library (~1MB of font
+ * data lives in `vfs_fonts`) so users who never export don't pay for it on
+ * first paint, and we cache the result because pdfmake registers fonts on
+ * a process-global singleton — re-running setup on every click is wasted
+ * work. The cache lives for the page-load lifetime of the SPA.
+ */
+let pdfMakePromise: Promise<PdfMakeInstance> | null = null
+
+async function loadPdfMake(): Promise<PdfMakeInstance> {
+  const [pdfMakeMod, vfsMod] = await Promise.all([
+    import('pdfmake/build/pdfmake'),
+    import('pdfmake/build/vfs_fonts'),
+  ])
+  // `vfs_fonts` is a CJS module: `module.exports = { 'Roboto-Regular.ttf': '<base64>', ... }`.
+  // Webpack wraps that object under `.default` when it's dynamic-imported as ESM.
+  // Note: `pdfMake.vfs = ...` is a silent no-op in pdfmake 0.3.x — `addVirtualFileSystem`
+  // is the supported entry point and writes into pdfmake's internal vfs.
+  const fonts =
+    (vfsMod as { default?: Record<string, string> }).default ??
+    (vfsMod as unknown as Record<string, string>)
+  const pdfMake = pdfMakeMod.default as unknown as PdfMakeInstance
+  pdfMake.addVirtualFileSystem(fonts)
+  return pdfMake
+}
+
+/**
+ * Build the document and trigger a browser download. Safe to call repeatedly;
+ * pdfmake and its fonts are loaded and registered exactly once per page-load.
  */
 export async function downloadShiftPdf(
   shifts: ShiftForExport[],
   meta: PdfMetadata,
-  filename: string
+  filename: string,
 ): Promise<void> {
-  const [{ default: pdfMake }, fontsModule] = await Promise.all([
-    import('pdfmake/build/pdfmake'),
-    import('pdfmake/build/vfs_fonts'),
-  ])
-  // pdfmake 0.3.x stores fonts in an internal singleton — assigning `.vfs`
-  // is a no-op; the supported API is `addVirtualFileSystem(vfs)`. The fonts
-  // module shape varies (top-level keys, `.vfs`, `.pdfMake.vfs`, or wrapped
-  // in `.default` by the bundler), so collect every candidate that looks
-  // like `{ 'Roboto-*.ttf': base64 }` and register them all.
-  const m = fontsModule as Record<string, unknown> & {
-    default?: unknown
-    pdfMake?: { vfs?: Record<string, string> }
-    vfs?: Record<string, string>
+  if (!pdfMakePromise) {
+    pdfMakePromise = loadPdfMake().catch((err) => {
+      // Allow a retry on the next click if the first load failed (e.g. transient
+      // chunk load error after a deploy). Without this, a single failure would
+      // permanently disable PDF export for the rest of the page-load.
+      pdfMakePromise = null
+      throw err
+    })
   }
-  const isVfs = (v: unknown): v is Record<string, string> => {
-    if (!v || typeof v !== 'object') return false
-    const keys = Object.keys(v as object)
-    return keys.length > 0 && keys.some((k) => k.endsWith('.ttf'))
-  }
-  const candidates: unknown[] = [
-    m.pdfMake?.vfs,
-    m.vfs,
-    (m.default as { vfs?: unknown })?.vfs,
-    m.default,
-    m,
-  ]
-  const merged: Record<string, string> = {}
-  for (const c of candidates) {
-    if (!isVfs(c)) continue
-    for (const [k, v] of Object.entries(c)) {
-      if (k.endsWith('.ttf') && typeof v === 'string' && v.length > 0) {
-        merged[k] = v
-      }
-    }
-  }
-  const pm = pdfMake as unknown as {
-    vfs?: Record<string, string>
-    addVirtualFileSystem?: (vfs: Record<string, string>) => void
-  }
-  if (Object.keys(merged).length === 0) {
-    throw new Error('pdfmake fonts not found: vfs_fonts module did not expose any *.ttf entries')
-  }
-  if (typeof pm.addVirtualFileSystem === 'function') {
-    pm.addVirtualFileSystem(merged)
-  } else {
-    pm.vfs = merged
-  }
-
-  const docDefinition = buildShiftPdf(shifts, meta)
-  pdfMake.createPdf(docDefinition).download(filename)
+  const pdfMake = await pdfMakePromise
+  pdfMake.createPdf(buildShiftPdf(shifts, meta)).download(filename)
 }
