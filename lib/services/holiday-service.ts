@@ -173,7 +173,14 @@ export async function revokeHoliday(holidayRequestId: string, actorUserId: strin
       entityType: 'holiday_request',
       entityId: holidayRequestId,
       beforeJson: JSON.stringify({ status: hr.status, decidedBy: hr.decidedBy }),
-      afterJson: JSON.stringify({ status: 'PENDING', decidedBy: null }),
+      afterJson: JSON.stringify({
+        status: 'PENDING',
+        decidedBy: null,
+        userId: hr.userId,
+        type: hr.type,
+        dateFrom: hr.dateFrom,
+        dateTo: hr.dateTo,
+      }),
     })
 
     return res

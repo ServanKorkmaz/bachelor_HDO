@@ -249,7 +249,14 @@ export async function revokeSwap(swapRequestId: string, actorUserId: string) {
       entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
       entityId: swapRequestId,
       beforeJson: JSON.stringify({ status: sr.status, decidedBy: sr.decidedBy }),
-      afterJson: JSON.stringify({ status: 'PENDING', decidedBy: null }),
+      afterJson: JSON.stringify({
+        status: 'PENDING',
+        decidedBy: null,
+        fromUserId: sr.fromUserId,
+        toUserId: sr.toUserId,
+        shiftId: sr.shiftId,
+        shiftDate: sr.shift.date,
+      }),
     })
     return updated
   })
