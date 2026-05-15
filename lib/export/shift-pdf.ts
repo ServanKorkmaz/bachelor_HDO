@@ -118,19 +118,52 @@ export async function downloadShiftPdf(
   meta: PdfMetadata,
   filename: string
 ): Promise<void> {
-  const [{ default: pdfMake }, { default: pdfFonts }] = await Promise.all([
+  const [{ default: pdfMake }, fontsModule] = await Promise.all([
     import('pdfmake/build/pdfmake'),
     import('pdfmake/build/vfs_fonts'),
   ])
-  // pdfmake reads its fonts from this global. The shape of the fonts module
-  // changed across versions; handle both old (`.pdfMake.vfs`) and new
-  // (default-export-is-the-vfs) layouts.
-  const vfs =
-    (pdfFonts as { pdfMake?: { vfs?: Record<string, string> }; vfs?: Record<string, string> })
-      .pdfMake?.vfs ??
-    (pdfFonts as { vfs?: Record<string, string> }).vfs
-  if (vfs) {
-    ;(pdfMake as unknown as { vfs: Record<string, string> }).vfs = vfs
+  // pdfmake 0.3.x stores fonts in an internal singleton — assigning `.vfs`
+  // is a no-op; the supported API is `addVirtualFileSystem(vfs)`. The fonts
+  // module shape varies (top-level keys, `.vfs`, `.pdfMake.vfs`, or wrapped
+  // in `.default` by the bundler), so collect every candidate that looks
+  // like `{ 'Roboto-*.ttf': base64 }` and register them all.
+  const m = fontsModule as Record<string, unknown> & {
+    default?: unknown
+    pdfMake?: { vfs?: Record<string, string> }
+    vfs?: Record<string, string>
+  }
+  const isVfs = (v: unknown): v is Record<string, string> => {
+    if (!v || typeof v !== 'object') return false
+    const keys = Object.keys(v as object)
+    return keys.length > 0 && keys.some((k) => k.endsWith('.ttf'))
+  }
+  const candidates: unknown[] = [
+    m.pdfMake?.vfs,
+    m.vfs,
+    (m.default as { vfs?: unknown })?.vfs,
+    m.default,
+    m,
+  ]
+  const merged: Record<string, string> = {}
+  for (const c of candidates) {
+    if (!isVfs(c)) continue
+    for (const [k, v] of Object.entries(c)) {
+      if (k.endsWith('.ttf') && typeof v === 'string' && v.length > 0) {
+        merged[k] = v
+      }
+    }
+  }
+  const pm = pdfMake as unknown as {
+    vfs?: Record<string, string>
+    addVirtualFileSystem?: (vfs: Record<string, string>) => void
+  }
+  if (Object.keys(merged).length === 0) {
+    throw new Error('pdfmake fonts not found: vfs_fonts module did not expose any *.ttf entries')
+  }
+  if (typeof pm.addVirtualFileSystem === 'function') {
+    pm.addVirtualFileSystem(merged)
+  } else {
+    pm.vfs = merged
   }
 
   const docDefinition = buildShiftPdf(shifts, meta)
