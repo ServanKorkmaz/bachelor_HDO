@@ -1,68 +1,125 @@
 "use client"
 
 import Link from 'next/link'
-import { Users, Calendar, Settings, Building2, FileText, UserCircle } from 'lucide-react'
+import { Bell, Building2, Calendar, FileText, LucideIcon, Users } from 'lucide-react'
+import { ProfileSection } from '@/components/auth/ProfileSection'
 
-/** Admin landing page with links to management sections. */
+interface AdminCard {
+  href: string
+  icon: LucideIcon
+  title: string
+  description: string
+}
+
+interface AdminSection {
+  title: string
+  description: string
+  items: AdminCard[]
+}
+
+const SECTIONS: AdminSection[] = [
+  {
+    title: 'Team og brukere',
+    description: 'Hvem som tilhører hvilket team og hva de har tilgang til.',
+    items: [
+      {
+        href: '/admin/teams',
+        icon: Building2,
+        title: 'Team',
+        description: 'Opprett og rediger team.',
+      },
+      {
+        href: '/admin/users',
+        icon: Users,
+        title: 'Brukere og tilgang',
+        description: 'Legg til brukere, sett roller og aktiver/deaktiver kontoer.',
+      },
+    ],
+  },
+  {
+    title: 'Konfigurasjon',
+    description: 'Faste oppslagsdata og varselregler.',
+    items: [
+      {
+        href: '/admin/shift-types',
+        icon: Calendar,
+        title: 'Vakttyper',
+        description: 'Definer vakttyper, tider og farger.',
+      },
+      {
+        href: '/admin/settings',
+        icon: Bell,
+        title: 'Varslinger',
+        description: 'E-post og SMS-innstillinger for teamet.',
+      },
+    ],
+  },
+  {
+    title: 'Logg',
+    description: 'Sporbarhet og historikk.',
+    items: [
+      {
+        href: '/admin/audit',
+        icon: FileText,
+        title: 'Revisjonslogg',
+        description: 'Se hvem som endret hva og når.',
+      },
+    ],
+  },
+]
+
+/**
+ * Admin landing page. Profile sits at the top so admins always see their
+ * own account first; the rest of the page is the team-wide admin tooling
+ * grouped by purpose. Non-admins reach a slimmer version of this at
+ * /settings — both pages share the ProfileSection component.
+ */
 export default function AdminPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Administrasjon</h1>
+    <div className="space-y-10">
+      <header>
+        <h1 className="text-3xl font-bold">Innstillinger</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Din profil og administrasjon av team, brukere, vakttyper og varslinger.
+        </p>
+      </header>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Link href="/admin/teams">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <Building2 className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Team</h2>
-            <p className="text-sm text-muted-foreground">Administrer team</p>
-          </div>
-        </Link>
+      <ProfileSection />
 
-        <Link href="/admin/users">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <Users className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Brukere og tilgang</h2>
-            <p className="text-sm text-muted-foreground">Legg til brukere, roller, team og aktiver/deaktiver</p>
+      {SECTIONS.map((section) => (
+        <section key={section.title} className="space-y-4">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {section.title}
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {section.description}
+            </p>
           </div>
-        </Link>
-
-        <Link href="/admin/shift-types">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <Calendar className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Vakttyper</h2>
-            <p className="text-sm text-muted-foreground">Administrer vakttyper</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {section.items.map((item) => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="group flex items-start gap-3 rounded-lg border bg-card p-4 transition-colors hover:border-primary/60 hover:bg-accent/40"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <div className="space-y-0.5">
+                    <h3 className="text-sm font-semibold leading-tight">{item.title}</h3>
+                    <p className="text-xs leading-snug text-muted-foreground">
+                      {item.description}
+                    </p>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
-        </Link>
-
-        <Link href="/admin/settings">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <Settings className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Varslinger</h2>
-            <p className="text-sm text-muted-foreground">Varslingsinnstillinger</p>
-          </div>
-        </Link>
-
-        <Link href="/admin/audit">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <FileText className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Revisjonslogg</h2>
-            <p className="text-sm text-muted-foreground">Se hvem som endret brukere og tilgang</p>
-          </div>
-        </Link>
-
-        <Link href="/settings/profile">
-          <div className="p-6 bg-card rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-            <UserCircle className="h-8 w-8 mb-2" />
-            <h2 className="text-lg font-semibold mb-1">Min profil</h2>
-            <p className="text-sm text-muted-foreground">Se din brukerinformasjon</p>
-          </div>
-        </Link>
-        
-        {/* Holiday requests are reachable from the main navigation for all users; remove
-            the duplicate admin-only card here to avoid confusion. Admins can still
-            review requests via the main menu's Fravær page which shows the admin view. */}
-      </div>
+        </section>
+      ))}
     </div>
   )
 }
-

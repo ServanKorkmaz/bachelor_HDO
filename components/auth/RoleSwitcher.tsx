@@ -1,25 +1,27 @@
 "use client"
 
-import { useAuth, MockUser } from '@/lib/auth/mockAuth'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { User } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useAuth, MockUser } from '@/lib/auth/mockAuth'
 import { axiosInstance } from '@/lib/axios'
 
-/** Dropdown to switch the current mock user/role for demo purposes. */
+function initials(name: string): string {
+  const parts = name.split(' ').filter(Boolean).slice(0, 2)
+  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?'
+}
+
+/**
+ * Identity badge in the top-right nav. While the app is still in mock-auth
+ * mode this component also bootstraps the active user by selecting the first
+ * row returned from `/api/users` — without that, every request would fail
+ * the `x-current-user-id` middleware gate. When auth flips to Microsoft
+ * OAuth, the bootstrap effect goes away and the component becomes pure UI.
+ *
+ * (The role-switch dropdown that used to live here was a development-time
+ * affordance and has been removed now that the demo flow is settled.)
+ */
 export function RoleSwitcher() {
   const { currentUser, setCurrentUser } = useAuth()
-  const [users, setUsers] = useState<MockUser[]>([])
 
   const { data: fetchedUsers = [] } = useQuery<MockUser[]>({
     queryKey: ['users'],
@@ -30,54 +32,21 @@ export function RoleSwitcher() {
   })
 
   useEffect(() => {
-    setUsers(Array.isArray(fetchedUsers) ? fetchedUsers : [])
     if (!currentUser && Array.isArray(fetchedUsers) && fetchedUsers.length > 0) {
       setCurrentUser(fetchedUsers[0])
     }
   }, [fetchedUsers, currentUser, setCurrentUser])
 
-  const handleUserSelect = (user: MockUser) => {
-    setCurrentUser(user)
-  }
+  if (!currentUser) return null
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="gap-2">
-          <User className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {currentUser?.name || 'Velg bruker'}
-          </span>
-          <span className="sm:hidden">
-            {currentUser?.name.split(' ').map(n => n[0]).join('') || '?'}
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Bytt rolle/bruker</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/settings/profile" className="cursor-pointer">
-            Min profil
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {Array.isArray(users) && users.map((user) => (
-          <DropdownMenuItem
-            key={user.id}
-            onClick={() => handleUserSelect(user)}
-            className={currentUser?.id === user.id ? 'bg-accent' : ''}
-          >
-            <div className="flex flex-col">
-              <span>{user.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {user.role === 'ADMIN' ? 'Admin' : user.role === 'LEADER' ? 'Leder' : 'Ansatt'}
-              </span>
-            </div>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex h-9 items-center gap-2 px-2">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+        {initials(currentUser.name)}
+      </span>
+      <span className="hidden text-sm font-medium sm:inline">
+        {currentUser.name}
+      </span>
+    </div>
   )
 }
-

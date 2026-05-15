@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, CalendarDays, List, RefreshCw, Lock, LogOut, CalendarCheck, User } from 'lucide-react'
+import { Calendar, CalendarDays, List, RefreshCw, Settings, LogOut, CalendarCheck } from 'lucide-react'
 import { Button } from '../ui/button'
 import { RoleSwitcher } from '../auth/RoleSwitcher'
 import { NotificationsPanel } from './NotificationsPanel'
@@ -18,17 +18,17 @@ const baseNavItems = [
 ] as const
 
 /**
- * Primary top navigation. The settings entry is role-aware: admins get the
- * full admin hub at `/admin`, everyone else gets their personal settings hub
- * at `/settings`. Non-admins never see admin-only pages in the nav at all.
+ * Primary top navigation. The settings entry uses a unified label
+ * ("Innstillinger") for every role; only the destination differs — admins
+ * and leaders land on the wider /admin hub which embeds their profile,
+ * everyone else lands on /settings with their profile and personal options.
  */
 export function Navigation() {
   const pathname = usePathname()
   const { isAdmin, isLeader } = useAuth()
 
-  const settingsItem = (isAdmin() || isLeader())
-    ? { href: '/admin', label: 'Innstillinger', icon: Lock }
-    : { href: '/settings', label: 'Min konto', icon: User }
+  const settingsHref = isAdmin() || isLeader() ? '/admin' : '/settings'
+  const settingsItem = { href: settingsHref, label: 'Innstillinger', icon: Settings }
 
   const navItems = [...baseNavItems, settingsItem]
 
