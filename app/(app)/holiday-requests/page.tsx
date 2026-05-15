@@ -25,7 +25,7 @@ type RequestRow = {
 }
 
 export default function HolidayRequestsPage() {
-  const { currentUser, isAdmin } = useAuth()
+  const { currentUser, isAdmin, isLeader } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -53,8 +53,8 @@ export default function HolidayRequestsPage() {
 
   if (!currentUser) return <div>Vennligst logg inn</div>
 
-  // Admin view: show all team requests with approve/reject
-  if (isAdmin()) {
+  // Admin/leader view: show all team requests with approve/reject/revoke
+  if (isAdmin() || isLeader()) {
     const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
       try {
         await axiosInstance.patch(
@@ -62,18 +62,32 @@ export default function HolidayRequestsPage() {
           { action },
           { headers: { 'x-current-user-id': currentUser.id } }
         )
-        toast({ title: 'Oppdatert' })
+        toast({ title: action === 'APPROVE' ? 'Godkjent' : 'Avvist' })
         await refreshItems()
       } catch (e) {
         const errorMessage =
           e && typeof e === 'object' && 'response' in e
             ? (e as any).response?.data?.error
             : null
-        toast({
-          title: 'Feil',
-          description: errorMessage || 'Nettverksfeil',
-          variant: 'destructive',
-        })
+        toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+      }
+    }
+
+    const handleRevoke = async (id: string) => {
+      try {
+        await axiosInstance.post(
+          `/api/holiday-requests/${id}/revoke`,
+          {},
+          { headers: { 'x-current-user-id': currentUser.id } }
+        )
+        toast({ title: 'Trukket tilbake', description: 'Forespørselen er satt tilbake til ventende.' })
+        await refreshItems()
+      } catch (e) {
+        const errorMessage =
+          e && typeof e === 'object' && 'response' in e
+            ? (e as any).response?.data?.error
+            : null
+        toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
       }
     }
 
@@ -118,6 +132,11 @@ export default function HolidayRequestsPage() {
                             <Button onClick={() => handleDecision(r.id, 'APPROVE')}>Godkjenn</Button>
                             <Button variant="destructive" onClick={() => handleDecision(r.id, 'REJECT')}>Avvis</Button>
                           </>
+                        )}
+                        {(r.status === 'APPROVED' || r.status === 'REJECTED') && (
+                          <Button variant="outline" size="sm" onClick={() => handleRevoke(r.id)}>
+                            Trekk tilbake
+                          </Button>
                         )}
                       </div>
                     </td>

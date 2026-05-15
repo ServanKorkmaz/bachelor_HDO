@@ -144,6 +144,43 @@ export async function createHoliday(input: CreateHolidayInput) {
 }
 
 /**
+ * Revert an APPROVED or REJECTED holiday request back to PENDING so a new
+ * decision can be made. Used when a leader or admin acted by mistake.
+ */
+export async function revokeHoliday(holidayRequestId: string, actorUserId: string) {
+  return withEvents(async (tx) => {
+    const hr = await tx.holidayRequest.findUnique({ where: { id: holidayRequestId } })
+    if (!hr) {
+      throw new ServiceError('HOLIDAY_NOT_FOUND', 'Not found', 404)
+    }
+    if (hr.status !== 'APPROVED' && hr.status !== 'REJECTED') {
+      throw new ServiceError(
+        'HOLIDAY_WRONG_STATE',
+        'Only approved or rejected requests can be revoked',
+        400
+      )
+    }
+
+    const res = await tx.holidayRequest.update({
+      where: { id: holidayRequestId },
+      data: { status: 'PENDING', decidedBy: null, decidedAt: null },
+      include: { user: { select: { id: true, name: true } } },
+    })
+
+    await createAuditLog(tx, {
+      actorUserId,
+      action: 'HOLIDAY_REVOKED',
+      entityType: 'holiday_request',
+      entityId: holidayRequestId,
+      beforeJson: JSON.stringify({ status: hr.status, decidedBy: hr.decidedBy }),
+      afterJson: JSON.stringify({ status: 'PENDING', decidedBy: null }),
+    })
+
+    return res
+  })
+}
+
+/**
  * Leader/admin decides on a PENDING holiday request — APPROVE or REJECT.
  * Writes one audit row and notifies the requester. Returns the updated row
  * with the user relation, matching the route's previous response shape.

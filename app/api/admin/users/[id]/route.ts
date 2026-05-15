@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withLeader } from '@/lib/auth/withAuth'
+import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchUserStatusSchema } from '@/lib/admin/schemas'
 
-/** PATCH /api/admin/users/:id - Activate/deactivate user. Admin only. Soft only; writes audit log. */
-export const PATCH = withLeader<{ id: string }>(async (request, ctx) => {
+/** PATCH /api/admin/users/:id - Activate/deactivate user. Admin or leader only. Soft only; writes audit log. */
+export const PATCH = withLeaderOrAdmin<{ id: string }>(async (request, ctx) => {
   try {
     const userId = ctx.params.id
     const body = await request.json().catch(() => ({}))

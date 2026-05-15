@@ -198,6 +198,21 @@ export default function SwapPage() {
     } catch { alert('Nettverksfeil') }
   }
 
+  const handleRevoke = async (requestId: string) => {
+    if (!currentUser?.id) return
+    try {
+      await axiosInstance.post(
+        `/api/swap-requests/${requestId}/revoke`,
+        {},
+        { headers: { 'x-current-user-id': currentUser.id } }
+      )
+      await refreshSwapData()
+    } catch (error) {
+      console.error('Error revoking swap decision:', error)
+      alert('Kunne ikke trekke tilbake beslutningen')
+    }
+  }
+
   const handleExecute = async (requestId: string) => {
     if (!currentUser?.id) return
     if (!confirm('Er du sikker på at du vil utføre dette vaktbyttet?')) return
@@ -430,6 +445,15 @@ export default function SwapPage() {
                         onClick={() => handleExecute(request.id)}
                       >
                         Utfør bytte
+                      </Button>
+                    )}
+                    {canApproveSwaps() && (request.status === 'APPROVED' || request.status === 'REJECTED') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRevoke(request.id)}
+                      >
+                        Trekk tilbake
                       </Button>
                     )}
                     {!canApproveSwaps() && request.requestedByUserId === currentUser?.id &&

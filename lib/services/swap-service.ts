@@ -218,6 +218,41 @@ export async function rejectSwap(swapRequestId: string, actorUserId: string) {
 }
 
 /**
+ * Revert an APPROVED or REJECTED swap back to PENDING so a new decision can
+ * be made. EXECUTED swaps cannot be revoked — the shift reassignment is not
+ * automatically undone. Used when a leader or admin acted by mistake.
+ */
+export async function revokeSwap(swapRequestId: string, actorUserId: string) {
+  const sr = await prisma.swapRequest.findUnique({
+    where: { id: swapRequestId },
+    include: swapInclude,
+  })
+  if (!sr) throw new ServiceError('SWAP_NOT_FOUND', 'Swap request not found', 404)
+  if (sr.status === 'EXECUTED') {
+    throw new ServiceError('SWAP_EXECUTED', 'Executed swaps cannot be revoked', 400)
+  }
+  if (sr.status !== 'APPROVED' && sr.status !== 'REJECTED') {
+    throw new ServiceError('SWAP_WRONG_STATE', 'Only approved or rejected swaps can be revoked', 400)
+  }
+
+  return withEvents(async (tx) => {
+    const updated = await tx.swapRequest.update({
+      where: { id: swapRequestId },
+      data: { status: 'PENDING', decidedBy: null, decidedAt: null },
+    })
+    await createAuditLog(tx, {
+      actorUserId,
+      action: AUDIT_ACTION.SWAP_REVOKED,
+      entityType: AUDIT_ENTITY_TYPE.SWAP_REQUEST,
+      entityId: swapRequestId,
+      beforeJson: JSON.stringify({ status: sr.status, decidedBy: sr.decidedBy }),
+      afterJson: JSON.stringify({ status: 'PENDING', decidedBy: null }),
+    })
+    return updated
+  })
+}
+
+/**
  * Execute an APPROVED swap — reassigns the underlying shift to the new
  * assignee, marks the swap EXECUTED, and notifies both parties.
  */
