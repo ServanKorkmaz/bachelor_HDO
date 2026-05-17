@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { sessionCookieName } from '@/lib/auth/session'
 
 interface Bucket {
   count: number
@@ -53,14 +54,40 @@ export function checkRateLimit(
 }
 
 /**
+ * Stable per-request identifier for rate-limit buckets. Preference order:
+ * 1. Sealed session cookie value (stable per logged-in session — covers the new auth and the test-env header fallback when it produces a cookie).
+ * 2. `x-current-user-id` header (test environment only — Vitest route tests).
+ * 3. First `x-forwarded-for` IP (unauthenticated callers).
+ * 4. Literal `'anon'` (no signal at all).
+ *
+ * We use the sealed cookie value directly (not the unsealed userId) so this stays
+ * synchronous — unsealing requires async crypto and would propagate `await` into
+ * every rate-limited route. The cookie value is a 1:1 mapping to the session, so
+ * it's functionally equivalent for rate-limit bucketing.
+ */
+function identityKeyFor(request: Request): string {
+  const cookieHeader = request.headers.get('cookie') ?? ''
+  for (const part of cookieHeader.split(';')) {
+    const [k, ...rest] = part.trim().split('=')
+    if (k === sessionCookieName) return `s:${rest.join('=')}`
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    const headerUser = request.headers.get('x-current-user-id')?.trim()
+    if (headerUser) return `u:${headerUser}`
+  }
+
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+  return ip ? `ip:${ip}` : 'anon'
+}
+
+/**
  * Convenience wrapper for route handlers. Returns a 429 NextResponse if the
  * caller has exceeded the limit, otherwise null. Identifies callers by their
- * authenticated user id when available and falls back to the forwarded IP.
+ * session cookie when available and falls back to the forwarded IP.
  */
 export function applyRateLimit(request: Request, config: RateLimitConfig): NextResponse | null {
-  const userId = request.headers.get('x-current-user-id')?.trim()
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'anon'
-  const identityKey = userId || ip
+  const identityKey = identityKeyFor(request)
 
   const result = checkRateLimit(identityKey, config)
   if (result.allowed) return null
