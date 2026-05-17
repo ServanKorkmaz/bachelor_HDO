@@ -54,4 +54,34 @@ input[type="date"]::-moz-focus-inner {
   color: rgb(255 255 255 / 1);
 }
 
+/* Login page: subtle background orbs that drift, and a gentle card entrance.
+   Kept restrained — this is a professional healthcare context, not a marketing
+   landing page. Honours prefers-reduced-motion. */
+@keyframes login-orb-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(40px, -30px) scale(1.05); }
+}
+@keyframes login-orb-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-30px, 40px) scale(1.08); }
+}
+@keyframes login-orb-drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(20px, 25px) scale(0.95); }
+}
+@keyframes login-card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-orb-a { animation: login-orb-drift-a 14s ease-in-out infinite; }
+.login-orb-b { animation: login-orb-drift-b 18s ease-in-out infinite; }
+.login-orb-c { animation: login-orb-drift-c 16s ease-in-out infinite; }
+.login-card-in { animation: login-card-in 600ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-orb-a, .login-orb-b, .login-orb-c { animation: none; }
+  .login-card-in { animation: none; }
+}
+
 
