@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { UserPlus, Shield, UserMinus, UserX, Loader2, Plus, Building2 } from 'lucide-react'
 import { axiosInstance } from '@/lib/axios'
@@ -36,11 +35,6 @@ type UserRow = {
   createdAt: string
   lastLoginAt: string | null
 }
-
-const ADMIN_HEADERS = (currentUserId: string) => ({
-  'Content-Type': 'application/json',
-  'x-current-user-id': currentUserId,
-})
 
 /** Translates a system role enum value to its Norwegian display label. */
 function roleLabel(role: string): string {
@@ -57,7 +51,14 @@ function roleLabel(role: string): string {
  * `withLeaderOrAdmin`.
  */
 export default function AdminUsersPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([])
@@ -83,13 +84,12 @@ export default function AdminUsersPage() {
     setTeams(Array.isArray(fetchedTeams) ? fetchedTeams : [])
   }, [fetchedTeams])
 
-  const usersQueryKey = ['admin-users', currentUser?.id, q, statusFilter, teamFilter]
+  const usersQueryKey = ['admin-users', me?.id, q, statusFilter, teamFilter]
   const { data: users = [], isLoading: loading } = useQuery<UserRow[]>({
     queryKey: usersQueryKey,
     queryFn: async () => {
-      if (!currentUser?.id) return []
+      if (!me?.id) return []
       const params = new URLSearchParams()
-      params.set('currentUserId', currentUser.id)
       if (q.trim()) params.set('q', q.trim())
       if (statusFilter === 'active' || statusFilter === 'inactive') params.set('status', statusFilter)
       if (teamFilter !== 'all') params.set('teamId', teamFilter)
@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
         return []
       }
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
   })
 
   const [createDialog, setCreateDialog] = useState(false)
@@ -128,7 +128,7 @@ export default function AdminUsersPage() {
 
   const selectedTeam = teamFilter !== 'all' ? teams.find((t) => t.id === teamFilter) : null
 
-  if (!currentUser) {
+  if (!me) {
     return (
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Brukere</h1>
@@ -138,7 +138,7 @@ export default function AdminUsersPage() {
   }
 
   const handleCreateUser = async () => {
-    if (!currentUser?.id || !createName.trim() || !createEmail.trim() || !createTeamId) {
+    if (!createName.trim() || !createEmail.trim() || !createTeamId) {
       toast({ title: 'Fyll ut navn, e-post og team', variant: 'destructive' })
       return
     }
@@ -149,8 +149,7 @@ export default function AdminUsersPage() {
         email: createEmail.trim().toLowerCase(),
         teamId: createTeamId,
         role: createRole,
-        currentUserId: currentUser.id,
-      }, { headers: ADMIN_HEADERS(currentUser.id) })
+      })
       toast({ title: 'Bruker opprettet', description: `${createName} er lagt til.` })
       setCreateDialog(false)
       setCreateName('')
@@ -167,10 +166,10 @@ export default function AdminUsersPage() {
   }
 
   const handleAddToTeam = async () => {
-    if (!addDialog || !addTeamId || !currentUser?.id) return
+    if (!addDialog || !addTeamId) return
     setBusy(true)
     try {
-      await axiosInstance.post(`/api/admin/teams/${addTeamId}/members`, { userId: addDialog.user.id, role: addRole, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      await axiosInstance.post(`/api/admin/teams/${addTeamId}/members`, { userId: addDialog.user.id, role: addRole })
       toast({ title: 'Lagt til', description: `${addDialog.user.name} er lagt til i teamet.` })
       setAddDialog(null)
       setAddTeamId('')
@@ -184,10 +183,10 @@ export default function AdminUsersPage() {
   }
 
   const handleChangeRole = async () => {
-    if (!roleDialog?.membership.membershipId || !currentUser?.id) return
+    if (!roleDialog?.membership.membershipId) return
     setBusy(true)
     try {
-      await axiosInstance.patch(`/api/admin/teams/${roleDialog.membership.teamId}/members/${roleDialog.membership.membershipId}`, { role: newRole, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      await axiosInstance.patch(`/api/admin/teams/${roleDialog.membership.teamId}/members/${roleDialog.membership.membershipId}`, { role: newRole })
       toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${roleLabel(newRole)}.` })
       setRoleDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
@@ -200,11 +199,11 @@ export default function AdminUsersPage() {
   }
 
   const handleRemoveFromTeam = async () => {
-    if (!removeDialog?.membership.membershipId || !currentUser?.id) return
+    if (!removeDialog?.membership.membershipId) return
     const teamId = removeDialog.membership.teamId
     setBusy(true)
     try {
-      await axiosInstance.delete(`/api/admin/teams/${teamId}/members/${removeDialog.membership.membershipId}`, { headers: ADMIN_HEADERS(currentUser.id) })
+      await axiosInstance.delete(`/api/admin/teams/${teamId}/members/${removeDialog.membership.membershipId}`)
       toast({ title: 'Fjernet fra team', description: `${removeDialog.user.name} er fjernet fra teamet.` })
       setRemoveDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
@@ -217,10 +216,10 @@ export default function AdminUsersPage() {
   }
 
   const handleStatusChange = async () => {
-    if (!statusDialog || !currentUser?.id) return
+    if (!statusDialog) return
     setBusy(true)
     try {
-      await axiosInstance.patch(`/api/admin/users/${statusDialog.user.id}`, { status: statusDialog.newStatus, currentUserId: currentUser.id }, { headers: ADMIN_HEADERS(currentUser.id) })
+      await axiosInstance.patch(`/api/admin/users/${statusDialog.user.id}`, { status: statusDialog.newStatus })
       toast({
         title: statusDialog.newStatus === 'active' ? 'Aktivert' : 'Deaktivert',
         description: `${statusDialog.user.name} er ${statusDialog.newStatus === 'active' ? 'aktivert' : 'deaktivert'}.`,

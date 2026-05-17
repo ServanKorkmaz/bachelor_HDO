@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
@@ -19,11 +18,6 @@ type RequestRow = {
   createdAt: string
 }
 
-const ADMIN_HEADERS = (currentUserId: string) => ({
-  'Content-Type': 'application/json',
-  'x-current-user-id': currentUserId,
-})
-
 /**
  * Admin > Ferie- og fraværsforespørsler.
  *
@@ -31,32 +25,35 @@ const ADMIN_HEADERS = (currentUserId: string) => ({
  * an admin. The API enforces it independently via `withAuth` + role checks.
  */
 export default function AdminHolidayRequestsPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  const requestsQueryKey = ['holiday-requests', currentUser?.teamId]
+  const requestsQueryKey = ['holiday-requests', me?.teamId]
   const { data: items = [], isLoading: loading } = useQuery<RequestRow[]>({
     queryKey: requestsQueryKey,
     queryFn: async () => {
-      if (!currentUser?.teamId) return []
+      if (!me?.teamId) return []
       const params = new URLSearchParams()
-      params.set('teamId', currentUser.teamId)
+      params.set('teamId', me.teamId)
       const res = await axiosInstance.get(`/api/holiday-requests?${params.toString()}`)
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
   })
 
   const decisionMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string; action: 'APPROVE' | 'REJECT' }) => {
-      if (!currentUser?.id) {
-        throw new Error('Not authenticated')
-      }
       return axiosInstance.patch(
         `/api/holiday-requests/${id}`,
-        { action, decidedByUserId: currentUser.id },
-        { headers: ADMIN_HEADERS(currentUser.id) }
+        { action },
       )
     },
     onSuccess: async () => {
@@ -69,7 +66,7 @@ export default function AdminHolidayRequestsPage() {
     },
   })
 
-  if (!currentUser) return <div>Vennligst logg inn</div>
+  if (!me) return <div>Vennligst logg inn</div>
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
     await decisionMutation.mutateAsync({ id, action })

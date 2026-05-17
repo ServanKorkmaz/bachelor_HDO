@@ -12,22 +12,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { axiosInstance } from '@/lib/axios'
 
 /** Notification bell with polling and mark-as-read handling. */
 export function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false)
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const queryClient = useQueryClient()
 
   const { data: notifications = [] } = useQuery<any[]>({
-    queryKey: ['notifications', currentUser?.id],
+    queryKey: ['notifications', me?.id],
     queryFn: async () => {
-      const response = await axiosInstance.get(`/api/notifications?userId=${currentUser!.id}`)
+      const response = await axiosInstance.get(`/api/notifications?userId=${me!.id}`)
       return Array.isArray(response.data) ? response.data.slice(0, 10) : []
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
     refetchInterval: 30000,
   })
 
@@ -36,7 +42,7 @@ export function NotificationsPanel() {
       await axiosInstance.post(`/api/notifications/${notificationId}/read`)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications', currentUser?.id] })
+      queryClient.invalidateQueries({ queryKey: ['notifications', me?.id] })
     },
   })
 

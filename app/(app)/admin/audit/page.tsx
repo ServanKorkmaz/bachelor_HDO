@@ -20,7 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
@@ -94,18 +93,23 @@ function formatDate(value: string | undefined | null): string {
 
 /** Admin revisjonslogg: viser hvem som gjorde hva og når. */
 export default function AdminAuditPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const { toast } = useToast()
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
   const { data: entries = [], isLoading: loading } = useQuery<AuditEntry[]>({
-    queryKey: ['admin-audit', currentUser?.id, entityFilter, dateFrom, dateTo],
+    queryKey: ['admin-audit', entityFilter, dateFrom, dateTo],
     queryFn: async () => {
-      if (!currentUser?.id) return []
       const params = new URLSearchParams()
-      params.set('currentUserId', currentUser.id)
       if (entityFilter !== 'all') params.set('entityType', entityFilter)
       if (dateFrom) params.set('dateFrom', dateFrom)
       if (dateTo) params.set('dateTo', dateTo)
@@ -117,22 +121,16 @@ export default function AdminAuditPage() {
         return []
       }
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
   })
 
   const { data: usersList = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ['admin-users', currentUser?.id],
+    queryKey: ['admin-users'],
     queryFn: async () => {
-      if (!currentUser?.id) return []
-      const res = await axiosInstance.get('/api/admin/users', {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-current-user-id': currentUser.id,
-        },
-      })
+      const res = await axiosInstance.get('/api/admin/users')
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
   })
 
   const { data: teamsList = [] } = useQuery<{ id: string; name: string }[]>({
@@ -309,7 +307,7 @@ export default function AdminAuditPage() {
           dateFrom,
           dateTo,
           entityFilterLabel: ENTITY_FILTER_OPTIONS[entityFilter] ?? entityFilter,
-          downloadedBy: currentUser?.name ?? actorName(currentUser?.id ?? ''),
+          downloadedBy: me?.name ?? actorName(me?.id ?? ''),
         },
         `revisjonslogg_${filenameRange()}.pdf`,
       )
@@ -321,7 +319,7 @@ export default function AdminAuditPage() {
     }
   }
 
-  if (!currentUser) return null
+  if (!me) return null
 
   return (
     <div className="space-y-4">

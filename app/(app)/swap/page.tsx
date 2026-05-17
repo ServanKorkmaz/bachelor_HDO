@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay, formatTime } from '@/lib/date-utils'
 import {
   Dialog,
@@ -87,7 +86,15 @@ export default function SwapPage() {
   const [selectedToUserId, setSelectedToUserId] = useState<string>('')
   const [selectedToShiftId, setSelectedToShiftId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
-  const { currentUser, canApproveSwaps } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
+  const canApproveSwaps = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const { toast } = useToast()
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
@@ -156,7 +163,7 @@ export default function SwapPage() {
   })
 
   const myShifts = shifts.filter(
-    (s: any) => (s.userId ?? s.user?.id) === currentUser?.id
+    (s: any) => (s.userId ?? s.user?.id) === me?.id
   )
 
   const { data: colleagueShifts = [] } = useQuery<any[]>({
@@ -179,12 +186,11 @@ export default function SwapPage() {
   }
 
   const handleCreateRequest = async () => {
-    if (!selectedShiftId || !selectedToUserId || !currentUser) return
+    if (!selectedShiftId || !selectedToUserId) return
 
     try {
       await axiosInstance.post('/api/swap-requests', {
         teamId: selectedTeamId,
-        requestedByUserId: currentUser.id,
         shiftId: selectedShiftId,
         toShiftId: selectedToShiftId || null,
         toUserId: selectedToUserId,
@@ -204,12 +210,11 @@ export default function SwapPage() {
   }
 
   const handleApprove = async (requestId: string) => {
-    if (!currentUser?.id) return
+    if (!me?.id) return
     try {
       await axiosInstance.post(
         `/api/swap-requests/${requestId}/approve`,
-        { currentUserId: currentUser.id },
-        { headers: { 'x-current-user-id': currentUser.id } }
+        {},
       )
       await refreshSwapData()
     } catch (error: any) {
@@ -219,12 +224,11 @@ export default function SwapPage() {
   }
 
   const handleReject = async (requestId: string) => {
-    if (!currentUser?.id) return
+    if (!me?.id) return
     try {
       await axiosInstance.post(
         `/api/swap-requests/${requestId}/reject`,
-        { currentUserId: currentUser.id },
-        { headers: { 'x-current-user-id': currentUser.id } }
+        {},
       )
       await refreshSwapData()
     } catch (error: any) {
@@ -241,7 +245,7 @@ export default function SwapPage() {
       destructive: true,
       onConfirm: async () => {
         try {
-          await axiosInstance.delete(`/api/swap-requests/${requestId}?currentUserId=${currentUser?.id}`)
+          await axiosInstance.delete(`/api/swap-requests/${requestId}`)
           await refreshSwapData()
         } catch (error: any) {
           const msg = error?.response?.data?.error || 'Kunne ikke avbryte forespørsel'
@@ -256,7 +260,7 @@ export default function SwapPage() {
       await axiosInstance.post(
         `/api/swap-requests/${requestId}/accept`,
         {},
-        { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
+        { headers: { 'x-current-user-id': me?.id ?? '' } }
       )
       await refreshSwapData()
     } catch (error: any) {
@@ -276,7 +280,7 @@ export default function SwapPage() {
           await axiosInstance.post(
             `/api/swap-requests/${requestId}/decline`,
             {},
-            { headers: { 'x-current-user-id': currentUser?.id ?? '' } }
+            { headers: { 'x-current-user-id': me?.id ?? '' } }
           )
           await refreshSwapData()
         } catch (error: any) {
@@ -288,12 +292,11 @@ export default function SwapPage() {
   }
 
   const handleRevoke = async (requestId: string) => {
-    if (!currentUser?.id) return
+    if (!me?.id) return
     try {
       await axiosInstance.post(
         `/api/swap-requests/${requestId}/revoke`,
         {},
-        { headers: { 'x-current-user-id': currentUser.id } }
       )
       await refreshSwapData()
     } catch (error: any) {
@@ -303,7 +306,7 @@ export default function SwapPage() {
   }
 
   const handleExecute = (requestId: string) => {
-    if (!currentUser?.id) return
+    if (!me?.id) return
     setConfirmDialog({
       open: true,
       title: 'Utfør vaktbytte',
@@ -312,8 +315,7 @@ export default function SwapPage() {
         try {
           await axiosInstance.post(
             `/api/swap-requests/${requestId}/execute`,
-            { currentUserId: currentUser.id },
-            { headers: { 'x-current-user-id': currentUser.id } }
+            {},
           )
           await refreshSwapData()
         } catch (error: any) {
@@ -328,17 +330,17 @@ export default function SwapPage() {
   const awaitingRequests = swapRequests.filter((r: any) => r.status === 'AWAITING_ACCEPTANCE')
   const otherRequests = swapRequests.filter((r: any) => r.status !== 'PENDING' && r.status !== 'AWAITING_ACCEPTANCE')
   const myRequests = swapRequests.filter(
-    (r: any) => r.requestedByUserId === currentUser?.id
+    (r: any) => r.requestedByUserId === me?.id
   )
   const incomingRequests = swapRequests.filter(
-    (r: any) => r.toUserId === currentUser?.id && r.status === 'AWAITING_ACCEPTANCE'
+    (r: any) => r.toUserId === me?.id && r.status === 'AWAITING_ACCEPTANCE'
   )
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Vaktbytter</h1>
-        {currentUser && currentUser.role !== 'ADMIN' && currentUser.role !== 'LEADER' && (
+        {me && me.role !== 'ADMIN' && me.role !== 'LEADER' && (
           <Button onClick={() => setIsCreateModalOpen(true)}>
             Be om vaktbytte
           </Button>
@@ -360,7 +362,7 @@ export default function SwapPage() {
         </div>
       </div>
 
-      {canApproveSwaps() && awaitingRequests.length > 0 && (
+      {canApproveSwaps && awaitingRequests.length > 0 && (
         <section>
           <h2 className="text-xl font-semibold mb-4">Venter på kollegas svar</h2>
           <div className="space-y-2">
@@ -394,7 +396,7 @@ export default function SwapPage() {
         </section>
       )}
 
-      {canApproveSwaps() && pendingRequests.length > 0 && (
+      {canApproveSwaps && pendingRequests.length > 0 && (
         <section>
           <h2 className="text-xl font-semibold mb-4">Venter på godkjenning</h2>
           <div className="space-y-2">
@@ -440,7 +442,7 @@ export default function SwapPage() {
         </section>
       )}
 
-      {!canApproveSwaps() && incomingRequests.length > 0 && (
+      {!canApproveSwaps && incomingRequests.length > 0 && (
         <section>
           <h2 className="text-xl font-semibold mb-4">Inngående forespørsler</h2>
           <div className="space-y-2">
@@ -488,15 +490,15 @@ export default function SwapPage() {
 
       <section>
         <h2 className="text-xl font-semibold mb-4">
-          {canApproveSwaps() ? 'Alle forespørsler' : 'Mine forespørsler'}
+          {canApproveSwaps ? 'Alle forespørsler' : 'Mine forespørsler'}
         </h2>
         <div className="space-y-2">
-          {(canApproveSwaps() ? otherRequests : myRequests).length === 0 ? (
+          {(canApproveSwaps ? otherRequests : myRequests).length === 0 ? (
             <p className="text-muted-foreground">
-              {canApproveSwaps() ? 'Ingen forespørsler' : 'Ingen forespørsler'}
+              {canApproveSwaps ? 'Ingen forespørsler' : 'Ingen forespørsler'}
             </p>
           ) : (
-            (canApproveSwaps() ? otherRequests : myRequests).map((request: any) => (
+            (canApproveSwaps ? otherRequests : myRequests).map((request: any) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -529,7 +531,7 @@ export default function SwapPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {canApproveSwaps() && request.status === 'APPROVED' && (
+                    {canApproveSwaps && request.status === 'APPROVED' && (
                       <Button
                         size="sm"
                         onClick={() => handleExecute(request.id)}
@@ -537,7 +539,7 @@ export default function SwapPage() {
                         Utfør bytte
                       </Button>
                     )}
-                    {canApproveSwaps() && (request.status === 'APPROVED' || request.status === 'REJECTED') && (
+                    {canApproveSwaps && (request.status === 'APPROVED' || request.status === 'REJECTED') && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -546,7 +548,7 @@ export default function SwapPage() {
                         Trekk tilbake
                       </Button>
                     )}
-                    {!canApproveSwaps() && request.requestedByUserId === currentUser?.id &&
+                    {!canApproveSwaps && request.requestedByUserId === me?.id &&
                       (request.status === 'PENDING' || request.status === 'AWAITING_ACCEPTANCE') && (
                       <Button
                         variant="outline"
@@ -607,7 +609,7 @@ export default function SwapPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {users
-                    .filter((u: any) => u.id !== currentUser?.id)
+                    .filter((u: any) => u.id !== me?.id)
                     .map((user: any) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}

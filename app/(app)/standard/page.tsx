@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { WeekGrid } from '@/components/schedule/WeekGrid'
 import { BulkShiftModal } from '@/components/BulkShiftModal'
 import { ExportMenu } from '@/components/schedule/ExportMenu'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { axiosInstance } from '@/lib/axios'
@@ -26,7 +25,15 @@ export default function StandardPlanPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const { currentUser, canEditShifts } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
+  const canEditShifts = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
 
   const weekStart = useMemo(() => getWeekStart(selectedDate), [selectedDate])
@@ -186,7 +193,7 @@ export default function StandardPlanPage() {
           <Button variant="outline" onClick={handleNextWeek} size="icon">
             <ChevronRight className="h-4 w-4" />
           </Button>
-          {canEditShifts() && selectedTeamId && (
+          {canEditShifts && selectedTeamId && (
             <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
               Endre vakt
             </Button>
@@ -314,7 +321,7 @@ export default function StandardPlanPage() {
         weekDates={weekDates}
         users={filteredUsers}
         shifts={shifts}
-        currentUser={currentUser}
+        currentUser={me ?? null}
         onSelectUser={setSelectedUserId}
         highlightedUserId={selectedUserId}
         holidayRequests={approvedHolidayRequests}

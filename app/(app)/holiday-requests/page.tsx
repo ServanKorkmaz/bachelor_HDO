@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import Link from 'next/link'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,7 +25,16 @@ type RequestRow = {
 }
 
 export default function HolidayRequestsPage() {
-  const { currentUser, isAdmin, isLeader } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
+  const isAdmin = me?.role === 'ADMIN'
+  const isLeader = me?.role === 'LEADER'
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -39,30 +47,29 @@ export default function HolidayRequestsPage() {
   const [editMessage, setEditMessage] = useState('')
 
   const { data: items = [], isLoading: loading } = useQuery<RequestRow[]>({
-    queryKey: ['holiday-requests', currentUser?.teamId],
+    queryKey: ['holiday-requests', me?.teamId],
     queryFn: async () => {
       const params = new URLSearchParams()
-      params.set('teamId', currentUser!.teamId!)
+      params.set('teamId', me!.teamId!)
       const response = await axiosInstance.get(`/api/holiday-requests?${params.toString()}`)
       return Array.isArray(response.data) ? response.data : []
     },
-    enabled: Boolean(currentUser?.teamId),
+    enabled: Boolean(me?.teamId),
   })
 
   const refreshItems = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['holiday-requests', currentUser?.teamId] })
+    await queryClient.invalidateQueries({ queryKey: ['holiday-requests', me?.teamId] })
   }
 
-  if (!currentUser) return <div>Vennligst logg inn</div>
+  if (!me) return <div>Vennligst logg inn</div>
 
   // Admin/leader view: show all team requests with approve/reject/revoke
-  if (isAdmin() || isLeader()) {
+  if (isAdmin || isLeader) {
     const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
       try {
         await axiosInstance.patch(
           `/api/holiday-requests/${id}`,
           { action },
-          { headers: { 'x-current-user-id': currentUser.id } }
         )
         toast({ title: action === 'APPROVE' ? 'Godkjent' : 'Avvist' })
         await refreshItems()
@@ -80,7 +87,6 @@ export default function HolidayRequestsPage() {
         await axiosInstance.post(
           `/api/holiday-requests/${id}/revoke`,
           {},
-          { headers: { 'x-current-user-id': currentUser.id } }
         )
         toast({ title: 'Trukket tilbake', description: 'Forespørselen er satt tilbake til ventende.' })
         await refreshItems()
@@ -156,7 +162,7 @@ export default function HolidayRequestsPage() {
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      await axiosInstance.delete(`/api/holiday-requests/${deleteId}?currentUserId=${currentUser.id}`)
+      await axiosInstance.delete(`/api/holiday-requests/${deleteId}`)
       toast({ title: 'Slettet' })
       setDeleteId(null)
       await refreshItems()
@@ -178,12 +184,11 @@ export default function HolidayRequestsPage() {
   }
 
   const handleEdit = async () => {
-    if (!editItem || !currentUser) return
+    if (!editItem) return
     try {
       await axiosInstance.put(
         `/api/holiday-requests/${editItem.id}`,
         { type: editType, dateFrom: editDateFrom, dateTo: editDateTo || null, message: editMessage || null },
-        { headers: { 'x-current-user-id': currentUser.id } }
       )
       toast({ title: 'Oppdatert' })
       setEditItem(null)
@@ -198,7 +203,7 @@ export default function HolidayRequestsPage() {
   }
 
   // Employee view: button to create request + list of own requests
-  const own = items.filter((it) => it.user?.id === currentUser.id)
+  const own = items.filter((it) => it.user?.id === me.id)
 
   return (
     <div className="space-y-4">

@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Users } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
@@ -27,7 +26,6 @@ import { axiosInstance } from '@/lib/axios'
  * The API still enforces them — see `withAdmin` on POST/DELETE /api/teams.
  */
 export default function TeamsPage() {
-  const { currentUser } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -43,9 +41,9 @@ export default function TeamsPage() {
   })
 
   const handleCreate = async () => {
-    if (!newTeamName.trim() || !currentUser) return
+    if (!newTeamName.trim()) return
     try {
-      await axiosInstance.post('/api/teams', { name: newTeamName, currentUserId: currentUser.id })
+      await axiosInstance.post('/api/teams', { name: newTeamName })
       setIsCreateModalOpen(false)
       setNewTeamName('')
       await queryClient.invalidateQueries({ queryKey: ['teams'] })
@@ -56,9 +54,8 @@ export default function TeamsPage() {
   }
 
   const handleDelete = async () => {
-    if (!currentUser) return
     try {
-      await axiosInstance.delete(`/api/teams/${deleteDialog.teamId}`, { data: { currentUserId: currentUser.id } })
+      await axiosInstance.delete(`/api/teams/${deleteDialog.teamId}`)
       await queryClient.invalidateQueries({ queryKey: ['teams'] })
       await queryClient.invalidateQueries({ queryKey: ['admin-users'] })
     } catch {

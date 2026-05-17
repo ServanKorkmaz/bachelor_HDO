@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { axiosInstance } from '@/lib/axios'
 
 type BulkAction = 'create' | 'update' | 'delete'
@@ -283,7 +282,14 @@ function EmployeeShiftPicker({
 
 /** Modal for bulk create/update/delete of shifts across users and dates. */
 export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const queryClient = useQueryClient()
   const [action, setAction] = useState<BulkAction>('create')
   const [rows, setRows] = useState<BulkShiftRow[]>([])
@@ -409,7 +415,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   }
 
   const canSubmit = () => {
-    if (!currentUser) return false
+    if (!me) return false
     if (!teamId || rows.length === 0 || rows.length > MAX_ROWS) return false
     return rows.every(row => {
       if (action === 'create' && (!row.userId || !row.date)) return false
@@ -420,7 +426,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   }
 
   const handleSave = async () => {
-    if (!canSubmit() || !currentUser) return
+    if (!canSubmit()) return
 
     const payload = {
       action,
@@ -434,7 +440,6 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
         endTime: row.endTime || undefined,
         comment: row.comment || undefined,
       })),
-      currentUserId: currentUser.id,
     }
 
     bulkUpdateMutation.mutate(payload)

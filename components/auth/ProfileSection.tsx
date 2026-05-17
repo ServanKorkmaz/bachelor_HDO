@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { axiosInstance } from '@/lib/axios'
 
 const ROLE_LABEL: Record<string, string> = {
@@ -23,17 +22,24 @@ const STATUS_LABEL: Record<string, string> = {
  * client needs for role gating, not full account metadata.
  */
 export function ProfileSection() {
-  const { currentUser } = useAuth()
-
-  const { data: userData, isLoading } = useQuery({
-    queryKey: ['user', currentUser?.id],
-    queryFn: () => axiosInstance.get(`/api/users/${currentUser!.id}`).then((r) => r.data),
-    enabled: Boolean(currentUser?.id),
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
   })
 
-  if (!currentUser) return null
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ['user', me?.id],
+    queryFn: () => axiosInstance.get(`/api/users/${me!.id}`).then((r) => r.data),
+    enabled: Boolean(me?.id),
+  })
 
-  const user = userData ?? currentUser
+  if (!me) return null
+
+  const user = userData ?? me
   const fields: Array<{ label: string; value: string }> = [
     { label: 'Navn', value: user?.name ?? '—' },
     { label: 'E-post', value: user?.email ?? '—' },

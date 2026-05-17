@@ -22,8 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { MockUser } from '@/lib/auth/mockAuth'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 import { axiosInstance } from '@/lib/axios'
 import {
@@ -64,17 +62,34 @@ export interface Shift {
   comment?: string
 }
 
+/** Minimal user shape passed down by pages that already have the me query. */
+export interface Me {
+  id: string
+  name: string
+  email: string
+  role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'
+  teamId: string
+}
+
 interface ShiftModalProps {
   shift: Shift | null
   date: string | null
   userId: string | null
   onClose: () => void
-  currentUser: MockUser | null
+  currentUser: Me | null
 }
 
 /** Modal for viewing, creating, or updating a single shift. */
 export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftModalProps) {
-  const { canEditShifts } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<Me>
+    },
+  })
+  const canEditShifts = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const queryClient = useQueryClient()
   const [selectedShiftTypeId, setSelectedShiftTypeId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>(userId || '')
@@ -194,18 +209,10 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       const url = shift ? `/api/shifts/${shift.id}` : '/api/shifts'
       const method = shift ? 'PUT' : 'POST'
 
-      const headers: any = {
-        'Content-Type': 'application/json',
-      }
-      if (currentUser?.role) {
-        headers['x-user-role'] = currentUser.role
-      }
-
       const response = await axiosInstance({
         method,
         url,
         data: shiftData,
-        headers,
       })
       return response.data
     },
@@ -232,15 +239,9 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   // Delete shift mutation
   const deleteShiftMutation = useMutation({
     mutationFn: async () => {
-      const headers: any = {}
-      if (currentUser?.role) {
-        headers['x-user-role'] = currentUser.role
-      }
-
       const response = await axiosInstance({
         method: 'DELETE',
         url: `/api/shifts/${shift!.id}`,
-        headers,
       })
       return response.data
     },
@@ -347,7 +348,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
 
         <div className="overflow-y-auto flex-1 min-h-0">
         <div className="grid gap-4 py-4">
-          {canEditShifts() && <ShiftIssueBanner issues={issues} />}
+          {canEditShifts && <ShiftIssueBanner issues={issues} />}
 
           <div className="grid gap-2">
             <Label>Dato</Label>
@@ -359,7 +360,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
           <div className="grid gap-4 md:grid-cols-2">
             <div className="grid gap-2" ref={userDropdownRef}>
               <Label>Ansatt</Label>
-              {canEditShifts() ? (
+              {canEditShifts ? (
                 <div className="relative">
                   <Input
                     value={userQuery || selectedUserName}
@@ -409,7 +410,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
 
             <div className="grid gap-2">
               <Label>Vakt</Label>
-              {canEditShifts() ? (
+              {canEditShifts ? (
                 <div className="space-y-2">
                   <Select value={selectedShiftTypeId} onValueChange={setSelectedShiftTypeId}>
                     <SelectTrigger>
@@ -453,7 +454,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
             </div>
           </div>
 
-          {canEditShifts() && (
+          {canEditShifts && (
             <div className="grid gap-2">
               <Label>Kommentar</Label>
               <Input
@@ -464,7 +465,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
             </div>
           )}
 
-          {shift && shift.comment && !canEditShifts() && (
+          {shift && shift.comment && !canEditShifts && (
             <div className="grid gap-2">
               <Label>Kommentar</Label>
               <div className="p-3 bg-muted rounded-md text-sm">
@@ -476,7 +477,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
         </div>
 
         <DialogFooter>
-          {canEditShifts() && (
+          {canEditShifts && (
             <>
               {shift && (
                 <Button variant="destructive" onClick={handleDelete} disabled={deleteShiftMutation.isPending}>

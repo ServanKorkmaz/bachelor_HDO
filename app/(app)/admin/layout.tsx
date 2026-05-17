@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth/mockAuth'
+import { useQuery } from '@tanstack/react-query'
 
 /**
  * Layout wrapper for admin routes. Users without admin or leader access are
@@ -21,19 +21,27 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const { currentUser, isAdmin, isLeader } = useAuth()
-  const canAccess = () => isAdmin() || isLeader()
+  const { data: me, isLoading } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
+
+  const canAccess = me?.role === 'ADMIN' || me?.role === 'LEADER'
 
   useEffect(() => {
-    if (!currentUser) return
-    if (!canAccess()) router.replace('/standard')
-  }, [currentUser, isAdmin, isLeader, router])
+    if (isLoading) return
+    if (me && !canAccess) router.replace('/standard')
+  }, [me, isLoading, canAccess, router])
 
-  if (!currentUser) {
+  if (isLoading || !me) {
     return <div className="text-muted-foreground p-8">Laster…</div>
   }
 
-  if (!canAccess()) {
+  if (!canAccess) {
     return null
   }
 

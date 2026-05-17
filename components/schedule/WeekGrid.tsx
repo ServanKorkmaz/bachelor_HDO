@@ -6,8 +6,7 @@ import { nb } from 'date-fns/locale/nb'
 import { formatHours, calculateShiftHours } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from './ShiftModal'
-import type { Shift } from './ShiftModal'
-import { MockUser } from '@/lib/auth/mockAuth'
+import type { Shift, Me } from './ShiftModal'
 import type { UserSummary } from '@/lib/types'
 import {
   evaluateShiftIssues,
@@ -31,7 +30,7 @@ interface WeekGridProps {
   weekDates: Date[]
   users: UserSummary[]
   shifts: Shift[]
-  currentUser: MockUser | null
+  currentUser: Me | null
   highlightedUserId?: string
   onSelectUser?: (userId: string) => void
   holidayRequests?: HolidayRequest[]

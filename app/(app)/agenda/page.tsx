@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 import {
@@ -63,15 +62,21 @@ type WeekNote = {
  * above each week card. The selected employee, team and reference date are
  * persisted in the URL so a shared link reproduces the same view. */
 export default function AgendaPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  const userRole = currentUser?.role
-  const canEditWeekNotes = userRole === 'ADMIN' || userRole === 'LEADER'
-  const canSwitchEmployee = userRole === 'ADMIN' || userRole === 'LEADER'
+  const canEditWeekNotes = me?.role === 'ADMIN' || me?.role === 'LEADER'
+  const canSwitchEmployee = me?.role === 'ADMIN' || me?.role === 'LEADER'
 
   // URL-backed state: ?employee, ?date, ?teamId. Defaults applied once the
   // initial team list / current user resolves.
@@ -115,7 +120,7 @@ export default function AgendaPage() {
       const res = await axiosInstance.get(url)
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(currentUser),
+    enabled: Boolean(me),
   })
 
   const { data: shifts = [] } = useQuery<Shift[]>({
@@ -168,20 +173,20 @@ export default function AgendaPage() {
 
   // === Initial defaults ===
   useEffect(() => {
-    if (!currentUser) return
+    if (!me) return
     if (selectedTeamId) return
     const urlTeam = searchParams.get('teamId')
     if (urlTeam && teams.some((t) => t.id === urlTeam)) {
       setSelectedTeamId(urlTeam)
-    } else if (currentUser.teamId) {
-      setSelectedTeamId(currentUser.teamId)
+    } else if (me.teamId) {
+      setSelectedTeamId(me.teamId)
     } else if (teams.length > 0) {
       setSelectedTeamId(teams[0].id)
     }
-  }, [currentUser, teams, selectedTeamId, searchParams])
+  }, [me, teams, selectedTeamId, searchParams])
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!me) return
     if (selectedUserId) return
     const urlUser = searchParams.get('employee')
     // Employees can only view themselves. The server-side authorization is the
@@ -189,9 +194,9 @@ export default function AgendaPage() {
     if (urlUser && canSwitchEmployee && users.some((u) => u.id === urlUser)) {
       setSelectedUserId(urlUser)
     } else {
-      setSelectedUserId(currentUser.id)
+      setSelectedUserId(me.id)
     }
-  }, [currentUser, users, selectedUserId, searchParams, canSwitchEmployee])
+  }, [me, users, selectedUserId, searchParams, canSwitchEmployee])
 
   // Keep the URL in sync so refresh/share reproduces the view.
   useEffect(() => {
@@ -247,7 +252,7 @@ export default function AgendaPage() {
     },
   })
 
-  if (!currentUser) return null
+  if (!me) return null
 
   const selectedUser = users.find((u) => u.id === selectedUserId)
   const selectedTeam = teams.find((t) => t.id === selectedTeamId)

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
@@ -24,20 +23,27 @@ interface Prefs {
  * settings live at `/admin/settings`.
  */
 export default function NotificationPreferencesPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [saving, setSaving] = useState(false)
 
   const { data: prefData } = useQuery<Prefs | null>({
-    queryKey: ['notification-preferences', currentUser?.id],
+    queryKey: ['notification-preferences', me?.id],
     queryFn: async () => {
-      if (!currentUser?.id) return null
-      const res = await axiosInstance.get(`/api/users/${currentUser.id}/notification-preferences`)
+      if (!me?.id) return null
+      const res = await axiosInstance.get(`/api/users/${me.id}/notification-preferences`)
       return res.data
     },
-    enabled: Boolean(currentUser?.id),
+    enabled: Boolean(me?.id),
   })
 
   useEffect(() => {
@@ -54,12 +60,12 @@ export default function NotificationPreferencesPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (next: Prefs) => {
-      if (!currentUser?.id) throw new Error('Not authenticated')
-      return axiosInstance.put(`/api/users/${currentUser.id}/notification-preferences`, next)
+      if (!me?.id) throw new Error('Not authenticated')
+      return axiosInstance.put(`/api/users/${me.id}/notification-preferences`, next)
     },
     onSuccess: async () => {
       toast({ title: 'Varslingspreferanser lagret' })
-      await queryClient.invalidateQueries({ queryKey: ['notification-preferences', currentUser?.id] })
+      await queryClient.invalidateQueries({ queryKey: ['notification-preferences', me?.id] })
     },
     onError: () => {
       toast({ title: 'Feil', description: 'Kunne ikke lagre varslingspreferanser', variant: 'destructive' })
@@ -67,7 +73,7 @@ export default function NotificationPreferencesPage() {
   })
 
   const handleSave = async () => {
-    if (!currentUser?.id || !prefs) return
+    if (!me?.id || !prefs) return
     setSaving(true)
     try {
       await saveMutation.mutateAsync(prefs)
@@ -76,7 +82,7 @@ export default function NotificationPreferencesPage() {
     }
   }
 
-  if (!currentUser) {
+  if (!me) {
     return <div className="text-muted-foreground">Logg inn for å redigere varslingspreferanser.</div>
   }
 

@@ -17,7 +17,6 @@ import {
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-import { useAuth } from '@/lib/auth/mockAuth'
 import { formatDateDisplay, formatTime } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
@@ -37,7 +36,14 @@ export default function MonthPage() {
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedShift, setSelectedShift] = useState<any>(null)
   const [selectedDayShifts, setSelectedDayShifts] = useState<{ date: string; shifts: any[] } | null>(null)
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
 
   const monthStart = useMemo(() => startOfMonth(selectedDate), [selectedDate])
   const monthEnd = useMemo(() => endOfMonth(selectedDate), [selectedDate])
@@ -286,7 +292,7 @@ export default function MonthPage() {
           date={null}
           userId={null}
           onClose={() => setSelectedShift(null)}
-          currentUser={currentUser}
+          currentUser={me ?? null}
         />
       )}
 

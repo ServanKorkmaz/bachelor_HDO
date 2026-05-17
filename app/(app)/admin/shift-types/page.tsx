@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Plus, Trash2, Edit } from 'lucide-react'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
@@ -35,7 +34,6 @@ const normalizeHexColor = (value: string): string | null => {
  * The API still enforces them — see `withAdmin` on the shift-types routes.
  */
 export default function ShiftTypesPage() {
-  const { currentUser } = useAuth()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -61,10 +59,7 @@ export default function ShiftTypesPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!currentUser?.id) {
-        throw new Error('Not authenticated')
-      }
-      return axiosInstance.post('/api/shift-types', { ...formData, currentUserId: currentUser.id })
+      return axiosInstance.post('/api/shift-types', { ...formData })
     },
     onSuccess: async () => {
       setIsCreateModalOpen(false)
@@ -75,10 +70,10 @@ export default function ShiftTypesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-      if (!currentUser?.id || !editingShiftType?.id) {
-        throw new Error('Missing user or shift type')
+      if (!editingShiftType?.id) {
+        throw new Error('Missing shift type')
       }
-      return axiosInstance.put(`/api/shift-types/${editingShiftType.id}`, { ...formData, currentUserId: currentUser.id })
+      return axiosInstance.put(`/api/shift-types/${editingShiftType.id}`, { ...formData })
     },
     onSuccess: async () => {
       setEditingShiftType(null)
@@ -89,10 +84,7 @@ export default function ShiftTypesPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (shiftTypeId: string) => {
-      if (!currentUser?.id) {
-        throw new Error('Not authenticated')
-      }
-      return axiosInstance.delete(`/api/shift-types/${shiftTypeId}`, { data: { currentUserId: currentUser.id } })
+      return axiosInstance.delete(`/api/shift-types/${shiftTypeId}`)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['shift-types'] })
@@ -100,7 +92,7 @@ export default function ShiftTypesPage() {
   })
 
   const handleCreate = async () => {
-    if (!formData.code || !formData.label || !currentUser) return
+    if (!formData.code || !formData.label) return
     try {
       await createMutation.mutateAsync()
     } catch {
@@ -109,7 +101,7 @@ export default function ShiftTypesPage() {
   }
 
   const handleUpdate = async () => {
-    if (!editingShiftType || !formData.code || !formData.label || !currentUser) return
+    if (!editingShiftType || !formData.code || !formData.label) return
     try {
       await updateMutation.mutateAsync()
     } catch {
@@ -118,7 +110,6 @@ export default function ShiftTypesPage() {
   }
 
   const handleDelete = async () => {
-    if (!currentUser) return
     try {
       await deleteMutation.mutateAsync(deleteDialog.id)
     } catch {

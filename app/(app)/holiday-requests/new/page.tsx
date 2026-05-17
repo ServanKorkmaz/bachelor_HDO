@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useMemo } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { dateNDaysAgoString, todayStringInTimeZone } from '@/lib/date-utils'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -13,7 +12,14 @@ import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
 
 export default function NewHolidayRequestPage() {
-  const { currentUser } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
+    },
+  })
   const router = useRouter()
   const { toast } = useToast()
 
@@ -29,17 +35,12 @@ export default function NewHolidayRequestPage() {
 
   const createHolidayRequest = useMutation({
     mutationFn: async (payload: any) => {
-      if (!currentUser?.id) {
-        throw new Error('Not authenticated')
-      }
-      const res = await axiosInstance.post('/api/holiday-requests', payload, {
-        headers: { 'x-current-user-id': currentUser.id },
-      })
+      const res = await axiosInstance.post('/api/holiday-requests', payload)
       return res.data
     },
   })
 
-  if (!currentUser) return <div>Vennligst logg inn for å sende fraværsforespørsel</div>
+  if (!me) return <div>Vennligst logg inn for å sende fraværsforespørsel</div>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,8 +80,6 @@ export default function NewHolidayRequestPage() {
     setLoading(true)
     try {
       const payload = {
-        teamId: currentUser.teamId,
-        userId: currentUser.id,
         type,
         dateFrom,
         dateTo: dateTo || undefined,
