@@ -5,9 +5,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * List users. Returns only non-sensitive fields (id, name, role, teamId) so the
- * mock-auth RoleSwitcher can bootstrap on first load without exposing emails,
- * Azure OIDs, login timestamps or other PII. In production this endpoint would
- * be replaced by the Azure AD / Entra ID directory and gated by authentication.
+ * schedule UI can populate dropdowns without exposing emails, Azure OIDs,
+ * login timestamps or other PII. Gated by cookie-based session auth.
  * Optional teamId: only users with active TeamMembership in that team.
  */
 export async function GET(request: NextRequest) {

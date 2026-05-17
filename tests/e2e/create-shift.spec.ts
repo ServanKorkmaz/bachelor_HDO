@@ -19,9 +19,8 @@ test.describe('Create shift via grid', () => {
 
     await page.goto('/standard')
 
-    // RoleSwitcher auto-picks the first user from `/api/users`, which is
-    // "Admin User" in the seed. Wait for the bootstrap fetches so the
-    // resulting `x-current-user-id` header flows on subsequent calls.
+    // The session cookie identifies "Admin User" from the seed. Wait for the
+    // bootstrap fetches before interacting with the grid.
     await expect(page.getByRole('heading', { name: 'Standard plan' })).toBeVisible()
     await page.waitForResponse(r => r.url().includes('/api/users') && r.ok())
     await page.waitForResponse(r => r.url().includes('/api/teams') && r.ok())

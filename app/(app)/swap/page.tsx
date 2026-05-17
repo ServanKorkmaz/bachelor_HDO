@@ -260,7 +260,6 @@ export default function SwapPage() {
       await axiosInstance.post(
         `/api/swap-requests/${requestId}/accept`,
         {},
-        { headers: { 'x-current-user-id': me?.id ?? '' } }
       )
       await refreshSwapData()
     } catch (error: any) {
@@ -280,7 +279,6 @@ export default function SwapPage() {
           await axiosInstance.post(
             `/api/swap-requests/${requestId}/decline`,
             {},
-            { headers: { 'x-current-user-id': me?.id ?? '' } }
           )
           await refreshSwapData()
         } catch (error: any) {
