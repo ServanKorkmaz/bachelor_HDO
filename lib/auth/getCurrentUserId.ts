@@ -1,22 +1,31 @@
+import { sessionCookieName, unsealSession } from './session'
+
 /**
- * Reads current user id from request (header x-current-user-id, GET currentUserId, or JSON body currentUserId).
- * Use for audit actor or non-admin routes. Does not validate that the user exists.
+ * Resolve the calling user's id. Production reads a signed iron-session cookie.
+ * In NODE_ENV=test, falls back to the legacy `x-current-user-id` header so the
+ * existing route-handler test suite continues to work without churn. The
+ * fallback is structurally closed in production.
  */
 export async function getCurrentUserId(request: Request): Promise<string | null> {
-  let currentUserId: string | null =
-    request.headers.get('x-current-user-id')?.trim() || null
+  const cookieHeader = request.headers.get('cookie') ?? ''
+  const sealed = readCookie(cookieHeader, sessionCookieName)
+  if (sealed) {
+    const session = await unsealSession(sealed)
+    if (session?.userId) return session.userId
+  }
 
-  if (!currentUserId) {
-    const url = new URL(request.url)
-    currentUserId = url.searchParams.get('currentUserId')?.trim() || null
+  if (process.env.NODE_ENV === 'test') {
+    return request.headers.get('x-current-user-id')?.trim() || null
   }
-  if (!currentUserId) {
-    try {
-      const body = await request.clone().json().catch(() => ({}))
-      currentUserId = (body as { currentUserId?: string })?.currentUserId ?? null
-    } catch {
-      // no body or not json
-    }
+
+  return null
+}
+
+function readCookie(cookieHeader: string, name: string): string | null {
+  if (!cookieHeader) return null
+  for (const part of cookieHeader.split(';')) {
+    const [k, ...rest] = part.trim().split('=')
+    if (k === name) return decodeURIComponent(rest.join('='))
   }
-  return currentUserId
+  return null
 }

@@ -1,36 +1,56 @@
-import { describe, expect, it } from 'vitest'
-import { getCurrentUserId } from '@/lib/auth/getCurrentUserId'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-/**
- * Verifies the priority order for resolving the current user ID:
- * x-current-user-id header → currentUserId query param → JSON body → null.
- */
+const SECRET = 'a'.repeat(32)
+
+async function load() {
+  vi.resetModules()
+  process.env.SESSION_COOKIE_SECRET = SECRET
+  return import('@/lib/auth/getCurrentUserId')
+}
+
+function reqWithCookie(cookieHeader: string, headers: Record<string, string> = {}): Request {
+  return new Request('http://x/y', { headers: { cookie: cookieHeader, ...headers } })
+}
+
 describe('getCurrentUserId', () => {
-  it('reads user ID from header first', async () => {
-    const req = new Request('http://localhost/api/test?currentUserId=query-user', {
-      headers: { 'x-current-user-id': 'header-user' },
-    })
-
-    await expect(getCurrentUserId(req)).resolves.toBe('header-user')
+  beforeEach(() => {
+    process.env.NODE_ENV = 'test'
   })
 
-  it('falls back to query parameter', async () => {
-    const req = new Request('http://localhost/api/test?currentUserId=query-user')
-    await expect(getCurrentUserId(req)).resolves.toBe('query-user')
+  it('returns the userId from a valid session cookie', async () => {
+    const { getCurrentUserId } = await load()
+    const { sealSession, sessionCookieName } = await import('@/lib/auth/session')
+    const sealed = await sealSession({ userId: 'user-42' })
+    const req = reqWithCookie(`${sessionCookieName}=${sealed}`)
+    expect(await getCurrentUserId(req)).toBe('user-42')
   })
 
-  it('falls back to JSON body currentUserId', async () => {
-    const req = new Request('http://localhost/api/test', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ currentUserId: 'body-user' }),
-    })
-
-    await expect(getCurrentUserId(req)).resolves.toBe('body-user')
+  it('returns the x-current-user-id header when NODE_ENV=test and no cookie', async () => {
+    process.env.NODE_ENV = 'test'
+    const { getCurrentUserId } = await load()
+    const req = new Request('http://x/y', { headers: { 'x-current-user-id': 'user-7' } })
+    expect(await getCurrentUserId(req)).toBe('user-7')
   })
 
-  it('returns null when no value is found', async () => {
-    const req = new Request('http://localhost/api/test')
-    await expect(getCurrentUserId(req)).resolves.toBeNull()
+  it('IGNORES the x-current-user-id header in production', async () => {
+    process.env.NODE_ENV = 'production'
+    const { getCurrentUserId } = await load()
+    const req = new Request('http://x/y', { headers: { 'x-current-user-id': 'user-7' } })
+    expect(await getCurrentUserId(req)).toBeNull()
+  })
+
+  it('returns null when neither cookie nor (test) header present', async () => {
+    const { getCurrentUserId } = await load()
+    const req = new Request('http://x/y')
+    expect(await getCurrentUserId(req)).toBeNull()
+  })
+
+  it('returns null for a tampered session cookie', async () => {
+    const { getCurrentUserId } = await load()
+    const { sealSession, sessionCookieName } = await import('@/lib/auth/session')
+    const sealed = await sealSession({ userId: 'user-1' })
+    const tampered = sealed.slice(0, -2) + 'xx'
+    const req = reqWithCookie(`${sessionCookieName}=${tampered}`)
+    expect(await getCurrentUserId(req)).toBeNull()
   })
 })
