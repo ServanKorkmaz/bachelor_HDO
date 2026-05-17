@@ -16,7 +16,7 @@ function makeReq(url: string, cookie?: string): NextRequest {
 }
 
 describe('middleware', () => {
-  beforeEach(() => { process.env.NODE_ENV = 'test' })
+  beforeEach(() => { vi.stubEnv('NODE_ENV', 'test') })
 
   it('allows public paths through without a session', async () => {
     const { middleware } = await loadMw()

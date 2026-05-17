@@ -14,7 +14,7 @@ function reqWithCookie(cookieHeader: string, headers: Record<string, string> = {
 
 describe('getCurrentUserId', () => {
   beforeEach(() => {
-    process.env.NODE_ENV = 'test'
+    vi.stubEnv('NODE_ENV', 'test')
   })
 
   it('returns the userId from a valid session cookie', async () => {
@@ -26,14 +26,14 @@ describe('getCurrentUserId', () => {
   })
 
   it('returns the x-current-user-id header when NODE_ENV=test and no cookie', async () => {
-    process.env.NODE_ENV = 'test'
+    vi.stubEnv('NODE_ENV', 'test')
     const { getCurrentUserId } = await load()
     const req = new Request('http://x/y', { headers: { 'x-current-user-id': 'user-7' } })
     expect(await getCurrentUserId(req)).toBe('user-7')
   })
 
   it('IGNORES the x-current-user-id header in production', async () => {
-    process.env.NODE_ENV = 'production'
+    vi.stubEnv('NODE_ENV', 'production')
     const { getCurrentUserId } = await load()
     const req = new Request('http://x/y', { headers: { 'x-current-user-id': 'user-7' } })
     expect(await getCurrentUserId(req)).toBeNull()

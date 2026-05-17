@@ -35,7 +35,7 @@ import { sessionCookieName, unsealSession } from '@/lib/auth/session'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.NODE_ENV = 'test'
+  vi.stubEnv('NODE_ENV', 'test')
 })
 
 async function reqWithPkce(opts: {

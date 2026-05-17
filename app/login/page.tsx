@@ -77,7 +77,7 @@ export default function LoginPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
+        <p className="mt-6 text-center text-xs text-zinc-400">
           HDO Turnusplan
         </p>
       </div>

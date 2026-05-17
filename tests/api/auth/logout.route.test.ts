@@ -9,7 +9,7 @@ import { GET, POST } from '@/app/api/auth/logout/route'
 import { logAuthEvent, AUTH_EVENT } from '@/lib/auth/audit'
 import { sealSession, sessionCookieName } from '@/lib/auth/session'
 
-beforeEach(() => { vi.clearAllMocks(); process.env.NODE_ENV = 'test' })
+beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('NODE_ENV', 'test') })
 
 describe('logout', () => {
   it('GET returns 405', async () => {

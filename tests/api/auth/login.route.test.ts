@@ -19,7 +19,7 @@ import { pkceCookieName } from '@/lib/auth/pkceCookie'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.NODE_ENV = 'test'
+  vi.stubEnv('NODE_ENV', 'test')
 })
 
 describe('GET /api/auth/azure/login', () => {

@@ -31,21 +31,21 @@ describe('i18n', () => {
   })
 
   describe('statusToNorwegian', () => {
-    it('translates PENDING to VENTER...', () => {
-      expect(statusToNorwegian('PENDING')).toBe('VENTER...')
+    it('translates PENDING to Venter', () => {
+      expect(statusToNorwegian('PENDING')).toBe('Venter')
     })
 
-    it('translates APPROVED to GODKJENT', () => {
-      expect(statusToNorwegian('APPROVED')).toBe('GODKJENT')
+    it('translates APPROVED to Godkjent', () => {
+      expect(statusToNorwegian('APPROVED')).toBe('Godkjent')
     })
 
-    it('translates REJECTED to AVVIST', () => {
-      expect(statusToNorwegian('REJECTED')).toBe('AVVIST')
+    it('translates REJECTED to Avvist', () => {
+      expect(statusToNorwegian('REJECTED')).toBe('Avvist')
     })
 
     it('is case-insensitive', () => {
-      expect(statusToNorwegian('approved')).toBe('GODKJENT')
-      expect(statusToNorwegian('Pending')).toBe('VENTER...')
+      expect(statusToNorwegian('approved')).toBe('Godkjent')
+      expect(statusToNorwegian('Pending')).toBe('Venter')
     })
 
     it('returns empty string for undefined', () => {

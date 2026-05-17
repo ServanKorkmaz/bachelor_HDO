@@ -7,7 +7,7 @@ describe('lib/auth/session', () => {
   beforeEach(() => {
     vi.resetModules()
     process.env.SESSION_COOKIE_SECRET = SECRET
-    process.env.NODE_ENV = 'test'
+    vi.stubEnv('NODE_ENV', 'test')
   })
 
   it('round-trips a userId through seal and unseal', async () => {

@@ -59,15 +59,17 @@ describe('buildShiftDateTimes', () => {
     ).toThrow(/like/i)
   })
 
-  it('rejects a 24h+ duration via crossesMidnight + same wall-clock times', () => {
-    // start=00:00 end=00:00 → equal, rejected before any rollover happens
-    expect(() =>
-      buildShiftDateTimes({
-        date: '2026-05-13',
-        startTime: '00:00',
-        endTime: '00:00',
-        shiftType: nightShift,
-      })
-    ).toThrow(ShiftTimeError)
+  it('treats 00:00 to 00:00 as a full-day placeholder (off/free shift types)', () => {
+    // The function intentionally carves out this case: start==end is rejected
+    // EXCEPT when both are 00:00, where it returns a 24h interval used by
+    // "Fri" / off shift types. See lib/shifts/time.ts comment.
+    const { startDateTime, endDateTime } = buildShiftDateTimes({
+      date: '2026-05-13',
+      startTime: '00:00',
+      endTime: '00:00',
+      shiftType: nightShift,
+    })
+    const hours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60)
+    expect(hours).toBe(24)
   })
 })

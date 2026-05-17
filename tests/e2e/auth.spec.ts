@@ -18,10 +18,16 @@ test.describe('Authentication', () => {
     await expect(button).toBeFocused()
   })
 
-  test('/login passes axe-core with zero violations', async ({ page }) => {
+  test('/login passes axe-core with zero violations', async ({ browser }) => {
+    // Force reduced-motion so the card fade-in animation is skipped and axe
+    // samples final colors (mid-animation opacity inflates the perceived
+    // contrast of small text and produces false-positive violations).
+    const context = await browser.newContext({ reducedMotion: 'reduce' })
+    const page = await context.newPage()
     await page.goto('/login')
     const results = await new AxeBuilder({ page }).analyze()
     expect(results.violations).toEqual([])
+    await context.close()
   })
 
   test('clicking sign-in starts the OAuth flow (302 to Microsoft)', async ({ page }) => {

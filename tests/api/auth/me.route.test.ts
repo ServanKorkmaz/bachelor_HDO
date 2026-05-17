@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma'
 import { GET } from '@/app/api/auth/me/route'
 
 describe('GET /api/auth/me', () => {
-  beforeEach(() => { vi.clearAllMocks(); process.env.NODE_ENV = 'test' })
+  beforeEach(() => { vi.clearAllMocks(); vi.stubEnv('NODE_ENV', 'test') })
 
   it('returns 401 when no user is authenticated', async () => {
     const res = await GET(new Request('http://x/api/auth/me'))
