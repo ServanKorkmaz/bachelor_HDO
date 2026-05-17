@@ -2,11 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, CalendarDays, List, RefreshCw, Settings, LogOut, CalendarCheck } from 'lucide-react'
-import { Button } from '../ui/button'
-import { RoleSwitcher } from '../auth/RoleSwitcher'
+import { Calendar, CalendarDays, List, RefreshCw, Settings, CalendarCheck } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { UserMenu } from '../auth/UserMenu'
 import { NotificationsPanel } from './NotificationsPanel'
-import { useAuth } from '@/lib/auth/mockAuth'
 import { cn } from '../../lib/utils'
 
 const baseNavItems = [
@@ -25,9 +24,17 @@ const baseNavItems = [
  */
 export function Navigation() {
   const pathname = usePathname()
-  const { isAdmin, isLeader } = useAuth()
+  const { data: me } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
+      if (!res.ok) throw new Error('failed to load user')
+      return res.json() as Promise<{ role: 'ADMIN' | 'LEADER' | 'EMPLOYEE' }>
+    },
+  })
 
-  const settingsHref = isAdmin() || isLeader() ? '/admin' : '/settings'
+  const isAdminOrLeader = me?.role === 'ADMIN' || me?.role === 'LEADER'
+  const settingsHref = isAdminOrLeader ? '/admin' : '/settings'
   const settingsItem = { href: settingsHref, label: 'Innstillinger', icon: Settings }
 
   const navItems = [...baseNavItems, settingsItem]
@@ -58,11 +65,7 @@ export function Navigation() {
         </div>
         <div className="flex items-center gap-4">
           <NotificationsPanel />
-          <RoleSwitcher />
-          <Button variant="ghost" size="icon" className="hidden sm:flex">
-            <LogOut className="h-4 w-4" />
-            <span className="sr-only">Logg ut</span>
-          </Button>
+          <UserMenu />
         </div>
       </div>
     </nav>
