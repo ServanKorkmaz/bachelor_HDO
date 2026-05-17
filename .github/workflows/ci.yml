@@ -50,3 +50,13 @@ jobs:
 
       - name: Unit + route tests
         run: npm test
+
+      - name: Production build
+        # `next build` catches a class of failures that tsc + unit tests miss:
+        # server-component vs client-component boundary violations, missing
+        # env vars referenced at build time, route conflicts, and bundle
+        # generation errors. The build script normally runs `prisma migrate
+        # deploy && next build`; we override to skip migrate-deploy because
+        # we don't have a real database in CI (and `next build` itself does
+        # not need one — Prisma client is generated, not connected).
+        run: npx next build
