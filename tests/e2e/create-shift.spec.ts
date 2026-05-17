@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { signInAsEmail, SEED_ADMIN_EMAIL } from './helpers/auth'
 
 /**
  * Mutation-flow E2E: an admin opens the weekly grid, jumps to a far-future
@@ -7,23 +8,25 @@ import { test, expect } from '@playwright/test'
  * the create-shift path works end-to-end from UI through `withAuth`,
  * `withEvents`, and the DB.
  *
- * Idempotency: the test always targets the same (employee, date) pair so a
- * second run trips the `(userId, date)` unique constraint and gets back 409.
+ * Idempotency: the test targets the first employee row in the grid so a
+ * second run may trip the `(userId, date)` unique constraint and get back 409.
  * Both 200 and 409 prove the route is correctly wired up; we accept either.
  * No cleanup — at most one extra row lands far outside the seeded window.
  */
 test.describe('Create shift via grid', () => {
+  test.beforeEach(async ({ context }) => {
+    await signInAsEmail(context, SEED_ADMIN_EMAIL)
+  })
+
   test('admin clicks an empty cell, submits the modal, and the API persists the shift', async ({ page }) => {
     // A Tuesday two years out — clearly outside the seed's current-week shifts.
     const targetDate = '2027-12-14'
 
     await page.goto('/standard')
 
-    // The session cookie identifies "Admin User" from the seed. Wait for the
-    // bootstrap fetches before interacting with the grid.
+    // Wait for the grid to finish loading before interacting.
     await expect(page.getByRole('heading', { name: 'Standard plan' })).toBeVisible()
-    await page.waitForResponse(r => r.url().includes('/api/users') && r.ok())
-    await page.waitForResponse(r => r.url().includes('/api/teams') && r.ok())
+    await page.waitForLoadState('networkidle')
 
     // Jump to a future week with no seeded shifts.
     await page.locator('input[type="date"]').fill(targetDate)
@@ -31,10 +34,11 @@ test.describe('Create shift via grid', () => {
       r.url().includes('/api/shifts') && r.url().includes('dateFrom=2027-12') && r.ok()
     )
 
-    // Click the first empty cell in Kari Nordmann's row. The seed creates
-    // her as an EMPLOYEE in the only team so she always shows up.
-    const kariRow = page.locator('tr').filter({ hasText: 'Kari Nordmann' })
-    await kariRow.locator('td:has-text("-")').first().click()
+    // Click the first empty cell in the first employee row. The grid always
+    // shows the seeded EMPLOYEE users — use the first available row rather than
+    // hardcoding a name so the test stays valid across re-seeds.
+    const firstEmployeeRow = page.locator('tbody tr').first()
+    await firstEmployeeRow.locator('td:has-text("-")').first().click()
 
     // Modal opens. Wait for shift-types to load so the default selection is
     // populated — handleSave silently no-ops if `selectedShiftTypeId` is empty.

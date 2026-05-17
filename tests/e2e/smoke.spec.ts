@@ -1,12 +1,17 @@
 import { test, expect } from '@playwright/test'
+import { signInAsEmail, SEED_ADMIN_EMAIL } from './helpers/auth'
 
 /**
  * End-to-end smoke tests against the seeded development environment.
- * These verify the primary navigation surfaces render correctly and the
- * mock-auth role switcher behaves as expected. They do not mutate data.
+ * These verify the primary navigation surfaces render correctly.
+ * They do not mutate data.
  */
 
 test.describe('Smoke', () => {
+  test.beforeEach(async ({ context }) => {
+    await signInAsEmail(context, SEED_ADMIN_EMAIL)
+  })
+
   test('home redirects to /standard and the weekly grid renders', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/standard/)

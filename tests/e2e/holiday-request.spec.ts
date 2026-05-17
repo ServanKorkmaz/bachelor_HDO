@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { signInAsEmail, SEED_ADMIN_EMAIL } from './helpers/auth'
 
 /**
  * Verifies that an employee can navigate to the "new holiday request" form
@@ -6,6 +7,10 @@ import { test, expect } from '@playwright/test'
  * The test stops before submission so it does not mutate the seeded data.
  */
 test.describe('Holiday request flow', () => {
+  test.beforeEach(async ({ context }) => {
+    await signInAsEmail(context, SEED_ADMIN_EMAIL)
+  })
+
   test('employee can open the holiday request form', async ({ page }) => {
     await page.goto('/holiday-requests')
     await expect(page.getByRole('heading', { name: /Fravær/i })).toBeVisible()

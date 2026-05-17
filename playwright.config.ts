@@ -13,7 +13,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:4000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -23,8 +23,8 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: 'npm run dev',
-        url: 'http://localhost:3000',
+        command: 'npx cross-env NODE_ENV=test SESSION_COOKIE_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa AZURE_TENANT_ID=test-tenant AZURE_CLIENT_ID=test-client-id AZURE_CLIENT_SECRET=test-secret AZURE_REDIRECT_URI=http://localhost:4000/api/auth/azure/callback npm run dev',
+        url: 'http://localhost:4000',
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },
