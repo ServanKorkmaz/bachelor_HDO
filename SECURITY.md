@@ -263,6 +263,122 @@ deliberate choice, not legacy debt:
   via `date-fns.parse + isValid`), so impossible inputs like `2026-13-45`
   or `2026-02-30` are rejected at the API boundary, not at the DB.
 
+## Privacy and GDPR (personvern)
+
+HDO operates within the Norwegian healthcare sector and the application
+processes personal data of employees. GDPR (operationalised in Norway via
+*Personopplysningsloven*) applies. This section documents what we process,
+why, where it lives, and what is — and is not — supported today.
+
+### Categories of personal data processed
+
+- **Identification:** name, email, Microsoft Entra Object ID (`azureOid`).
+- **Employment/role context:** system role (ADMIN/LEADER/EMPLOYEE), home
+  team, team memberships.
+- **Operational data:** shifts, swap requests, holiday/absence requests,
+  notification preferences.
+- **Activity data:** `User.lastLoginAt`; `AuditLog` rows for privileged
+  actions and authentication events.
+
+We do **not** process special-category data under GDPR Art. 9 (no health
+data, no diagnoses, no medical records). Sick-leave shifts are stored as
+opaque shift-type codes (`"Sykdom"`) without any clinical detail.
+
+### Legal basis (GDPR Art. 6)
+
+- **Art. 6(1)(b)** — performance of a contract: shift planning, swap
+  handling, and holiday requests are part of the employment relationship.
+- **Art. 6(1)(f)** — legitimate interest: audit logging of privileged
+  actions and authentication events, retained to investigate misuse and
+  defend against unauthorised access. The interest is balanced against
+  employees' expectation of routine workplace recordkeeping.
+
+### Data minimisation by design
+
+- **OAuth scopes:** `openid profile email` only — no Microsoft Graph,
+  no `User.Read`, no calendar/mail access.
+- **No token storage:** Microsoft access and refresh tokens are discarded
+  immediately after the ID-token claims are extracted. Only `userId` lives
+  in our session cookie.
+- **No password storage:** authentication is delegated entirely to
+  Microsoft Entra. The application never sees, transmits, or stores user
+  passwords.
+- **API responses are pruned:** `GET /api/users` returns only `id`, `name`,
+  `role`, and `teamId` — not email or `azureOid` (see *Data minimisation*
+  above).
+- **Audit-log scrubber:** `lib/auth/audit.ts` drops any key matching
+  `/token|secret|password|code/i` from event details before persisting,
+  as defence in depth against accidental disclosure of sensitive values.
+
+### Storage location and sub-processors
+
+- **Database:** PostgreSQL hosted on Neon, EU region (Frankfurt). TLS in
+  transit (`sslmode=require`). Encryption at rest is provided by Neon.
+  Personal data does not leave the EEA via our application.
+- **Identity provider:** Microsoft Entra ID (Azure AD). Authentication is
+  delegated to Microsoft. Data shared with Microsoft is limited to what
+  the OAuth flow inherently requires (the authorisation request itself).
+- **Email/SMS delivery:** notification channels are pluggable; the choice
+  of provider determines additional sub-processors and must be documented
+  here before any provider goes live in production.
+
+### Retention
+
+- **User records:** retained while the account is active. The
+  `User.status` column supports a soft-delete pattern (`inactive`)
+  — inactive users are blocked from sign-in at the callback handler.
+- **Audit log:** there is currently **no automated retention policy**.
+  HDO should set one (recommended: minimum 12 months for security
+  investigation, maximum aligned with internal policy and any applicable
+  sector requirements). Implementation gap, not architectural barrier:
+  a periodic job that deletes rows older than N days is a small follow-up.
+- **Notifications and operational data:** retained indefinitely today.
+  A retention policy for read notifications and historical shifts should
+  be set by HDO based on operational need.
+
+### Data subject rights
+
+The application's architecture supports the data subject rights in GDPR
+Arts. 15–22. Current implementation status:
+
+| Right (Art.) | Supported in-app? | How |
+|---|---|---|
+| Access (15) | Partial | Users see their own data through the UI. A formal export endpoint is not yet implemented. |
+| Rectification (16) | Yes | Users update their own profile fields; admins update other users. |
+| Erasure (17) | Manual | Requires admin action through Prisma Studio or a SQL operation. There is no self-service "delete my account" flow. |
+| Restriction (18) | Manual | Setting `User.status = 'inactive'` blocks all sign-in and effectively halts processing. |
+| Portability (20) | Partial | Shift and audit data can be exported as CSV/PDF from the existing export endpoints; full user-data export is not yet implemented. |
+| Object (21) | N/A | Processing is contract-based, not consent-based — Art. 21 does not apply to the primary processing. |
+
+**Honesty on gaps:** the access, erasure, and portability rights require
+manual administrator action today rather than a self-service flow. This
+is acceptable for an internal-tool MVP for a small team, but should be
+prioritised before any expansion to more users.
+
+### Audit-trail of access to personal data
+
+`AuditLog` captures every privileged write (user creation, status change,
+team membership change, swap decision, holiday decision) and every
+authentication event (`LOGIN_SUCCESS`, `LOGIN_UNKNOWN_USER`,
+`LOGIN_INACTIVE_USER`, `LOGIN_STATE_MISMATCH`, `LOGIN_WRONG_TENANT`,
+`LOGOUT`). This supports the GDPR Art. 5(2) accountability principle and
+allows HDO to answer "who accessed or changed which record, when".
+
+Reads of personal data are not currently audited. If HDO requires
+read-side accountability (e.g. "who looked at this employee's shifts last
+month"), that is a follow-up that fits within the existing wrapper-based
+architecture without changes to route handlers.
+
+### Breach response
+
+In the event of a confirmed personal-data breach, GDPR Art. 33 requires
+notification to *Datatilsynet* (the Norwegian Data Protection Authority)
+within 72 hours, and notification to affected data subjects (Art. 34)
+where the breach is likely to result in high risk. HDO's internal incident
+response process owns this; this document does not duplicate it. The
+auth audit-log table is the system-of-record for any post-incident
+investigation of the authentication surface.
+
 ## Known gaps
 
 - Rate limit is process-local — needs Redis when running more than one
