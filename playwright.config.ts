@@ -5,6 +5,14 @@ import { defineConfig, devices } from '@playwright/test'
  * seeded Neon database. Run `npm run db:seed` before the first run to ensure
  * the expected fixtures exist.
  */
+
+// tests/e2e/helpers/auth.ts imports lib/auth/session.ts, which throws at
+// module load when SESSION_COOKIE_SECRET is missing (production-safety guard).
+// Setting it here makes `npx playwright test` work the same as `npm run test:e2e`
+// — the runner inherits this process env and so do the worker processes.
+// The same value must be passed to the dev server via the webServer command
+// below so the cookies the helper mints are unsealable by the server.
+process.env.SESSION_COOKIE_SECRET ??= 'a'.repeat(32)
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
