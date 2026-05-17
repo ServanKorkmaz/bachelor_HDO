@@ -26,9 +26,18 @@ export default function LoginPage({ searchParams }: PageProps) {
   return (
     <main className="relative min-h-screen flex items-center justify-center bg-background px-4 py-8 overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-        <div className="login-orb-a absolute -top-32 -left-32 h-[28rem] w-[28rem] rounded-full bg-[#003087]/45 blur-3xl" />
-        <div className="login-orb-b absolute -bottom-40 -right-24 h-[32rem] w-[32rem] rounded-full bg-[#1e3a8a]/40 blur-3xl" />
-        <div className="login-orb-c absolute top-1/3 right-1/4 h-72 w-72 rounded-full bg-sky-500/25 blur-3xl" />
+        <div
+          className="login-orb-a absolute -top-40 -left-40 h-[34rem] w-[34rem] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(37, 99, 235, 0.55) 0%, rgba(0, 48, 135, 0) 70%)' }}
+        />
+        <div
+          className="login-orb-b absolute -bottom-48 -right-32 h-[38rem] w-[38rem] rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(56, 189, 248, 0.45) 0%, rgba(56, 189, 248, 0) 70%)' }}
+        />
+        <div
+          className="login-orb-c absolute top-1/4 left-1/3 h-80 w-80 rounded-full"
+          style={{ background: 'radial-gradient(circle, rgba(99, 102, 241, 0.40) 0%, rgba(99, 102, 241, 0) 70%)' }}
+        />
       </div>
 
       <div className="login-card-in w-full max-w-md">
