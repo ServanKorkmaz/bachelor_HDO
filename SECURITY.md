@@ -24,8 +24,8 @@ layer (layer 2) is the source of truth; the others are belt-and-braces.
 
 A thin Next.js Edge-runtime gate that runs *before* the route handler is even
 loaded. It rejects requests that have no session marker at all, so the cheap
-unauthenticated case never touches Prisma. Public routes (e.g. the
-RoleSwitcher's `GET /api/users` bootstrap) are explicitly whitelisted.
+unauthenticated case never touches Prisma. Public routes (e.g. `/login` and
+the Azure auth callback) are explicitly whitelisted.
 
 The middleware does **not** do DB lookups, role checks, or team-membership
 checks — those would either pull Prisma into the Edge Runtime or duplicate
@@ -143,18 +143,16 @@ network egress in a way no automated test can.
 ## CSRF
 
 Cookie-based sessions are vulnerable to CSRF because browsers attach cookies
-automatically to cross-origin requests. The mock auth uses a **custom request
-header**, not a cookie:
+automatically to cross-origin requests. The production model mitigates this
+in two complementary ways:
 
-- A cross-origin attacker cannot set `x-current-user-id` from a malicious site
-  without a CORS preflight, which would fail because the route does not opt in
-  to cross-origin credentials.
-- Simple form submissions cannot carry custom headers, so classic CSRF GET/POST
-  attacks cannot reach our mutation endpoints with valid auth.
-
-No CSRF token machinery is needed for the mock model. When passport-microsoft
-lands, CSRF protection is reintroduced via `SameSite=Lax` on the session cookie
-plus a double-submit token pattern for mutating endpoints.
+- The `__hdo_session` cookie is set with `SameSite=Lax`, which causes browsers
+  to omit it on cross-site sub-resource requests and on `<form>` POSTs initiated
+  by a third-party page. This blocks the classic CSRF vector without requiring
+  CSRF tokens on every mutation.
+- The logout action is `POST /api/auth/logout` (not a `GET`). `SameSite=Lax`
+  still allows top-level navigation GETs, but the logout handler enforces the
+  POST method, so a malicious link cannot trigger silent sign-out.
 
 ## XSS
 
@@ -218,10 +216,10 @@ ETL, concurrent races) cannot leave the schema in an impossible shape.
 ## Data minimisation
 
 `GET /api/users` returns only `id`, `name`, `role`, and `teamId` — never
-`email`, `azureOid`, or `lastLoginAt`. This endpoint is intentionally
-unauthenticated because the mock `RoleSwitcher` needs it to bootstrap on
-first load (and is explicitly whitelisted in `middleware.ts`); in production
-the user directory would be served from Azure AD and gated by auth.
+`email`, `azureOid`, or `lastLoginAt`. This endpoint is **authenticated** —
+it is no longer on the middleware public allowlist and requires a valid
+`__hdo_session` cookie. (It was previously unauthenticated to support the
+`RoleSwitcher` component, which has since been removed.)
 
 ## Audit logging
 
