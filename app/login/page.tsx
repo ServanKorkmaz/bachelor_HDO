@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { isSafeInternalPath } from '@/lib/auth/safeRedirect'
 
 const ERROR_MESSAGES: Record<string, string> = {
   expired: 'Innloggingen utløp. Prøv på nytt.',
@@ -16,7 +17,7 @@ interface PageProps {
 export default function LoginPage({ searchParams }: PageProps) {
   const errorMessage = searchParams.error ? ERROR_MESSAGES[searchParams.error] : null
   const fromParam =
-    typeof searchParams.from === 'string' && searchParams.from.startsWith('/')
+    typeof searchParams.from === 'string' && isSafeInternalPath(searchParams.from)
       ? `?from=${encodeURIComponent(searchParams.from)}`
       : ''
 
