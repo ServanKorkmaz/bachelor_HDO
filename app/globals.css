@@ -74,14 +74,21 @@ input[type="date"]::-moz-focus-inner {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes login-card-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 48, 135, 0); }
+  50%      { box-shadow: 0 0 60px 4px rgba(0, 48, 135, 0.18); }
+}
+
 .login-orb-a { animation: login-orb-drift-a 14s ease-in-out infinite; }
 .login-orb-b { animation: login-orb-drift-b 18s ease-in-out infinite; }
 .login-orb-c { animation: login-orb-drift-c 16s ease-in-out infinite; }
 .login-card-in { animation: login-card-in 600ms ease-out both; }
+.login-card-glow { animation: login-card-glow 6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .login-orb-a, .login-orb-b, .login-orb-c { animation: none; }
   .login-card-in { animation: none; }
+  .login-card-glow { animation: none; }
 }
 
 
