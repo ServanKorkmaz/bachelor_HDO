@@ -1,5 +1,7 @@
 # HDO Turnusplan MVP
 
+[![CI](https://github.com/ServanKorkmaz/bachelor_HDO/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ServanKorkmaz/bachelor_HDO/actions/workflows/ci.yml)
+
 En moderne web-basert vaktplanleggingssystem (turnusplan) for Helsetjenestens driftsorganisasjon for nødnett HF (HDO). 
 
 ## Teknologier

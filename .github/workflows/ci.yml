@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch — the latest push is the only
+# one that matters.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, typecheck, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      # tests/setup.ts nullish-coalesces this, but several test files reset
+      # modules and re-import lib/auth/session.ts directly — set it here so
+      # those imports never trip the production env guard.
+      SESSION_COOKIE_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      # Prisma client is mocked in tests, but the schema's datasource block
+      # is parsed at generate-time. A dummy URL keeps prisma generate happy.
+      DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # `npm ci` runs the postinstall hook → `prisma generate`, producing
+        # the typed Prisma client that tsc + tests depend on.
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx next lint
+
+      - name: Unit + route tests
+        run: npm test
