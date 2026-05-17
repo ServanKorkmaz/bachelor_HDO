@@ -38,7 +38,7 @@ interface WithAuthOptions {
  * compile-time impossibility for any route that uses the wrapper.
  *
  * The auth check itself mirrors the previous `requireAuth` helper: read the
- * mock session header (later: signed session cookie from passport-microsoft),
+ * signed iron-session cookie (`__hdo_session`),
  * load the user, optionally narrow by system role.
  */
 export function withAuth<TParams = Record<string, never>>(
