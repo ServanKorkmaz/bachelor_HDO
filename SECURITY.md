@@ -5,16 +5,15 @@ threats it defends against, and the trade-offs that exist because the app is
 currently a demo using mock authentication. It is meant to be read by reviewers
 who want to understand *why* the code looks the way it does.
 
-## Authentication (mock)
+## Authentication (historical: mock system)
 
-The MVP uses a mock authentication system based on a custom HTTP header,
-`x-current-user-id`, set by an Axios interceptor that reads the active user
-from the Zustand store populated by the `RoleSwitcher` component.
+Earlier versions of the MVP used a mock authentication system based on a custom
+HTTP header, `x-current-user-id`, set by an Axios interceptor that reads the
+active user from the Zustand store populated by the `RoleSwitcher` component.
 
-In production this is replaced by **Azure AD / Entra ID via
-[passport-microsoft](https://www.passportjs.org/packages/passport-microsoft/)**.
-The placeholder scaffolding lives in `lib/auth/azure-ad-placeholder.ts`. See
-"Migration to passport-microsoft" below for what flips over.
+This has been replaced by **Microsoft Entra ID** (see below). The mock auth is
+retained for test scenarios; see "Authentication: Microsoft Entra ID via MSAL
+Node" for the current production implementation.
 
 ## Authorisation — three-layer defense-in-depth
 
@@ -68,26 +67,78 @@ requester, holiday-request submitter), the server **always** derives the actor
 id from `ctx.userId` and ignores any value passed in the request body. This
 prevents impersonation even by an authenticated team member.
 
-## Migration to passport-microsoft
+## Authentication: Microsoft Entra ID via MSAL Node
 
-The app will run in a Docker container with a Node.js runtime, using
-`passport-microsoft` for the Microsoft OAuth 2.0 flow. The migration touches a
-single seam:
+The production system runs in a Node.js Docker container and authenticates
+users with **Microsoft Entra ID** using the OAuth 2.0 Authorization Code
+flow with PKCE (S256), via [`@azure/msal-node`](https://learn.microsoft.com/en-us/javascript/api/@azure/msal-node).
+Sessions are signed cookies managed by [`iron-session`](https://github.com/vvo/iron-session).
 
-1. `app/api/auth/microsoft` and `app/api/auth/microsoft/callback` route
-   handlers (Node.js runtime) run the OAuth flow and set a **signed session
-   cookie** on success. Server-side sessions managed via `iron-session` or
-   `cookie-session`.
-2. `lib/auth/getCurrentUserId.ts` switches from reading the
-   `x-current-user-id` header to reading the signed cookie and extracting the
-   user id from its claims.
-3. `middleware.ts` switches from checking for the header to verifying the
-   signed cookie's signature in the Edge Runtime (works because signature
-   verification is pure crypto — no DB required).
+The integration touches a small set of seams; the wrapper pattern in
+`lib/auth/withAuth.ts`, `assertTeamMember`, every route handler, and every
+business-logic file stay untouched.
 
-The route handlers, `withAuth` / `withAdmin` wrappers, `assertTeamMember`, and
-every business-logic file stay unchanged. That is the whole point of the
-wrapper pattern: the auth implementation is one swappable seam.
+### Seams
+
+1. **OAuth route handlers** under `app/api/auth/azure/*` and `app/api/auth/logout/`:
+   - `GET /api/auth/azure/login` — generates PKCE verifier + state, sets a
+     short-lived `__hdo_pkce` cookie, redirects to Microsoft.
+   - `GET /api/auth/azure/callback` — verifies state (constant-time compare),
+     exchanges code, asserts `tid === AZURE_TENANT_ID`, looks up the user
+     (by `azureOid` then by email), persists `azureOid` on first login,
+     checks `status==='active'`, updates `lastLoginAt`, audits, sets
+     `__hdo_session` (8h rolling), clears `__hdo_pkce`, redirects to a safe
+     internal path.
+   - `POST /api/auth/logout` — audits `LOGOUT`, destroys `__hdo_session`,
+     redirects to `/login`.
+
+2. **`middleware.ts`** — verifies the `__hdo_session` signature with pure
+   crypto (no DB lookup, Edge-runtime safe). Public paths: `/login`,
+   `/api/auth/azure/*`, `/api/auth/logout`, Next.js internals.
+
+3. **`lib/auth/getCurrentUserId.ts`** — reads the `__hdo_session` cookie.
+   In `NODE_ENV==='test'`, falls back to the legacy `x-current-user-id`
+   header so the existing Vitest route-handler suite continues to work
+   without churn. The fallback is structurally closed in production.
+
+### Audit events
+
+All written to the `AuditLog` table with `entityType='auth'`:
+
+- `LOGIN_SUCCESS`, `LOGIN_UNKNOWN_USER`, `LOGIN_INACTIVE_USER`,
+  `LOGIN_STATE_MISMATCH`, `LOGIN_WRONG_TENANT`, `LOGOUT`.
+
+Failed-lookup events use `actorUserId='anonymous'` as a sentinel.
+
+### Env vars
+
+See `.env.example`. The Client Secret must be rotated immediately if it
+ever appears in chat, logs, or source control.
+
+### Test setup
+
+- Vitest route-handler tests use the `x-current-user-id` header path
+  (Vitest sets `NODE_ENV=test` automatically). A global setup in
+  `tests/setup.ts` provides a fixed `SESSION_COOKIE_SECRET` so modules
+  that import the session wrapper can load without the production
+  env-var check tripping.
+- Playwright E2E tests start the dev server with `NODE_ENV=test` and use
+  `tests/e2e/helpers/auth.ts` to mint a real `iron-session` cookie via the
+  production code path. The cookie is added to the Playwright browser
+  context. This exercises the cookie path end-to-end without round-tripping
+  Microsoft.
+
+### Release-gate smoke test
+
+Before each release, perform one real end-to-end sign-in with the product
+owner's test account against the deployed environment. This validates the
+Entra registration, secret rotation, redirect URI configuration, and
+network egress in a way no automated test can.
+
+### Spec & plan
+
+- `specs/2026-05-17-azure-ad-auth-design.md`
+- `plans/2026-05-17-azure-ad-auth.md`
 
 ## CSRF
 
@@ -216,7 +267,6 @@ deliberate choice, not legacy debt:
 
 ## Known gaps
 
-- Mock auth — production must replace with passport-microsoft (see above).
 - Rate limit is process-local — needs Redis when running more than one
   container.
 - No CSP, HSTS, or other response headers are configured yet. These should be
