@@ -114,15 +114,20 @@ export default function AdminNotificationSettingsPage() {
 
         {settings && (
           <>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="emailEnabled"
-                checked={emailEnabled}
-                onChange={(e) => setEmailEnabled(e.target.checked)}
-                className="rounded"
-              />
-              <Label htmlFor="emailEnabled">Aktiver e-postvarsler</Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="emailEnabled"
+                  checked={emailEnabled}
+                  onChange={(e) => setEmailEnabled(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="emailEnabled">Aktiver e-postvarsler (placeholder)</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Placeholder for fremtidig e-postintegrasjon
+              </p>
             </div>
 
             <div className="space-y-2">
