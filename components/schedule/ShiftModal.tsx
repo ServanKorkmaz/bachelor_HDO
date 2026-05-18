@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
 import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import type { UserSummary } from '@/lib/types'
@@ -87,6 +88,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   const me = currentUser ?? meFromQuery
   const canEditShifts = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [selectedShiftTypeId, setSelectedShiftTypeId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>(userId || '')
   const [startTime, setStartTime] = useState<string>('')
@@ -94,6 +96,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   const [comment, setComment] = useState<string>('')
   const [userQuery, setUserQuery] = useState('')
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const userDropdownRef = useRef<HTMLDivElement | null>(null)
 
   // Fetch shift types
@@ -231,8 +234,11 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       // Surface the server's message (e.g. AML §10-8 violation text) instead
       // of a generic "Kunne ikke lagre vakt", so the leader sees the same
       // explanation the banner shows.
-      const message = apiErrorMessage(error, 'Kunne ikke lagre vakt')
-      alert(message)
+      toast({
+        title: 'Kunne ikke lagre vakt',
+        description: apiErrorMessage(error, 'Kunne ikke lagre vakt'),
+        variant: 'destructive',
+      })
     },
   })
 
@@ -249,8 +255,12 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       queryClient.invalidateQueries({ queryKey: ['shifts'] })
       onClose()
     },
-    onError: () => {
-      alert('Kunne ikke slette vakt')
+    onError: (error) => {
+      toast({
+        title: 'Kunne ikke slette vakt',
+        description: apiErrorMessage(error, 'Prøv igjen, eller kontakt en administrator.'),
+        variant: 'destructive',
+      })
     },
   })
 
@@ -299,9 +309,9 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     saveShiftMutation.mutate(shiftData)
   }
 
-  const handleDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!shift) return
-    if (!confirm('Er du sikker på at du vil slette denne vakten?')) return
+    setIsConfirmingDelete(false)
     deleteShiftMutation.mutate()
   }
 
@@ -477,10 +487,35 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
         </div>
 
         <DialogFooter>
-          {canEditShifts && (
+          {canEditShifts && shift && isConfirmingDelete && (
+            <div
+              role="alertdialog"
+              aria-label="Bekreft sletting av vakt"
+              className="flex w-full flex-wrap items-center justify-end gap-2"
+            >
+              <span className="mr-auto text-sm text-muted-foreground">
+                Er du sikker på at du vil slette denne vakten?
+              </span>
+              <Button variant="outline" onClick={() => setIsConfirmingDelete(false)}>
+                Avbryt
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDelete}
+                disabled={deleteShiftMutation.isPending}
+              >
+                {deleteShiftMutation.isPending ? 'Sletter...' : 'Bekreft slett'}
+              </Button>
+            </div>
+          )}
+          {canEditShifts && !isConfirmingDelete && (
             <>
               {shift && (
-                <Button variant="destructive" onClick={handleDelete} disabled={deleteShiftMutation.isPending}>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsConfirmingDelete(true)}
+                  disabled={deleteShiftMutation.isPending}
+                >
                   Slett
                 </Button>
               )}
@@ -497,9 +532,11 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
               </Button>
             </>
           )}
-          <Button variant="outline" onClick={onClose}>
-            Lukk
-          </Button>
+          {!isConfirmingDelete && (
+            <Button variant="outline" onClick={onClose}>
+              Lukk
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

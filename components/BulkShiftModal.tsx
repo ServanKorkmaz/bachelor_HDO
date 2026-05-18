@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
 import type { Shift } from '@/lib/types'
@@ -286,6 +287,7 @@ function EmployeeShiftPicker({
 export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const { data: me } = useMe()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const [action, setAction] = useState<BulkAction>('create')
   const [rows, setRows] = useState<BulkShiftRow[]>([])
   const [result, setResult] = useState<{
@@ -351,7 +353,11 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
       const successes = data.successes?.length || 0
       if (failures > 0) {
         setResult({ successes: data.successes || [], failures: data.failures || [] })
-        alert(`Fullført med ${successes} suksess(er) og ${failures} feil.`)
+        toast({
+          title: 'Delvis fullført',
+          description: `${successes} suksess(er) og ${failures} feil. Se detaljer under.`,
+          variant: 'destructive',
+        })
         return
       }
       setResult({ successes: data.successes || [], failures: [] })
@@ -359,7 +365,11 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
       onClose()
     },
     onError: (error) => {
-      alert(apiErrorMessage(error, 'Kunne ikke oppdatere vakter'))
+      toast({
+        title: 'Kunne ikke oppdatere vakter',
+        description: apiErrorMessage(error, 'Prøv igjen, eller kontakt en administrator.'),
+        variant: 'destructive',
+      })
     },
   })
 
