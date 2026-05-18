@@ -46,14 +46,14 @@ Unknown accounts are rejected with `LOGIN_UNKNOWN_USER`. Admins create
 Three roles: `ADMIN`, `LEADER`, `EMPLOYEE`. Authorisation is enforced at
 three points:
 
-1. **Edge middleware** (`middleware.ts`) — rejects requests with no session
+1. **Edge middleware** (`middleware.ts`) rejects requests with no session
    cookie before they reach a route handler. Public paths (`/login`, the
    Azure callback, Next internals) are whitelisted.
-2. **`withAuth` wrappers** (`lib/auth/withAuth.ts`) — load the user from
+2. **`withAuth` wrappers** (`lib/auth/withAuth.ts`) load the user from
    the database, optionally narrow by system role, and pass a typed `ctx`
    to the handler. Handlers cannot construct `ctx` themselves, so every
    wrapped route runs through the auth check.
-3. **`assertTeamMember(ctx, teamId)`** — verifies team membership for
+3. **`assertTeamMember(ctx, teamId)`** verifies team membership for
    team-scoped routes. The source of truth is the `TeamMembership` table,
    not the cached `User.teamId`. `ADMIN` bypasses this check.
 
@@ -94,7 +94,7 @@ Markdown rendering, and no autolinking. A string like
 on `routeKey + (user id || forwarded IP)`. Stricter limits apply to
 `POST /api/shifts/bulk` (5 calls / minute) since it accepts up to 200 items
 per call. The bucket is process-local and would need to move to Redis for
-a multi-container deploy — see **Known gaps**.
+a multi-container deploy (see **Known gaps**).
 
 ---
 
@@ -135,24 +135,24 @@ answer "who changed what, when" without rebuilding history from scratch.
 
 HDO processes personal data about its employees, so GDPR applies (through
 Personopplysningsloven in Norway). The system does **not** process
-special-category data under Art. 9 — sick-leave shifts are stored as
+special-category data under Art. 9. Sick-leave shifts are stored as
 opaque shift-type codes (`Sykdom`) with no clinical detail.
 
 **Legal basis:**
 
-- **Art. 6(1)(b)** — performance of contract: scheduling and request
+- **Art. 6(1)(b)**, performance of contract: scheduling and request
   handling are part of the employment relationship.
-- **Art. 6(1)(f)** — legitimate interest: audit logging of privileged
+- **Art. 6(1)(f)**, legitimate interest: audit logging of privileged
   actions, kept so that misuse can be investigated.
 
 **Data minimisation:**
 
-- OAuth scopes are `openid profile email` only — no Microsoft Graph, no
-  calendar or mail access.
+- OAuth scopes are `openid profile email` only, with no Microsoft Graph,
+  no calendar or mail access.
 - Microsoft access and refresh tokens are discarded right after the
   callback.
-- `GET /api/users` returns only `id`, `name`, `role`, `teamId` — no email
-  or `azureOid`.
+- `GET /api/users` returns only `id`, `name`, `role`, `teamId` (no email
+  or `azureOid`).
 - The audit-log scrubber (`lib/auth/audit.ts`) drops keys matching
   `/token|secret|password|code/i` before writing.
 
@@ -185,11 +185,11 @@ surface.
 
 ## Known gaps
 
-- **Rate limit is process-local** — needs Redis (or similar) for a
+- **Rate limit is process-local.** Needs Redis (or similar) for a
   multi-container deploy.
-- **No CSP, HSTS, or other response headers** — these should be added via
-  `next.config.js` headers before going live.
-- **No audit-log retention policy** — rows are kept indefinitely today.
+- **No CSP, HSTS, or other response headers** are configured yet. They
+  should be added via `next.config.js` headers before going live.
+- **No audit-log retention policy.** Rows are kept indefinitely today.
   HDO should pick a retention window (recommended: minimum 12 months for
   security investigation).
 - **Holiday-request overlap protection is application-level only.**
@@ -198,7 +198,7 @@ surface.
   exists between the pre-check and the insert. A DB-level
   `EXCLUDE USING gist` constraint (with the `btree_gist` extension) would
   close it.
-- **Email and SMS are stubs** — they log to the console today and need a
+- **Email and SMS are stubs.** They log to the console today and need a
   real provider before going live.
 - **No formal penetration test** has been performed.
 

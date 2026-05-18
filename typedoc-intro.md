@@ -50,24 +50,24 @@ See `prisma/schema.prisma` for the full schema.
 ## Project layout
 
 - **`app/`**
-  - `(app)/` — authenticated routes under the app layout (standard, month, agenda, swap, holiday, settings, admin)
-  - `api/` — API route handlers
-  - `auth/azure/callback/` — OAuth callback from Microsoft (outside `/api/`)
-- **`components/`** — React components (`ui/`, `layout/`, `auth/`, `schedule/`, `brand/`, `Providers/`)
+  - `(app)/`: authenticated routes under the app layout (standard, month, agenda, swap, holiday, settings, admin)
+  - `api/`: API route handlers
+  - `auth/azure/callback/`: OAuth callback from Microsoft (outside `/api/`)
+- **`components/`**: React components (`ui/`, `layout/`, `auth/`, `schedule/`, `brand/`, `Providers/`)
 - **`lib/`**
-  - `auth/` — `withAuth`, session, MSAL helpers, `getCurrentUserId`
-  - `admin/` — audit log + validation schemas
-  - `services/` — domain services (swap, holiday, notification)
-  - `domain/` — domain calculations (hours, AML compliance)
-  - `notifications/` — multi-channel delivery (email + SMS stubs)
-  - `security/` — rate limiting, cookie config
-  - `shifts/` — shift operations
-  - `validation/` — Zod schemas
-  - `export/` — PDF and CSV export
-  - `i18n.ts` — Norwegian labels
-  - `prisma.ts` — shared Prisma client
-- **`prisma/`** — schema, migrations, seed
-- **`tests/`** — `lib/` (unit), `api/` (route), `e2e/` (Playwright + axe-core)
+  - `auth/`: `withAuth`, session, MSAL helpers, `getCurrentUserId`
+  - `admin/`: audit log + validation schemas
+  - `services/`: domain services (swap, holiday, notification)
+  - `domain/`: domain calculations (hours, AML compliance)
+  - `notifications/`: multi-channel delivery (email + SMS stubs)
+  - `security/`: rate limiting, cookie config
+  - `shifts/`: shift operations
+  - `validation/`: Zod schemas
+  - `export/`: PDF and CSV export
+  - `i18n.ts`: Norwegian labels
+  - `prisma.ts`: shared Prisma client
+- **`prisma/`**: schema, migrations, seed
+- **`tests/`**: `lib/` (unit), `api/` (route), `e2e/` (Playwright + axe-core)
 
 ---
 
@@ -87,6 +87,6 @@ npm run docs      # regenerate this documentation
 
 | Role | Permissions |
 |---|---|
-| `ADMIN` | Full access — manage teams, users and shift types |
+| `ADMIN` | Full access. Manage teams, users and shift types |
 | `LEADER` | Create / edit shifts, approve absence and swap requests |
 | `EMPLOYEE` | View schedules, request absence and shift swaps |

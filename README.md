@@ -34,25 +34,25 @@ HDO-grade requirements for security, traceability and universal design.
 
 ### Core features
 
-1. **Standard plan** — weekly grid view, employees as rows and days as columns
-2. **Month** — calendar view with aggregated information
-3. **Agenda** — chronological list of shifts and notes
-4. **Shift swaps** — request → accept → leader approval → execution
-5. **Holiday and absence requests** — separate flows for vacation, sickness and other absence
-6. **Notes** — week notes (per employee per ISO-week) and event notes with visibility scope
-7. **Admin** — administration of teams, users, shift types, notification settings and audit log
+1. **Standard plan**: weekly grid view, employees as rows and days as columns
+2. **Month**: calendar view with aggregated information
+3. **Agenda**: chronological list of shifts and notes
+4. **Shift swaps**: request → accept → leader approval → execution
+5. **Holiday and absence requests**: separate flows for vacation, sickness and other absence
+6. **Notes**: week notes (per employee per ISO-week) and event notes with visibility scope
+7. **Admin**: administration of teams, users, shift types, notification settings and audit log
 
 ### Advanced features
 
-8. **Bulk shift changes** — mass editing of shifts across users and dates
-9. **Notification system** — email and SMS (both stubbed in this MVP — they log to the console, but are ready to be wired up to real providers) with team- and user-level preferences
-10. **Audit log (AuditLog)** — every security event and admin action is logged immutably
+8. **Bulk shift changes**: mass editing of shifts across users and dates
+9. **Notification system**: email and SMS (both stubbed in this MVP, logging to the console, but ready to be wired up to real providers) with team- and user-level preferences
+10. **Audit log (AuditLog)**: every security event and admin action is logged immutably
 
 ### Roles
 
-- **`ADMIN`** — full system access, can administer teams, users and shift types
-- **`LEADER`** — can create and edit shifts, approve swaps and absences for their own team
-- **`EMPLOYEE`** — can view plans, request swaps and absences
+- **`ADMIN`**: full system access, can administer teams, users and shift types
+- **`LEADER`**: can create and edit shifts, approve swaps and absences for their own team
+- **`EMPLOYEE`**: can view plans, request swaps and absences
 
 Team membership is a separate table (`TeamMembership`); a user can belong to
 several teams independently of their system role.
@@ -68,7 +68,7 @@ several teams independently of their system role.
 - A PostgreSQL database (we use Neon serverless, but any Postgres 14+ works)
 - A Microsoft Entra ID app registration (see the section further down)
 
-### Step 1 — Install dependencies
+### Step 1. Install dependencies
 
 ```bash
 npm install
@@ -76,7 +76,7 @@ npm install
 
 `postinstall` runs `prisma generate` automatically.
 
-### Step 2 — Configure environment variables
+### Step 2. Configure environment variables
 
 Copy the template and fill in real values:
 
@@ -96,9 +96,9 @@ Required variables:
 | `SESSION_COOKIE_SECRET` | 32+ random characters (generate with `openssl rand -base64 32`) |
 
 A `SESSION_COOKIE_SECRET` shorter than 32 characters intentionally throws on
-startup — see `lib/auth/session.ts`.
+startup. See `lib/auth/session.ts`.
 
-### Step 3 — Run migrations and seed
+### Step 3. Run migrations and seed
 
 ```bash
 npx prisma migrate deploy   # apply all migrations
@@ -110,7 +110,7 @@ The seed creates one team (`HDO – Turnus`), eight users (1 admin, 1 leader,
 includes HDO's Entra test account (`bach-turnus@hdono.onmicrosoft.com`) as
 `ADMIN` so the examiner can sign in through Microsoft directly.
 
-### Step 4 — Start the dev server
+### Step 4. Start the dev server
 
 ```bash
 npm run dev
@@ -122,7 +122,7 @@ to `/standard`.
 
 ---
 
-## Microsoft Entra ID — app registration
+## Microsoft Entra ID app registration
 
 The app registration in Entra needs:
 
@@ -195,7 +195,7 @@ hot reload), starts a Postgres 16 container with a fresh `hdo_dev` database,
 and connects the app to it. `DATABASE_URL` is overridden by compose. Still
 requires `AZURE_*` + `SESSION_COOKIE_SECRET` in `.env.local`.
 
-First time around — seed the database from a separate shell:
+First time around, seed the database from a separate shell:
 
 ```bash
 docker compose exec app npm run db:seed
@@ -228,7 +228,7 @@ Test status at the last verification:
 
 - **Vitest**: 340 / 340 passing (unit + route tests for API handlers)
 - **Playwright**: 18 / 18 passing
-- **axe-core**: 0 WCAG 2.1 AA violations on the 7 main pages — no rules
+- **axe-core**: 0 WCAG 2.1 AA violations on the 7 main pages, no rules
   disabled. See `tests/e2e/accessibility.spec.ts`.
 
 CI runs lint + typecheck + Vitest + `next build` on every push and PR to
@@ -298,9 +298,9 @@ middleware → `withAuth` wrapper → `assertTeamMember` per resource). See
 
 ### Auth
 
-- `GET /api/auth/azure/login` — start the OAuth flow (PKCE + state)
-- `GET /auth/azure/callback` — Entra callback (lives outside `/api/`)
-- `GET /api/auth/me` — fetch the current user
+- `GET /api/auth/azure/login` starts the OAuth flow (PKCE + state)
+- `GET /auth/azure/callback` is the Entra callback (lives outside `/api/`)
+- `GET /api/auth/me` returns the current user
 - `POST /api/auth/logout`
 
 ### Shifts
@@ -321,15 +321,15 @@ middleware → `withAuth` wrapper → `assertTeamMember` per resource). See
 
 - `GET|POST /api/notes`
 - `POST /api/notes/[id]/approve`
-- `GET|PUT /api/week-notes` — PUT is an upsert (an empty body deletes)
+- `GET|PUT /api/week-notes` (PUT is an upsert; an empty body deletes)
 - `GET|POST /api/holiday-requests`
 - `GET|PATCH|PUT|DELETE /api/holiday-requests/[id]`
 - `POST /api/holiday-requests/[id]/revoke`
 
 ### Users and teams
 
-- `GET /api/users` — read only (creation goes through `/api/admin/users`)
-- `GET|PUT /api/users/[id]` — PUT updates the role (admin only)
+- `GET /api/users` is read only (creation goes through `/api/admin/users`)
+- `GET|PUT /api/users/[id]` (PUT updates the role, admin only)
 - `GET|PUT /api/users/[id]/notification-preferences`
 - `GET|POST /api/teams`
 - `DELETE /api/teams/[id]`
@@ -342,7 +342,7 @@ middleware → `withAuth` wrapper → `assertTeamMember` per resource). See
 
 ### Admin
 
-- `GET /api/admin/audit` — audit log
+- `GET /api/admin/audit` returns the audit log
 - `GET|POST /api/admin/users`
 - `PATCH /api/admin/users/[id]`
 - `POST /api/admin/teams/[teamId]/members`
@@ -382,9 +382,9 @@ non-trivial fields.
 
 ## Documentation
 
-- **[`README.md`](README.md)** — this file
-- **[`SECURITY.md`](SECURITY.md)** — security model, GDPR / privacy, known gaps
-- **TypeDoc** — generate API documentation with `npm run docs` (output in
+- **[`README.md`](README.md)**: this file
+- **[`SECURITY.md`](SECURITY.md)**: security model, GDPR / privacy, known gaps
+- **TypeDoc**: generate API documentation with `npm run docs` (output in
   `docs/`, gitignored)
 
 ---
