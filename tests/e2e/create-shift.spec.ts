@@ -41,21 +41,23 @@ test.describe('Create shift via grid', () => {
     // On first run the cell is empty (POST); on repeat runs it may be occupied
     // (PUT) — both outcomes are valid (see comment above).
     const firstEmployeeRow = page.locator('tbody tr').first()
-    // Wait for the shift-types fetch that the modal fires on mount. Set the
-    // waiter up BEFORE the click so we don't miss a fast response. The modal's
-    // useEffect populates selectedShiftTypeId only after this resolves;
-    // clicking Lagre before then triggers a silent no-op in handleSave.
-    await Promise.all([
-      page.waitForResponse(r => r.url().includes('/api/shift-types') && r.ok()),
-      // Skip the first column (employee name) and the last column (sum) and
-      // click the second data cell (first day column).
-      firstEmployeeRow.locator('td').nth(1).click(),
-    ])
+    // Skip the first column (employee name) and click the second data cell.
+    await firstEmployeeRow.locator('td').nth(1).click()
 
     // Modal opens.
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByText(/Detaljer for dag/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Lagre' })).toBeVisible()
+
+    // Wait for the modal's setup useEffect to populate state before clicking
+    // Lagre. Without this we race against React: handleSave guards on
+    // (date && selectedShiftTypeId && selectedUserId) and silently returns
+    // if any is empty — producing no network request and a Playwright timeout.
+    // The start-time input is empty until the useEffect runs (with either
+    // shift defaults for PUT or shift-type defaults for POST), so its value
+    // being non-empty is a definitive "modal is ready" signal that survives
+    // both cold and cached /api/shift-types loads.
+    await expect(page.locator('input[type="time"]').first()).not.toHaveValue('')
 
     // Click Lagre and capture the API response. Accept POST (new shift) or PUT
     // (edit existing shift on a repeat run). Both prove the route is wired up.
