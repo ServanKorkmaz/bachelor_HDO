@@ -131,7 +131,7 @@ export default function AdminNotificationSettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>SMS Endpoint (placeholder)</Label>
+              <Label>SMS Endpoint</Label>
               <Input
                 value={smsEndpoint}
                 onChange={(e) => setSmsEndpoint(e.target.value)}
