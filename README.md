@@ -226,7 +226,7 @@ pre-installed (ESLint, Prettier, Prisma, Tailwind, Playwright).
 
 Test status at the last verification:
 
-- **Vitest**: 340 / 340 passing (unit + route tests for API handlers)
+- **Vitest**: 334 / 334 passing (unit + route tests for API handlers)
 - **Playwright**: 18 / 18 passing
 - **axe-core**: 0 WCAG 2.1 AA violations on the 7 main pages, no rules
   disabled. See `tests/e2e/accessibility.spec.ts`.
