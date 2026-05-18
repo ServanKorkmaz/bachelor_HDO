@@ -123,6 +123,18 @@ async function main() {
         teamId: team.id,
       },
     }),
+    // Microsoft Entra test account used for the manual sign-in smoke test
+    // (Task 20 in plans/2026-05-17-azure-ad-auth.md). The email must exactly
+    // match the Entra account's primary email so the callback handler can
+    // match by email on first login and persist azureOid afterwards.
+    prisma.user.create({
+      data: {
+        name: 'Bachelor Test',
+        email: 'bach-turnus@hdono.onmicrosoft.com',
+        role: 'ADMIN',
+        teamId: team.id,
+      },
+    }),
     prisma.user.create({
       data: {
         name: 'Leder',
