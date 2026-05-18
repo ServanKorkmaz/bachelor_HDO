@@ -12,6 +12,7 @@ import {
 
 interface UserOption { id: string; name: string }
 interface ShiftTypeOption { id: string; code: string; label: string }
+interface TeamOption { id: string; name: string }
 
 export interface RotationSlot {
   userId: string
@@ -28,15 +29,19 @@ export interface RotationFormValue {
 }
 
 interface Props {
+  /** Initial team selection. On edit, this becomes locked. */
   teamId: string
   initial?: RotationFormValue | null
+  /** When true (edit mode), team cannot be changed because slots reference users from that team. */
+  lockTeam?: boolean
   onSubmit: (value: RotationFormValue) => void
   submitting?: boolean
 }
 
 const WEEKDAY_LABELS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
 
-export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props) {
+export function RotationEditor({ teamId: initialTeamId, initial, lockTeam, onSubmit, submitting }: Props) {
+  const [teamId, setTeamId] = useState(initialTeamId)
   const [name, setName] = useState(initial?.name ?? '')
   const [weeks, setWeeks] = useState(initial?.weeks ?? 1)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
@@ -47,12 +52,21 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
     new Map(initial?.slots.map((s) => [`${s.userId}|${s.weekIndex}|${s.dayOfWeek}`, s.shiftTypeId]) ?? [])
   )
 
+  const { data: teams = [] } = useQuery<TeamOption[]>({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await axiosInstance.get('/api/teams')
+      return Array.isArray(res.data) ? res.data : []
+    },
+  })
+
   const { data: users = [] } = useQuery<UserOption[]>({
     queryKey: ['team-users', teamId],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/users?teamId=${teamId}`)
       return Array.isArray(res.data) ? res.data : []
     },
+    enabled: Boolean(teamId),
   })
 
   const { data: shiftTypes = [] } = useQuery<ShiftTypeOption[]>({
@@ -87,6 +101,15 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
     })
   }
 
+  function changeTeam(nextTeamId: string) {
+    if (nextTeamId === teamId) return
+    // Slots reference user ids from the previous team; reset to avoid silent
+    // "user not in team" rejections at save time.
+    setTeamId(nextTeamId)
+    setSelectedUserIds([])
+    setSlotMap(new Map())
+  }
+
   function addUser(userId: string) {
     if (selectedUserIds.includes(userId)) return
     setSelectedUserIds([...selectedUserIds, userId])
@@ -111,6 +134,21 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
 
   return (
     <div className="space-y-6">
+      <div className="space-y-2 max-w-md">
+        <Label>Team</Label>
+        <Select value={teamId} onValueChange={changeTeam} disabled={lockTeam}>
+          <SelectTrigger><SelectValue placeholder="Velg team" /></SelectTrigger>
+          <SelectContent>
+            {teams.map((t) => (
+              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {lockTeam && (
+          <p className="text-xs text-muted-foreground">Team kan ikke endres etter at planen er opprettet.</p>
+        )}
+      </div>
+
       <div className="space-y-2 max-w-md">
         <Label>Navn</Label>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Helse 3-ukers rotasjon" />
@@ -141,7 +179,7 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
               </span>
             )
           })}
-          {availableUsersToAdd.length > 0 && (
+          {availableUsersToAdd.length > 0 ? (
             <Select value="" onValueChange={addUser}>
               <SelectTrigger className="w-48"><SelectValue placeholder="+ Legg til ansatt" /></SelectTrigger>
               <SelectContent>
@@ -150,6 +188,10 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
                 ))}
               </SelectContent>
             </Select>
+          ) : selectedUserIds.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Ingen aktive medlemmer i det valgte teamet. Legg til ansatte via Brukere-siden først.
+            </p>
           )}
         </div>
       </div>
@@ -201,7 +243,7 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
       )}
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button onClick={handleSubmit} disabled={submitting || !name.trim() || selectedUserIds.length === 0}>
+        <Button onClick={handleSubmit} disabled={submitting || !teamId || !name.trim() || selectedUserIds.length === 0}>
           {submitting ? 'Lagrer…' : 'Lagre plan'}
         </Button>
       </div>

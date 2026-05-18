@@ -12,7 +12,6 @@ export default function NewRotationPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: me } = useMe()
-  const teamId = me?.teamId
 
   const createMutation = useMutation({
     mutationFn: async (value: RotationFormValue) =>
@@ -31,13 +30,13 @@ export default function NewRotationPage() {
     },
   })
 
-  if (!teamId) return <p className="text-muted-foreground">Laster…</p>
+  if (!me) return <p className="text-muted-foreground">Laster…</p>
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Ny turnusplan</h1>
       <RotationEditor
-        teamId={teamId}
+        teamId={me.teamId}
         onSubmit={(value) => createMutation.mutate(value)}
         submitting={createMutation.isPending}
       />

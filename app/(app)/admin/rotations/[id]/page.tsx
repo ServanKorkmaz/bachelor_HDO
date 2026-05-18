@@ -61,6 +61,7 @@ export default function EditRotationPage() {
       <RotationEditor
         teamId={pattern.teamId}
         initial={initial}
+        lockTeam
         onSubmit={(value) => updateMutation.mutate(value)}
         submitting={updateMutation.isPending}
       />
