@@ -9,12 +9,14 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { getShiftChipStyle } from '@/lib/shift-colors'
 
 interface UserOption { id: string; name: string }
 interface ShiftTypeOption {
   id: string
   code: string
   label: string
+  color: string
   defaultStartTime: string
   defaultEndTime: string
 }
@@ -44,7 +46,7 @@ interface Props {
   submitting?: boolean
 }
 
-const WEEKDAY_LABELS = ['Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør', 'Søn']
+const WEEKDAY_LABELS = ['mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag', 'søndag']
 
 export function RotationEditor({ teamId: initialTeamId, initial, lockTeam, onSubmit, submitting }: Props) {
   const [teamId, setTeamId] = useState(initialTeamId)
@@ -221,41 +223,62 @@ export function RotationEditor({ teamId: initialTeamId, initial, lockTeam, onSub
           {selectedUserIds.map((userId) => {
             const u = users.find((x) => x.id === userId)
             return (
-              <div key={userId} className="space-y-2 rounded-lg border bg-card p-4">
+              <div key={userId} className="space-y-2">
                 <h3 className="text-sm font-semibold">{u?.name ?? userId}</h3>
-                <table className="w-full border-separate border-spacing-1 text-sm">
-                  <thead>
-                    <tr className="text-xs text-muted-foreground">
-                      <th className="p-1 text-left">Uke</th>
-                      {WEEKDAY_LABELS.map((d) => <th key={d} className="p-1">{d}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: weeks }, (_, w) => (
-                      <tr key={w}>
-                        <td className="p-1 text-xs text-muted-foreground">Uke {w + 1}</td>
-                        {WEEKDAY_LABELS.map((_, d) => {
-                          const dayOfWeek = d + 1
-                          const key = `${userId}|${w}|${dayOfWeek}`
-                          const value = slotMap.get(key) ?? '__none__'
-                          return (
-                            <td key={d} className="p-1">
-                              <Select value={value} onValueChange={(v) => setCell(userId, w, dayOfWeek, v)}>
-                                <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">&#x2014;</SelectItem>
-                                  {shiftTypes.map((st) => (
-                                    <SelectItem key={st.id} value={st.id}>{st.label || st.code}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                          )
-                        })}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="border border-border bg-muted p-2 text-left">Uke</th>
+                        {WEEKDAY_LABELS.map((d) => (
+                          <th key={d} className="border border-border bg-muted p-1.5 text-center min-w-[115px]">
+                            <div className="font-semibold">{d}</div>
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: weeks }, (_, w) => (
+                        <tr key={w}>
+                          <td className="border border-border bg-muted p-2 font-medium">Uke {w + 1}</td>
+                          {WEEKDAY_LABELS.map((_, d) => {
+                            const dayOfWeek = d + 1
+                            const key = `${userId}|${w}|${dayOfWeek}`
+                            const value = slotMap.get(key) ?? '__none__'
+                            const st = shiftTypes.find((x) => x.id === value)
+                            return (
+                              <td key={d} className="border border-border p-1.5 h-24 align-top">
+                                <Select value={value} onValueChange={(v) => setCell(userId, w, dayOfWeek, v)}>
+                                  <SelectTrigger
+                                    className="h-full min-h-[72px] w-full rounded-md border-0 p-2 text-sm shadow-none focus:ring-0 focus:ring-offset-0 [&>svg]:hidden [&>span]:block [&>span]:w-full"
+                                    style={st ? getShiftChipStyle(st.color) : undefined}
+                                  >
+                                    {st ? (
+                                      <div className="text-left">
+                                        <div className="font-semibold leading-tight">{st.label || st.code}</div>
+                                        <div className="mt-1 text-sm">
+                                          {st.defaultStartTime} - {st.defaultEndTime}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">-</span>
+                                    )}
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__none__">&#x2014;</SelectItem>
+                                    {shiftTypes.map((st) => (
+                                      <SelectItem key={st.id} value={st.id}>{st.label || st.code}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )
           })}
