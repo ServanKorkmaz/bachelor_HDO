@@ -115,15 +115,27 @@ describe('PUT /api/shifts/[id]', () => {
   })
 
   it('updates shift and notifies user', async () => {
-    mockPrisma.shift.findUnique.mockResolvedValue(baseShift)
+    mockPrisma.shift.findUnique.mockResolvedValue({ ...baseShift, shiftTypeId: 'type-old' })
     mockPrisma.shiftType.findUnique.mockResolvedValue({ id: 'type-1', crossesMidnight: false })
-    mockPrisma.shift.update.mockResolvedValue({ ...baseShift, shiftType: { id: 'type-1' } })
+    mockPrisma.shift.update.mockResolvedValue({ ...baseShift, shiftTypeId: 'type-1', shiftType: { id: 'type-1' } })
 
     const res = await PUT(makePut(validPutBody), { params: { id: 'shift-1' } })
 
     expect(res.status).toBe(200)
     expect(mockPrisma.shift.update).toHaveBeenCalledTimes(1)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'admin-1',
+          action: 'SHIFT_UPDATED',
+          entityType: 'shift',
+          entityId: 'shift-1',
+          beforeJson: expect.stringContaining('"shiftTypeId":"type-old"'),
+          afterJson: expect.stringContaining('"shiftTypeId":"type-1"'),
+        }),
+      }),
+    )
   })
 })
 
@@ -166,5 +178,15 @@ describe('DELETE /api/shifts/[id]', () => {
     await expect(res.json()).resolves.toEqual({ success: true })
     expect(mockPrisma.shift.delete).toHaveBeenCalledTimes(1)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'admin-1',
+          action: 'SHIFT_DELETED',
+          entityType: 'shift',
+          entityId: 'shift-1',
+        }),
+      }),
+    )
   })
 })

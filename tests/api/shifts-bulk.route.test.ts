@@ -227,5 +227,14 @@ describe('POST /api/shifts/bulk', () => {
     expect(hours).toBe(8)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
     expect(mockDeliverNotificationToChannels).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'admin-1',
+          action: 'SHIFT_CREATED',
+          entityType: 'shift',
+        }),
+      }),
+    )
   })
 })

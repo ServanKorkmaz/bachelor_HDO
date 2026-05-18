@@ -49,7 +49,7 @@ describe('POST /api/notes/[id]/approve', () => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
-    mockPrisma.note.findUnique.mockResolvedValue({ teamId: 'team-1' })
+    mockPrisma.note.findUnique.mockResolvedValue({ teamId: 'team-1', status: 'PENDING' })
     mockPrisma.user.findUnique.mockResolvedValue(LEADER_USER)
     mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'membership-1' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
@@ -90,6 +90,18 @@ describe('POST /api/notes/[id]/approve', () => {
     )
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
     expect(mockDeliverNotificationToChannels).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'leader-1',
+          action: 'NOTE_APPROVED',
+          entityType: 'note',
+          entityId: 'note-1',
+          beforeJson: expect.stringContaining('"status":"PENDING"'),
+          afterJson: expect.stringContaining('"status":"APPROVED"'),
+        }),
+      }),
+    )
   })
 
   it('rejects note and notifies owner', async () => {
@@ -102,5 +114,15 @@ describe('POST /api/notes/[id]/approve', () => {
       expect.objectContaining({ data: { status: 'REJECTED' } })
     )
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'leader-1',
+          action: 'NOTE_REJECTED',
+          entityType: 'note',
+          afterJson: expect.stringContaining('"status":"REJECTED"'),
+        }),
+      }),
+    )
   })
 })

@@ -148,6 +148,16 @@ describe('POST /api/shifts', () => {
     expect(res.status).toBe(200)
     expect(mockPrisma.shift.create).toHaveBeenCalledTimes(1)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'admin-1',
+          action: 'SHIFT_CREATED',
+          entityType: 'shift',
+          entityId: 'shift-1',
+        }),
+      }),
+    )
   })
 
   it('returns 400 when startTime equals endTime (zero-length shift)', async () => {

@@ -226,5 +226,15 @@ describe('POST /api/notes', () => {
     expect(res.status).toBe(200)
     expect(mockPrisma.note.create).toHaveBeenCalledTimes(1)
     expect(mockPrisma.notification.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: 'admin-1',
+          action: 'NOTE_CREATED',
+          entityType: 'note',
+          entityId: 'note-1',
+        }),
+      }),
+    )
   })
 })
