@@ -62,11 +62,15 @@ ENV AZURE_TENANT_ID=$AZURE_TENANT_ID \
     AZURE_CLIENT_SECRET=$AZURE_CLIENT_SECRET \
     AZURE_REDIRECT_URI=$AZURE_REDIRECT_URI \
     SESSION_COOKIE_SECRET=$SESSION_COOKIE_SECRET \
-    DATABASE_URL=$DATABASE_URL
+    DATABASE_URL=$DATABASE_URL \
+    NEXT_OUTPUT_STANDALONE=1
 
 # Bypass the npm `build` script (which runs `prisma migrate deploy` first —
 # that needs a live DB). The Docker image is for runtime; migrations are
 # applied at container startup by the entrypoint, not at image build.
+# NEXT_OUTPUT_STANDALONE=1 toggles `output: 'standalone'` in next.config.js
+# (off by default so local `npm run start` works without static-file routing
+# gymnastics; on here because the runner stage needs the standalone bundle).
 RUN npx next build
 
 # ─── Stage 3: runner ─────────────────────────────────────────────────────────
