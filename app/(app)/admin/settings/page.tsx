@@ -123,10 +123,10 @@ export default function AdminNotificationSettingsPage() {
                   onChange={(e) => setEmailEnabled(e.target.checked)}
                   className="rounded"
                 />
-                <Label htmlFor="emailEnabled">Aktiver e-postvarsler (placeholder)</Label>
+                <Label htmlFor="emailEnabled">Aktiver e-postvarsler</Label>
               </div>
               <p className="text-xs text-muted-foreground">
-                Placeholder for fremtidig e-postintegrasjon
+                Ikke koblet til e-postleverandør i denne versjonen. Varslene logges kun til serverkonsoll.
               </p>
             </div>
 
@@ -138,7 +138,7 @@ export default function AdminNotificationSettingsPage() {
                 placeholder="https://sms-endpoint.example.com/send"
               />
               <p className="text-xs text-muted-foreground">
-                Placeholder for fremtidig SMS-integrasjon
+                Ikke koblet til SMS-leverandør i denne versjonen. Varslene logges kun til serverkonsoll.
               </p>
             </div>
 
