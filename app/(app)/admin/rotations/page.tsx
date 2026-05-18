@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { axiosInstance } from '@/lib/axios'
-import { useMe } from '@/lib/hooks/useMe'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { GenerateShiftsDialog } from '@/components/admin/GenerateShiftsDialog'
@@ -18,28 +17,39 @@ interface RotationPattern {
   slotsJson: string
 }
 
+interface PatternWithTeam extends RotationPattern {
+  teamName: string
+}
+
+interface Team { id: string; name: string }
+
 export default function RotationsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { data: me } = useMe()
-  const teamId = me?.teamId
-  const [generatingFor, setGeneratingFor] = useState<RotationPattern | null>(null)
+  const [generatingFor, setGeneratingFor] = useState<PatternWithTeam | null>(null)
   const [result, setResult] = useState<GenerateResult | null>(null)
 
-  const { data: patterns = [], isLoading } = useQuery<RotationPattern[]>({
-    queryKey: ['rotation-patterns', teamId],
+  const { data: patterns = [], isLoading } = useQuery<PatternWithTeam[]>({
+    queryKey: ['rotation-patterns', 'all'],
     queryFn: async () => {
-      const res = await axiosInstance.get(`/api/rotation-patterns?teamId=${teamId}`)
-      return Array.isArray(res.data) ? res.data : []
+      const teamsRes = await axiosInstance.get('/api/teams')
+      const teams: Team[] = Array.isArray(teamsRes.data) ? teamsRes.data : []
+      const perTeam = await Promise.all(
+        teams.map(async (t) => {
+          const res = await axiosInstance.get(`/api/rotation-patterns?teamId=${t.id}`)
+          const list: RotationPattern[] = Array.isArray(res.data) ? res.data : []
+          return list.map((p) => ({ ...p, teamName: t.name }))
+        })
+      )
+      return perTeam.flat()
     },
-    enabled: Boolean(teamId),
   })
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => axiosInstance.delete(`/api/rotation-patterns/${id}`),
     onSuccess: () => {
       toast({ title: 'Plan slettet' })
-      queryClient.invalidateQueries({ queryKey: ['rotation-patterns', teamId] })
+      queryClient.invalidateQueries({ queryKey: ['rotation-patterns', 'all'] })
     },
     onError: () => toast({ title: 'Feil', description: 'Kunne ikke slette', variant: 'destructive' }),
   })
@@ -79,6 +89,7 @@ export default function RotationsPage() {
           <thead>
             <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
               <th className="p-3">Navn</th>
+              <th className="p-3">Team</th>
               <th className="p-3">Cycle</th>
               <th className="p-3">Ansatte</th>
               <th className="p-3">Handlinger</th>
@@ -88,6 +99,7 @@ export default function RotationsPage() {
             {patterns.map((p) => (
               <tr key={p.id} className="border-t">
                 <td className="p-3 font-medium">{p.name}</td>
+                <td className="p-3 text-muted-foreground">{p.teamName}</td>
                 <td className="p-3">{p.weeks} {p.weeks === 1 ? 'uke' : 'uker'}</td>
                 <td className="p-3">{uniqueUsers(p.slotsJson)}</td>
                 <td className="p-3">
