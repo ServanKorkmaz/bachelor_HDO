@@ -54,6 +54,7 @@ type HolidayRequest = {
 type WeekNote = {
   id: string
   teamId: string
+  userId: string
   isoYear: number
   isoWeek: number
   body: string
@@ -69,7 +70,6 @@ export default function AgendaPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  const canEditWeekNotes = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const canSwitchEmployee = me?.role === 'ADMIN' || me?.role === 'LEADER'
 
   // URL-backed state: ?employee, ?date, ?teamId. Defaults applied once the
@@ -145,15 +145,17 @@ export default function AgendaPage() {
     queryKey: [
       'week-notes',
       selectedTeamId,
+      selectedUserId,
       weeks[0].isoYear,
       weeks[0].isoWeek,
       weeks[weeks.length - 1].isoYear,
       weeks[weeks.length - 1].isoWeek,
     ],
     queryFn: async () => {
-      if (!selectedTeamId) return []
+      if (!selectedTeamId || !selectedUserId) return []
       const params = new URLSearchParams({
         teamId: selectedTeamId,
+        userId: selectedUserId,
         fromYear: String(weeks[0].isoYear),
         fromWeek: String(weeks[0].isoWeek),
         toYear: String(weeks[weeks.length - 1].isoYear),
@@ -162,7 +164,7 @@ export default function AgendaPage() {
       const res = await axiosInstance.get(`/api/week-notes?${params.toString()}`)
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(selectedTeamId),
+    enabled: Boolean(selectedTeamId && selectedUserId),
   })
 
   // === Initial defaults ===
@@ -228,13 +230,14 @@ export default function AgendaPage() {
     mutationFn: async (input: { isoYear: number; isoWeek: number; body: string }) => {
       await axiosInstance.put('/api/week-notes', {
         teamId: selectedTeamId,
+        userId: selectedUserId,
         isoYear: input.isoYear,
         isoWeek: input.isoWeek,
         body: input.body,
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['week-notes', selectedTeamId] })
+      queryClient.invalidateQueries({ queryKey: ['week-notes', selectedTeamId, selectedUserId] })
       toast({ title: 'Lagret', description: 'Ukenotat oppdatert.' })
     },
     onError: () => {
@@ -250,6 +253,11 @@ export default function AgendaPage() {
 
   const selectedUser = users.find((u) => u.id === selectedUserId)
   const selectedTeam = teams.find((t) => t.id === selectedTeamId)
+  // Leaders/admins can edit any team member's notes; employees can edit only
+  // their own. The server-side check is the real gate; this just keeps the
+  // pencil button from appearing when it would 403.
+  const canEditWeekNotes =
+    me.role === 'ADMIN' || me.role === 'LEADER' || me.id === selectedUserId
 
   return (
     <div className="space-y-4">

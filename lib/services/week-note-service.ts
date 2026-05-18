@@ -1,20 +1,25 @@
 import { prisma } from '@/lib/prisma'
 import { ServiceError } from './errors'
 
-/** A note attached to one specific (team, ISO year, ISO week) cell. */
+/** A note attached to one specific (team, employee, ISO year, ISO week) cell. */
 export interface WeekNoteInput {
   teamId: string
+  /** The employee the note is *about*. */
+  userId: string
   isoYear: number
   isoWeek: number
   /** Free-text body. Empty string is treated as "delete the note" since
    * there is no other way for callers to clear an existing entry. */
   body: string
-  /** User performing the write; recorded for audit purposes. */
+  /** User performing the write; recorded for audit purposes. May differ from
+   * `userId` when a leader writes a note on an employee's behalf. */
   actorUserId: string
 }
 
 export interface WeekRangeQuery {
   teamId: string
+  /** Employee whose notes to list. */
+  userId: string
   /** Inclusive lower bound. */
   fromYear: number
   fromWeek: number
@@ -50,6 +55,7 @@ export async function listWeekNotes(query: WeekRangeQuery) {
   return prisma.weekNote.findMany({
     where: {
       teamId: query.teamId,
+      userId: query.userId,
       AND: [
         {
           OR: [
@@ -70,10 +76,11 @@ export async function listWeekNotes(query: WeekRangeQuery) {
 }
 
 /**
- * Idempotent upsert: write or update the single note for a (team, year, week)
- * cell. Empty body deletes the row so the API surface stays one-method instead
- * of forcing the caller into a separate DELETE route. The unique constraint
- * on (teamId, isoYear, isoWeek) makes this race-safe.
+ * Idempotent upsert: write or update the single note for a (team, employee,
+ * year, week) cell. Empty body deletes the row so the API surface stays
+ * one-method instead of forcing the caller into a separate DELETE route. The
+ * unique constraint on (teamId, userId, isoYear, isoWeek) makes this
+ * race-safe.
  */
 export async function upsertWeekNote(input: WeekNoteInput) {
   assertValidWeek(input.isoYear, input.isoWeek)
@@ -83,6 +90,7 @@ export async function upsertWeekNote(input: WeekNoteInput) {
     await prisma.weekNote.deleteMany({
       where: {
         teamId: input.teamId,
+        userId: input.userId,
         isoYear: input.isoYear,
         isoWeek: input.isoWeek,
       },
@@ -92,14 +100,16 @@ export async function upsertWeekNote(input: WeekNoteInput) {
 
   return prisma.weekNote.upsert({
     where: {
-      teamId_isoYear_isoWeek: {
+      teamId_userId_isoYear_isoWeek: {
         teamId: input.teamId,
+        userId: input.userId,
         isoYear: input.isoYear,
         isoWeek: input.isoWeek,
       },
     },
     create: {
       teamId: input.teamId,
+      userId: input.userId,
       isoYear: input.isoYear,
       isoWeek: input.isoWeek,
       body: trimmed,

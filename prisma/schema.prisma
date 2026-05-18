@@ -102,6 +102,7 @@ model User {
   swapRequestsDecided    SwapRequest[]               @relation("SwapDecider")
   notifications          Notification[]
   notificationPreference UserNotificationPreference?
+  weekNotes              WeekNote[]                  @relation("WeekNoteSubject")
   weekNotesCreated       WeekNote[]                  @relation("WeekNoteCreator")
 
   @@map("users")
@@ -320,6 +321,9 @@ model HolidayRequest {
 model WeekNote {
   id        String   @id @default(cuid())
   teamId    String
+  /// The employee the note is *about* — week notes are per-employee
+  /// ("fokus for uka" for this person), not per-team.
+  userId    String
   /// ISO 8601 week-year. Use this together with isoWeek instead of a calendar
   /// year because ISO weeks at the start/end of the year may belong to the
   /// previous/next ISO year (e.g. 2024-12-30 is in ISO week 2025-W01).
@@ -332,12 +336,13 @@ model WeekNote {
   updatedAt DateTime @updatedAt
 
   team    Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user    User  @relation("WeekNoteSubject", fields: [userId], references: [id], onDelete: Cascade)
   creator User? @relation("WeekNoteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
-  /// At most one note per (team, ISO year, ISO week). The upsert API relies on
-  /// this constraint to make writes idempotent — repeated saves merge into the
-  /// same row instead of producing duplicates.
-  @@unique([teamId, isoYear, isoWeek])
-  @@index([teamId, isoYear, isoWeek])
+  /// At most one note per (team, user, ISO year, ISO week). The upsert API
+  /// relies on this constraint to make writes idempotent — repeated saves
+  /// merge into the same row instead of producing duplicates.
+  @@unique([teamId, userId, isoYear, isoWeek])
+  @@index([teamId, userId, isoYear, isoWeek])
   @@map("week_notes")
 }

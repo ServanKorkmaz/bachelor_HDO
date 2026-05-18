@@ -250,6 +250,7 @@ export type UserRoleUpdateBody = z.infer<typeof userRoleUpdateSchema>
  */
 export const weekNoteUpsertSchema = z.object({
   teamId: id,
+  userId: id,
   isoYear: z.number().int().min(1900).max(2200),
   isoWeek: z.number().int().min(1).max(53),
   body: z.string().max(1000),

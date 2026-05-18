@@ -111,6 +111,7 @@ export interface HolidayRequestRow {
 export interface WeekNoteRow {
   id: string
   teamId: string
+  userId: string
   isoYear: number
   isoWeek: number
   body: string
