@@ -1,0 +1,60 @@
+# Docker build context: everything listed here is NOT sent to the daemon
+# during `docker build`. This is the security-critical line of defence
+# against accidentally copying secrets (.env*.local) into the image.
+
+# Dependencies — re-installed inside the image
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts — produced fresh inside the image
+.next
+out
+build
+dist
+
+# Secrets — never bake these into an image
+.env
+.env*.local
+
+# Version control
+.git
+.gitignore
+
+# IDE / editor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Tests / CI artifacts — not needed at runtime
+tests
+test-results
+playwright-report
+playwright
+coverage
+
+# CI / GitHub workflows
+.github
+
+# Docs / planning artifacts — keep image lean
+README.md
+SECURITY.md
+LICENSE
+docs
+specs
+plans
+typedoc.json
+typedoc-intro.md
+typedoc-theme.css
+
+# Claude harness state
+.claude
+
+# Dockerfile itself shouldn't be in the build context it describes
+Dockerfile
+.dockerignore
+
+# OS
+Thumbs.db

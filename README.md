@@ -82,7 +82,67 @@ npm run db:seed
 npm run dev
 ```
 
-Åpne [http://localhost:3000](http://localhost:3000) i nettleseren.
+Åpne [http://localhost:4000](http://localhost:4000) i nettleseren.
+
+## Kjøre med Docker
+
+Applikasjonen kan også bygges og kjøres som en Docker-container. Dette er
+deployment-modellen for produksjon (se `SECURITY.md`) og gir et reproduserbart
+miljø uten lokal Node-installasjon.
+
+### Forutsetninger
+
+- Docker Desktop (Windows/Mac) eller Docker Engine (Linux)
+- En `.env.local` med ekte verdier (se [`.env.example`](./.env.example))
+
+### Bygg image
+
+```bash
+docker build -t hdo-turnusplan .
+```
+
+Første gang tar ~2 minutter (npm install + `next build`). Påfølgende bygg er
+sekunder takket være lag-caching — kun lag som faktisk er endret bygges på nytt.
+
+Resultatet er et ~200 MB Alpine-basert image med kun det som trengs for å
+kjøre appen (ingen kildekode, ingen dev-avhengigheter, ingen tester).
+
+### Kjør container
+
+```bash
+docker run --rm -p 4000:4000 --env-file .env.local hdo-turnusplan
+```
+
+`-p 4000:4000` mapper containerens port til vertens port 4000. `--env-file`
+laster env-variabler ved oppstart — secrets bakes aldri inn i imaget.
+`--rm` fjerner containeren etter stopp. Åpne deretter
+[http://localhost:4000](http://localhost:4000).
+
+Containeren kjører `prisma migrate deploy` ved oppstart for å sikre at
+databasen er oppdatert, og starter deretter Next.js sin standalone-server.
+
+### Påkrevde env-variabler
+
+Containeren krever de samme variablene som lokal kjøring. Se
+[`.env.example`](./.env.example) for navn og beskrivelser:
+
+- `DATABASE_URL`
+- `AZURE_TENANT_ID`
+- `AZURE_CLIENT_ID`
+- `AZURE_CLIENT_SECRET`
+- `AZURE_REDIRECT_URI`
+- `SESSION_COOKIE_SECRET`
+
+Manglende eller for kort `SESSION_COOKIE_SECRET` (under 32 tegn) gir
+oppstartsfeil — det er en bevisst fail-fast-sjekk i `lib/auth/session.ts`.
+
+### Sikkerhetsnotater
+
+- Containeren kjører som en **ikke-privilegert bruker** (`nextjs`, UID 1001).
+- `.dockerignore` ekskluderer `.env*.local`, `.git`, tester og dev-artefakter
+  fra build-konteksten — secrets havner aldri inn i imaget.
+- Multi-stage build betyr at byggetidens avhengigheter (TypeScript,
+  ESLint, kildekode) ikke finnes i det endelige imaget — kun runtime-koden.
 
 ## Testing
 
