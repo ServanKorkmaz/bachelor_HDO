@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel superseded runs on the same branch — the latest push is the only
-# one that matters.
+# Cancel superseded runs on the same branch; only the latest push matters.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -20,7 +19,7 @@ jobs:
 
     env:
       # tests/setup.ts nullish-coalesces this, but several test files reset
-      # modules and re-import lib/auth/session.ts directly — set it here so
+      # modules and re-import lib/auth/session.ts directly. Set it here so
       # those imports never trip the production env guard.
       SESSION_COOKIE_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       # Prisma client is mocked in tests, but the schema's datasource block
@@ -28,7 +27,7 @@ jobs:
       DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
       # lib/auth/azureAd.ts validates these at module-load (fail-fast guard
       # for production). `next build` imports the callback route during page
-      # data collection, so it needs *any* values present — production gets
+      # data collection, so it needs *any* values present. Production gets
       # the real secrets from the deployment env, not from CI.
       AZURE_TENANT_ID: 00000000-0000-0000-0000-000000000000
       AZURE_CLIENT_ID: 00000000-0000-0000-0000-000000000000
@@ -66,5 +65,5 @@ jobs:
         # generation errors. The build script normally runs `prisma migrate
         # deploy && next build`; we override to skip migrate-deploy because
         # we don't have a real database in CI (and `next build` itself does
-        # not need one — Prisma client is generated, not connected).
+        # not need one; Prisma client is generated, not connected).
         run: npx next build

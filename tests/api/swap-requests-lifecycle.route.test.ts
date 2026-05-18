@@ -141,7 +141,7 @@ describe('POST /api/swap-requests/[id]/execute', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Swap request must be approved before execution' })
   })
 
-  it('executes swap — reassigns shift to new user and notifies both parties', async () => {
+  it('executes swap by reassigning shift to new user and notifying both parties', async () => {
     mockPrisma.swapRequest.findUnique.mockResolvedValue({ ...baseSwapRequest, status: 'APPROVED' })
     mockPrisma.shift.update.mockResolvedValue({})
     mockPrisma.swapRequest.update.mockResolvedValue({ ...baseSwapRequest, status: 'EXECUTED' })

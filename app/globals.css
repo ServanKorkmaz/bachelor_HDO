@@ -55,7 +55,7 @@ input[type="date"]::-moz-focus-inner {
 }
 
 /* Login page: subtle background orbs that drift, and a gentle card entrance.
-   Kept restrained — this is a professional healthcare context, not a marketing
+   Kept restrained: this is a professional healthcare context, not a marketing
    landing page. Honours prefers-reduced-motion. */
 @keyframes login-orb-drift-a {
   0%, 100% { transform: translate(0, 0) scale(1); }

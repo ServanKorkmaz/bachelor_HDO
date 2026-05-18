@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1.7
 #
-# HDO Turnusplan — production Docker image
+# HDO Turnusplan production Docker image
 #
 # Three-stage build:
-#   1. deps    — install npm packages (cached aggressively; rebuilds only when
-#                package.json / package-lock.json change)
-#   2. builder — copy source + node_modules, run `next build` to produce the
-#                standalone output (.next/standalone/server.js + tracing)
-#   3. runner  — minimal Alpine image with only the build output, Prisma
-#                client, schema, and a non-root user. ~200 MB final size.
+#   1. deps:    install npm packages (cached aggressively; rebuilds only when
+#               package.json / package-lock.json change)
+#   2. builder: copy source + node_modules, run `next build` to produce the
+#               standalone output (.next/standalone/server.js + tracing)
+#   3. runner:  minimal Alpine image with only the build output, Prisma
+#               client, schema, and a non-root user. ~200 MB final size.
 #
 # Build:  docker build -t hdo-turnusplan .
 # Run:    docker run --rm -p 4000:4000 --env-file .env.local hdo-turnusplan
@@ -18,7 +18,7 @@
 #   AZURE_REDIRECT_URI, SESSION_COOKIE_SECRET
 # See .env.example for descriptions.
 
-# ─── Stage 1: dependencies ───────────────────────────────────────────────────
+# Stage 1: dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
 
@@ -35,7 +35,7 @@ COPY prisma ./prisma
 # `prisma generate` here, producing the typed Prisma client in node_modules.
 RUN npm ci
 
-# ─── Stage 2: builder ────────────────────────────────────────────────────────
+# Stage 2: builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -65,15 +65,15 @@ ENV AZURE_TENANT_ID=$AZURE_TENANT_ID \
     DATABASE_URL=$DATABASE_URL \
     NEXT_OUTPUT_STANDALONE=1
 
-# Bypass the npm `build` script (which runs `prisma migrate deploy` first —
-# that needs a live DB). The Docker image is for runtime; migrations are
+# Bypass the npm `build` script (which runs `prisma migrate deploy` first,
+# and that needs a live DB). The Docker image is for runtime; migrations are
 # applied at container startup by the entrypoint, not at image build.
 # NEXT_OUTPUT_STANDALONE=1 toggles `output: 'standalone'` in next.config.js
 # (off by default so local `npm run start` works without static-file routing
 # gymnastics; on here because the runner stage needs the standalone bundle).
 RUN npx next build
 
-# ─── Stage 3: runner ─────────────────────────────────────────────────────────
+# Stage 3: runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 

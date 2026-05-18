@@ -92,7 +92,7 @@ describe('withAuth', () => {
  * a plain header instead of minting sealed cookies. These tests pin that
  * fallback behavior and the wrapper's DB-lookup defense.
  */
-describe('withAuth — test-only header fallback', () => {
+describe('withAuth: test-only header fallback', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('resolves an existing admin from the test-only header', async () => {

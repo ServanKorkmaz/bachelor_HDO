@@ -4,7 +4,7 @@
 # the production Dockerfile but stops at the `builder` stage (which still
 # has full source + dev dependencies), then runs `npm run dev` with the
 # source mounted as a volume for hot reload. The production image is
-# unchanged — see Dockerfile for that.
+# unchanged; see Dockerfile for that.
 #
 # Quick start:
 #   1. Copy .env.example -> .env.local and fill in AZURE_* + SESSION_COOKIE_SECRET
@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # Stop at the `builder` stage — it contains source + full node_modules
+      # Stop at the `builder` stage. It contains source + full node_modules
       # (including dev deps), so we can run `next dev` for hot reload.
       target: builder
     container_name: hdo_app
@@ -29,7 +29,7 @@ services:
       - "4000:4000"
     env_file:
       # Load AZURE_* + SESSION_COOKIE_SECRET from the developer's .env.local.
-      # Only these two groups are read — DATABASE_URL is overridden below.
+      # Only these two groups are read; DATABASE_URL is overridden below.
       - .env.local
     environment:
       # Override DATABASE_URL to point at the `db` service in this network.

@@ -232,7 +232,7 @@ export default function MonthPage() {
                 onClick={() => handleDayClick(date)}
               >
                 {/* Apply the prev/next-month fade only to the day number, not
-                    the whole cell — fading the cell killed shift-chip
+                    the whole cell. Fading the cell killed shift-chip
                     contrast below WCAG AA. */}
                 <div className={`text-base font-semibold mb-2 ${isToday ? 'text-primary' : ''} ${!isCurrentMonth ? 'opacity-50' : ''}`}>
                   {format(date, 'd')}

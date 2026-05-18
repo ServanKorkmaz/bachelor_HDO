@@ -505,7 +505,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
           {rows.length === 0 && (
             <div className="text-sm text-muted-foreground">
-              Ingen rader lagt til ennå. Klikk “Legg til rad”.
+              Ingen rader lagt til ennå. Klikk «Legg til rad».
             </div>
           )}
 

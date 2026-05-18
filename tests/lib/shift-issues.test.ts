@@ -29,7 +29,7 @@ function makeHoliday(from: string, to?: string, id?: string): IssueHoliday {
   return { id: id ?? `h${++nextId}`, dateFrom: from, dateTo: to ?? null }
 }
 
-describe('evaluateShiftIssues — constants', () => {
+describe('evaluateShiftIssues:constants', () => {
   it('matches AML §10-8 thresholds', () => {
     expect(DAILY_REST_HOURS).toBe(11)
     expect(WEEKLY_REST_HOURS).toBe(35)
@@ -37,7 +37,7 @@ describe('evaluateShiftIssues — constants', () => {
   })
 })
 
-describe('evaluateShiftIssues — daily rest and overlap', () => {
+describe('evaluateShiftIssues:daily rest and overlap', () => {
   it('returns clean issues when target has no neighbours', () => {
     const target = makeShift('2026-05-10', '2026-05-10T08:00:00Z', '2026-05-10T16:00:00Z')
     const issues = evaluateShiftIssues(target, [], [])
@@ -77,7 +77,7 @@ describe('evaluateShiftIssues — daily rest and overlap', () => {
   })
 })
 
-describe('evaluateShiftIssues — holiday', () => {
+describe('evaluateShiftIssues:holiday', () => {
   it('flags Holiday when an approved holiday covers target.date', () => {
     const target = makeShift('2026-05-10', '2026-05-10T08:00:00Z', '2026-05-10T16:00:00Z')
     const holiday = makeHoliday('2026-05-10')
@@ -101,7 +101,7 @@ describe('evaluateShiftIssues — holiday', () => {
   })
 })
 
-describe('evaluateShiftIssues — weekly rest (AML §10-8(2))', () => {
+describe('evaluateShiftIssues:weekly rest (AML §10-8(2))', () => {
   it('clean when there is a single 64h gap (Mon–Fri shifts, target Sun)', () => {
     const target = makeShift('2026-05-10', '2026-05-10T08:00:00Z', '2026-05-10T16:00:00Z')
     const others = [4, 5, 6, 7, 8].map((d) =>
@@ -159,7 +159,7 @@ describe('evaluateShiftIssues — weekly rest (AML §10-8(2))', () => {
   })
 })
 
-describe('evaluateShiftIssues — consecutive workdays warning', () => {
+describe('evaluateShiftIssues:consecutive workdays warning', () => {
   it('emits no warning at 5 consecutive workdays', () => {
     const target = makeShift('2026-05-08', '2026-05-08T08:00:00Z', '2026-05-08T16:00:00Z')
     const others = [4, 5, 6, 7].map((d) =>
@@ -244,7 +244,7 @@ describe('evaluateShiftIssues — consecutive workdays warning', () => {
   })
 })
 
-describe('evaluateShiftIssues — precedence', () => {
+describe('evaluateShiftIssues:precedence', () => {
   it('Holiday short-circuits everything else (no other conflicts or warnings)', () => {
     const target = makeShift('2026-05-09', '2026-05-09T08:00:00Z', '2026-05-09T16:00:00Z')
     const overlap = makeShift('2026-05-09', '2026-05-09T10:00:00Z', '2026-05-09T18:00:00Z', 'overlap')

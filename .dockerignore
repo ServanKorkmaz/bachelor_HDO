@@ -2,19 +2,19 @@
 # during `docker build`. This is the security-critical line of defence
 # against accidentally copying secrets (.env*.local) into the image.
 
-# Dependencies — re-installed inside the image
+# Dependencies (re-installed inside the image)
 node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build artifacts — produced fresh inside the image
+# Build artifacts (produced fresh inside the image)
 .next
 out
 build
 dist
 
-# Secrets — never bake these into an image
+# Secrets (never bake these into an image)
 .env
 .env*.local
 
@@ -28,7 +28,7 @@ dist
 *.swp
 .DS_Store
 
-# Tests / CI artifacts — not needed at runtime
+# Tests / CI artifacts (not needed at runtime)
 tests
 test-results
 playwright-report
@@ -38,7 +38,7 @@ coverage
 # CI / GitHub workflows
 .github
 
-# Docs / planning artifacts — keep image lean
+# Docs / planning artifacts (keep image lean)
 README.md
 SECURITY.md
 LICENSE

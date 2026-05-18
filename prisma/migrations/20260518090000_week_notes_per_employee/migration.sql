@@ -1,6 +1,6 @@
 -- Switch week notes from team-wide to per-employee. The previous model keyed
 -- notes on (teamId, isoYear, isoWeek), which meant every employee in a team
--- saw the same note in the Agenda view — the original frontend was already
+-- saw the same note in the Agenda view. The original frontend was already
 -- documented as "per-employee", so this aligns the data model with the UI.
 --
 -- The existing rows can't be migrated meaningfully (there's no way to know
