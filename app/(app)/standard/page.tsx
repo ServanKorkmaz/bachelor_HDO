@@ -184,14 +184,14 @@ export default function StandardPlanPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Standard plan</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePrevWeek} size="icon">
-            <ChevronLeft className="h-4 w-4" />
+          <Button variant="outline" onClick={handlePrevWeek} size="icon" aria-label="Forrige uke">
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </Button>
           <Button variant="outline" onClick={handleToday}>
             I dag
           </Button>
-          <Button variant="outline" onClick={handleNextWeek} size="icon">
-            <ChevronRight className="h-4 w-4" />
+          <Button variant="outline" onClick={handleNextWeek} size="icon" aria-label="Neste uke">
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </Button>
           {canEditShifts && selectedTeamId && (
             <Button variant="outline" onClick={() => setIsBulkModalOpen(true)}>
@@ -212,8 +212,9 @@ export default function StandardPlanPage() {
 
       <div className="flex flex-wrap items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Dato:</label>
+          <label className="text-sm font-medium" htmlFor="standard-date">Dato:</label>
           <Input
+            id="standard-date"
             type="date"
             value={format(selectedDate, 'yyyy-MM-dd')}
             onChange={(e) => setSelectedDate(new Date(e.target.value))}
@@ -221,12 +222,12 @@ export default function StandardPlanPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Se oversikt for ansatt:</label>
+          <label className="text-sm font-medium" id="standard-user-filter-label">Se oversikt for ansatt:</label>
           <Select
             value={selectedUserId || 'all'}
             onValueChange={(value) => setSelectedUserId(value === 'all' ? '' : value)}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px]" aria-labelledby="standard-user-filter-label">
               <SelectValue placeholder="Alle" />
             </SelectTrigger>
             <SelectContent>
@@ -243,7 +244,7 @@ export default function StandardPlanPage() {
         </div>
 
         <div className="flex items-center gap-2 min-w-[220px]">
-          <label className="text-sm font-medium">Plan:</label>
+          <label className="text-sm font-medium" id="standard-team-filter-label">Plan:</label>
           <Select
             value={selectedTeamId}
             onValueChange={(id) => {
@@ -253,7 +254,7 @@ export default function StandardPlanPage() {
               router.replace(`/standard?${params.toString()}`, { scroll: false })
             }}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px]" aria-labelledby="standard-team-filter-label">
               <SelectValue placeholder="Velg plan" />
             </SelectTrigger>
             <SelectContent>

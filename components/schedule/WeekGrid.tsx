@@ -207,14 +207,20 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                             />
                           )}
                           {approvedHoliday && (
-                            <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                            // text-amber-950 on bg-amber-500 ≈ 7.4:1 contrast.
+                            // text-white on the same bg was 2.14:1 — fails WCAG AA.
+                            <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                               {holidayLabel(approvedHoliday.type)}
                             </span>
                           )}
-                          <div className={`font-semibold leading-tight ${approvedHoliday ? 'line-through opacity-50' : ''}`}>
+                          <div className={`font-semibold leading-tight ${approvedHoliday ? 'line-through opacity-70' : ''}`}>
                             {shift.shiftType.label}
                           </div>
-                          <div className={`mt-1 text-sm opacity-95 ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
+                          {/* No `opacity-95` on the time row, and any
+                              opacity used to fade a cancelled shift floors at
+                              70% so contrast still meets WCAG AA on the
+                              shift's coloured bg. */}
+                          <div className={`mt-1 text-sm ${approvedHoliday ? 'line-through opacity-70' : ''}`}>
                             {format(new Date(shift.startDateTime), 'HH:mm')} - {format(new Date(shift.endDateTime), 'HH:mm')}
                           </div>
                           {shift.comment && !approvedHoliday && (

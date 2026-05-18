@@ -301,9 +301,9 @@ export default function AgendaPage() {
 
         {canSwitchEmployee && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Ansatt</label>
+            <label className="text-sm font-medium" id="agenda-user-label">Ansatt</label>
             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="w-[220px]" aria-labelledby="agenda-user-label">
                 <SelectValue placeholder="Velg ansatt" />
               </SelectTrigger>
               <SelectContent>
@@ -319,9 +319,9 @@ export default function AgendaPage() {
 
         {teams.length > 1 && (
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium">Team</label>
+            <label className="text-sm font-medium" id="agenda-team-label">Team</label>
             <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-[200px]" aria-labelledby="agenda-team-label">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -484,7 +484,7 @@ function DayRow({ date, shift, holiday }: DayRowProps) {
             {format(new Date(shift.startDateTime), 'HH:mm')} –{' '}
             {format(new Date(shift.endDateTime), 'HH:mm')}
           </span>
-          <span className={`text-sm ${struckOut ? 'line-through opacity-50' : ''}`}>
+          <span className={`text-sm ${struckOut ? 'line-through opacity-70' : ''}`}>
             {shift.shiftType.label}
           </span>
           {holiday && (

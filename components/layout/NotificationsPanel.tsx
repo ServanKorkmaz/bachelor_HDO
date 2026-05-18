@@ -63,10 +63,15 @@ export function NotificationsPanel() {
         size="icon"
         onClick={() => setIsOpen(true)}
         className="relative"
+        aria-label={unreadCount > 0 ? `Varsler (${unreadCount} uleste)` : 'Varsler'}
+        title="Varsler"
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-4 w-4" aria-hidden />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+          <span
+            className="absolute top-0 right-0 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center"
+            aria-hidden
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

@@ -32,6 +32,7 @@ export function ShiftIssueDot({
 
   return (
     <span
+      role="img"
       className={cn(
         'inline-block h-2 w-2 rounded-full ring-2 ring-card',
         isHard ? 'bg-destructive' : 'bg-amber-500',

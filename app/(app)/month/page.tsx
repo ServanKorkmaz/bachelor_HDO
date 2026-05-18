@@ -162,14 +162,14 @@ export default function MonthPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Måned</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handlePrevMonth} size="icon">
-            <ChevronLeft className="h-4 w-4" />
+          <Button variant="outline" onClick={handlePrevMonth} size="icon" aria-label="Forrige måned">
+            <ChevronLeft className="h-4 w-4" aria-hidden />
           </Button>
           <Button variant="outline" onClick={handleToday}>
             I dag
           </Button>
-          <Button variant="outline" onClick={handleNextMonth} size="icon">
-            <ChevronRight className="h-4 w-4" />
+          <Button variant="outline" onClick={handleNextMonth} size="icon" aria-label="Neste måned">
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </Button>
           {selectedTeamId && (
             <ExportMenu
@@ -185,12 +185,12 @@ export default function MonthPage() {
 
       <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Plan:</label>
+          <label className="text-sm font-medium" id="month-team-label">Plan:</label>
           <Select
             value={selectedTeamId}
             onValueChange={setSelectedTeamId}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px]" aria-labelledby="month-team-label">
               <SelectValue placeholder="Velg plan" />
             </SelectTrigger>
             <SelectContent>
@@ -228,11 +228,14 @@ export default function MonthPage() {
               <div
                 key={dateStr}
                 className={`bg-background min-h-[170px] p-2.5 border-r border-b border-border cursor-pointer hover:bg-accent transition-colors ${
-                  !isCurrentMonth ? 'opacity-30' : ''
-                } ${isToday ? 'ring-2 ring-primary' : ''}`}
+                  isToday ? 'ring-2 ring-primary' : ''
+                }`}
                 onClick={() => handleDayClick(date)}
               >
-                <div className={`text-base font-semibold mb-2 ${isToday ? 'text-primary' : ''}`}>
+                {/* Apply the prev/next-month fade only to the day number, not
+                    the whole cell — fading the cell killed shift-chip
+                    contrast below WCAG AA. */}
+                <div className={`text-base font-semibold mb-2 ${isToday ? 'text-primary' : ''} ${!isCurrentMonth ? 'opacity-50' : ''}`}>
                   {format(date, 'd')}
                 </div>
                 <div className="space-y-1.5">
@@ -251,19 +254,22 @@ export default function MonthPage() {
                         event.stopPropagation()
                         handleShiftClick(shift)
                       }}
+                      aria-label={`${shift.shiftType.label}, ${shift.user?.name || 'Ukjent ansatt'}, ${formatTime(shift.startDateTime)} til ${formatTime(shift.endDateTime)}${approvedHoliday ? ' (avlyst pga. fravær)' : ''}`}
                     >
                       {approvedHoliday && (
-                        <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                           {holidayLabel(approvedHoliday.type)}
                         </span>
                       )}
-                      <div className={`font-semibold leading-tight ${approvedHoliday ? 'line-through opacity-50' : ''}`}>
+                      <div className={`font-semibold leading-tight ${approvedHoliday ? 'line-through opacity-70' : ''}`}>
                         {shift.shiftType.label}
                       </div>
-                      <div className={`mt-1.5 text-base font-semibold leading-tight ${approvedHoliday ? 'opacity-40' : ''}`}>
+                      <div className={`mt-1.5 text-base font-semibold leading-tight ${approvedHoliday ? 'opacity-70' : ''}`}>
                         {shift.user?.name || 'Ukjent ansatt'}
                       </div>
-                      <div className={`mt-1 text-sm leading-tight opacity-80 ${approvedHoliday ? 'line-through opacity-40' : ''}`}>
+                      {/* Opacity floors at 70% so faded-cancelled text still
+                          meets WCAG AA 4.5:1 on the shift's coloured bg. */}
+                      <div className={`mt-1 text-sm leading-tight ${approvedHoliday ? 'line-through opacity-70' : ''}`}>
                         {formatTime(shift.startDateTime)} - {formatTime(shift.endDateTime)}
                       </div>
                       {shift.comment && !approvedHoliday && (
@@ -322,13 +328,13 @@ export default function MonthPage() {
                   className="w-full rounded-lg border p-4 text-left transition hover:bg-accent"
                 >
                   {approvedHoliday && (
-                    <span className="mb-2 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                    <span className="mb-2 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                       {holidayLabel(approvedHoliday.type)}
                     </span>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
-                      <div className={`text-base font-semibold ${approvedHoliday ? 'line-through opacity-50' : ''}`}>
+                      <div className={`text-base font-semibold ${approvedHoliday ? 'line-through opacity-70' : ''}`}>
                         {shift.shiftType?.label || 'Vakt'}
                       </div>
                       <div className={`text-sm text-muted-foreground ${approvedHoliday ? 'opacity-40' : ''}`}>

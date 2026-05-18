@@ -347,8 +347,9 @@ export default function SwapPage() {
 
       <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium">Plan:</label>
+          <label className="text-sm font-medium" htmlFor="swap-team-select">Plan:</label>
           <select
+            id="swap-team-select"
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
             className="px-3 py-1 rounded-md border bg-background text-foreground"
@@ -508,11 +509,14 @@ export default function SwapPage() {
                         {request.fromUser.name} → {request.toUser.name}
                       </span>
                       <span className={`text-xs px-2 py-1 rounded ${
-                        request.status === 'APPROVED' ? 'bg-green-500/20 text-green-500' :
-                        request.status === 'REJECTED' ? 'bg-red-500/20 text-red-500' :
-                        request.status === 'EXECUTED' ? 'bg-blue-500/20 text-blue-500' :
-                        request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-500' :
-                        request.status === 'AWAITING_ACCEPTANCE' ? 'bg-amber-100 text-amber-700' :
+                        // Lighter text shades (400) bring contrast on the
+                        // dim 500/20 bg above WCAG AA's 4.5:1 — the 500
+                        // shade on its own 500/20 sits at ~4.4:1.
+                        request.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
+                        request.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :
+                        request.status === 'EXECUTED' ? 'bg-blue-500/20 text-blue-400' :
+                        request.status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
+                        request.status === 'AWAITING_ACCEPTANCE' ? 'bg-amber-100 text-amber-900' :
                         'bg-muted text-muted-foreground'
                       }`}>
                         {statusToNorwegian(request.status)}

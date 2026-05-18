@@ -103,7 +103,10 @@ async function main() {
       data: {
         code: 'D2',
         label: 'D2 08.00-20.15',
-        color: '#808080', // Grey
+        // Darker slate-grey so white text reaches WCAG AA 4.5:1 contrast.
+        // The previous #808080 was at the perceptual midpoint where
+        // neither white nor black text passes 4.5:1.
+        color: '#4B5563',
         defaultStartTime: '08:00',
         defaultEndTime: '20:15',
         crossesMidnight: false,
