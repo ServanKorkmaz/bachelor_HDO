@@ -245,7 +245,7 @@ export type UserRoleUpdateBody = z.infer<typeof userRoleUpdateSchema>
  * from ISO week because ISO weeks at the year boundary belong to a different
  * ISO year than their calendar year (see `WeekNote` model comment).
  *
- * `body` is capped at 1000 chars — these are short "fokus for uka"-style
+ * `body` is capped at 1000 chars. These are short "fokus for uka"-style
  * notices, not free-form journals.
  */
 export const weekNoteUpsertSchema = z.object({

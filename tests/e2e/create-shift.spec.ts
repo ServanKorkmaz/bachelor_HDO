@@ -12,7 +12,7 @@ import { signInAsEmail, SEED_ADMIN_EMAIL } from './helpers/auth'
  * On subsequent runs the cell may already have a shift left by a prior run,
  * so the modal opens in edit mode → PUT 200. All three statuses (200, 201,
  * and 409 for a duplicate-key race) prove the route is correctly wired up.
- * No cleanup — at most one extra row lands far outside the seeded window.
+ * No cleanup. At most one extra row lands far outside the seeded window.
  */
 test.describe('Create shift via grid', () => {
   test.beforeEach(async ({ context }) => {
@@ -20,7 +20,7 @@ test.describe('Create shift via grid', () => {
   })
 
   test('admin clicks a cell, submits the modal, and the API persists the shift', async ({ page }) => {
-    // A Tuesday two years out — clearly outside the seed's current-week shifts.
+    // A Tuesday two years out. Clearly outside the seed's current-week shifts.
     const targetDate = '2027-12-14'
 
     await page.goto('/standard')
@@ -36,10 +36,10 @@ test.describe('Create shift via grid', () => {
     )
 
     // Click any cell (empty or occupied) in the first employee row. The grid
-    // always shows the seeded EMPLOYEE users — use the first available row
+    // always shows the seeded EMPLOYEE users. Use the first available row
     // rather than hardcoding a name so the test stays valid across re-seeds.
     // On first run the cell is empty (POST); on repeat runs it may be occupied
-    // (PUT) — both outcomes are valid (see comment above).
+    // (PUT). Both outcomes are valid (see comment above).
     const firstEmployeeRow = page.locator('tbody tr').first()
     // Skip the first column (employee name) and click the second data cell.
     await firstEmployeeRow.locator('td').nth(1).click()
@@ -52,7 +52,7 @@ test.describe('Create shift via grid', () => {
     // Wait for the modal's setup useEffect to populate state before clicking
     // Lagre. Without this we race against React: handleSave guards on
     // (date && selectedShiftTypeId && selectedUserId) and silently returns
-    // if any is empty — producing no network request and a Playwright timeout.
+    // if any is empty. Producing no network request and a Playwright timeout.
     // The start-time input is empty until the useEffect runs (with either
     // shift defaults for PUT or shift-type defaults for POST), so its value
     // being non-empty is a definitive "modal is ready" signal that survives
@@ -65,8 +65,8 @@ test.describe('Create shift via grid', () => {
       page.waitForResponse(r => {
         const url = r.url()
         const method = r.request().method()
-        // POST /api/shifts  — create new shift
-        // PUT  /api/shifts/{id} — update existing shift (repeat run)
+        // POST /api/shifts: create new shift
+        // PUT  /api/shifts/{id}. Update existing shift (repeat run)
         return (
           url.includes('/api/shifts') &&
           (method === 'POST' || method === 'PUT')

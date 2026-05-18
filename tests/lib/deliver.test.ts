@@ -119,7 +119,7 @@ describe('deliverNotificationToChannels', () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1)
   })
 
-  // === Delivery logging — L5 fix ===
+  // === Delivery logging. L5 fix ===
 
   it('writes a SENT row on a successful email delivery', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ email: 'alice@example.com' })
@@ -143,7 +143,7 @@ describe('deliverNotificationToChannels', () => {
     mockPrisma.user.findUnique.mockResolvedValue({ email: 'alice@example.com' })
     mockSendEmail.mockRejectedValueOnce(new Error('SMTP connection refused'))
 
-    // Must not throw to caller — failures are persisted, not propagated
+    // Must not throw to caller. Failures are persisted, not propagated
     await expect(deliverNotificationToChannels(baseParams)).resolves.toBeUndefined()
 
     expect(mockPrisma.notificationDeliveryLog.create).toHaveBeenCalledWith(

@@ -35,7 +35,7 @@ export interface LogAuthEventInput {
 }
 
 /**
- * Best-effort audit write for auth events. Never throws — auth flow must not
+ * Best-effort audit write for auth events. Never throws. Auth flow must not
  * be blocked by an audit failure, and the real error must surface instead.
  */
 export async function logAuthEvent(input: LogAuthEventInput): Promise<void> {

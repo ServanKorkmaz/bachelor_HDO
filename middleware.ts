@@ -5,7 +5,7 @@ import { sessionCookieName, unsealSession } from '@/lib/auth/session'
 /**
  * Edge-level auth gate. Verifies the __hdo_session cookie signature with pure
  * crypto (no DB lookup) so it stays Edge-runtime compatible. The wrapper
- * pattern in lib/auth/withAuth.ts remains the source of truth — this is
+ * pattern in lib/auth/withAuth.ts remains the source of truth. This is
  * defense-in-depth that rejects unauthenticated requests early.
  */
 

@@ -20,7 +20,7 @@ const meta = {
 
 /**
  * Unit tests for the PDF document-definition builder. These exercise the
- * pure function — no pdfmake runtime, no fonts — so they're fast and
+ * pure function with no pdfmake runtime and no fonts, so they're fast and
  * deterministic. The downloader (`downloadShiftPdf`) is intentionally not
  * tested here because it dynamic-imports pdfmake and triggers a browser
  * download; that's covered by manual smoke tests and the E2E suite.

@@ -49,7 +49,7 @@ async function loadSwap(id: string, requireStatus?: string, badStateMessage?: st
 
 /**
  * Create a swap request. The shift is looked up to find its assignee
- * (`fromUserId`) — the caller is the requester, and the body's intended
+ * (`fromUserId`). The caller is the requester, and the body's intended
  * recipient is `toUserId`. Notifies the recipient and writes one audit row.
  */
 export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelations> {
@@ -80,7 +80,7 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
   }
 
   // Check that toUser does not already have a shift that overlaps in time with the from-shift.
-  // If a toShift is provided, exclude it — it will be moved to fromUser instead.
+  // If a toShift is provided, exclude it. It will be moved to fromUser instead.
   const toUserConflict = await prisma.shift.findFirst({
     where: {
       userId: input.toUserId,
@@ -312,7 +312,7 @@ export async function rejectSwap(swapRequestId: string, actorUserId: string) {
 
 /**
  * Revert an APPROVED or REJECTED swap back to PENDING so a new decision can
- * be made. EXECUTED swaps cannot be revoked — the shift reassignment is not
+ * be made. EXECUTED swaps cannot be revoked. The shift reassignment is not
  * automatically undone. Used when a leader or admin acted by mistake.
  */
 export async function revokeSwap(swapRequestId: string, actorUserId: string) {
@@ -353,7 +353,7 @@ export async function revokeSwap(swapRequestId: string, actorUserId: string) {
 }
 
 /**
- * Execute an APPROVED swap — reassigns the underlying shift to the new
+ * Execute an APPROVED swap. Reassigns the underlying shift to the new
  * assignee, marks the swap EXECUTED, and notifies both parties.
  */
 export async function executeSwap(swapRequestId: string, actorUserId: string) {
@@ -363,7 +363,7 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     'Swap request must be approved before execution'
   )
 
-  // Re-validate time-overlap conflicts at execution time — a shift may have been added
+  // Re-validate time-overlap conflicts at execution time. A shift may have been added
   // between approval and execution.
   const toUserConflict = await prisma.shift.findFirst({
     where: {

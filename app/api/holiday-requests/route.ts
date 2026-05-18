@@ -49,7 +49,7 @@ export const POST = withAuth(async (request, ctx) => {
     if ('error' in parsed) return parsed.error
     const { type, dateFrom, dateTo, message } = parsed.data
 
-    // userId/teamId always derived from the authenticated caller — body
+    // userId/teamId always derived from the authenticated caller. Body
     // values are ignored to prevent submitting on someone else's behalf.
     const u = await prisma.user.findUnique({ where: { id: ctx.userId } })
     if (!u) return NextResponse.json({ error: 'Current user not found' }, { status: 404 })

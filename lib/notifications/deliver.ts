@@ -20,7 +20,7 @@ interface DeliverParams {
  * `notification_delivery_log` so a failed SMTP call can be discovered later
  * instead of disappearing into console output.
  *
- * This function never throws — failures are persisted, not propagated, so
+ * This function never throws. Failures are persisted, not propagated, so
  * callers can safely fire-and-forget.
  */
 export async function deliverNotificationToChannels(params: DeliverParams): Promise<void> {
@@ -95,8 +95,8 @@ interface AttemptParams {
 }
 
 /**
- * Run a single channel send and record the outcome. Internal helper —
- * exceptions thrown by the send function are caught and logged, never
+ * Run a single channel send and record the outcome. Internal helper.
+ * Exceptions thrown by the send function are caught and logged, never
  * re-thrown.
  */
 async function attemptDelivery(params: AttemptParams): Promise<void> {

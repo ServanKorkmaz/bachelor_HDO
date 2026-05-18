@@ -3,7 +3,7 @@ import { differenceInHours } from 'date-fns'
 /**
  * AML §10-8 and industry-guideline evaluation for a single shift, mirroring
  * the algorithm implemented in the Android client (Kotlin
- * `ShiftConflictDetector`). The two implementations must stay in sync — the
+ * `ShiftConflictDetector`). The two implementations must stay in sync. The
  * shared spec is `2026-04-30-aml-rules-extension.md`.
  *
  * The server is the authoritative enforcer: `shift-service.ts` and
@@ -12,10 +12,10 @@ import { differenceInHours } from 'date-fns'
  * exists purely for fast UI feedback before submit.
  */
 
-/** AML §10-8(1) — at least 11 hours continuous daily rest. */
+/** AML §10-8(1). At least 11 hours continuous daily rest. */
 export const DAILY_REST_HOURS = 11
 
-/** AML §10-8(2) — at least 35 hours continuous rest in any rolling 7-day window. */
+/** AML §10-8(2). At least 35 hours continuous rest in any rolling 7-day window. */
 export const WEEKLY_REST_HOURS = 35
 
 /** Industry healthcare guideline (not statutory). Streak of 6+ workdays triggers a warning. */
@@ -30,7 +30,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
  */
 export interface IssueShift {
   id: string
-  /** YYYY-MM-DD — calendar day the shift belongs to. */
+  /** YYYY-MM-DD. Calendar day the shift belongs to. */
   date: string
   startDateTime: Date
   endDateTime: Date
@@ -58,7 +58,7 @@ export interface ShiftIssues {
   warnings: Warning[]
 }
 
-/** Convenience: true when nothing — neither hard conflict nor warning — applies. */
+/** Convenience: true when nothing. Neither hard conflict nor warning. Applies. */
 export function isClean(issues: ShiftIssues): boolean {
   return issues.hardConflict === null && issues.warnings.length === 0
 }

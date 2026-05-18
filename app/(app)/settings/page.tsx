@@ -8,7 +8,7 @@ import { ProfileSection } from '@/components/auth/ProfileSection'
 /**
  * Personal settings page for everyone. Shows the user's profile inline and
  * the (single) personal-setting they can edit: notification preferences.
- * Admins land on /admin via the nav for the wider admin tooling — but if
+ * Admins land on /admin via the nav for the wider admin tooling, but if
  * they explicitly visit /settings, they see this same personal view rather
  * than getting redirected away.
  */

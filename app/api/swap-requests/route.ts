@@ -57,7 +57,7 @@ export const POST = withAuth(async (request, ctx) => {
 
     const swapRequest = await createSwap({
       teamId,
-      // requestedByUserId always comes from the authenticated caller — never trust the body
+      // requestedByUserId always comes from the authenticated caller. Never trust the body
       requestedByUserId: ctx.userId,
       shiftId,
       toShiftId,

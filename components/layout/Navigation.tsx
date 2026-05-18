@@ -18,7 +18,7 @@ const baseNavItems = [
 
 /**
  * Primary top navigation. The settings entry uses a unified label
- * ("Innstillinger") for every role; only the destination differs — admins
+ * ("Innstillinger") for every role; only the destination differs. Admins
  * and leaders land on the wider /admin hub which embeds their profile,
  * everyone else lands on /settings with their profile and personal options.
  */

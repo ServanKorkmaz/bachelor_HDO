@@ -3,9 +3,9 @@ import { nb } from 'date-fns/locale/nb'
 import type { TDocumentDefinitions, TableCell } from 'pdfmake/interfaces'
 
 /** Display row passed in from the audit page. Pre-translated and joined so
- * this module stays free of business logic — its only job is layout. */
+ * this module stays free of business logic. Its only job is layout. */
 export interface AuditPdfRow {
-  /** Pre-formatted "dd.MM.yyyy HH:mm" — date logic stays at the caller. */
+  /** Pre-formatted "dd.MM.yyyy HH:mm". Date logic stays at the caller. */
   timestamp: string
   actor: string
   action: string
@@ -20,7 +20,7 @@ export interface AuditPdfMetadata {
   dateTo: string
   /** Pre-translated label like "Alle" / "Ferie" / "Vaktbytte". */
   entityFilterLabel: string
-  /** Name of the user who triggered the download — recorded so the PDF is
+  /** Name of the user who triggered the download. Recorded so the PDF is
    * itself self-documenting if it gets archived or shared as evidence. */
   downloadedBy: string
   generatedAt?: Date
@@ -30,9 +30,9 @@ const HEADER_FILL = '#1e3a8a'
 const HEADER_TEXT = '#ffffff'
 
 /**
- * Build a pdfmake document definition for the audit log. Pure function — no
- * IO, no pdfmake runtime — so it can be unit-tested without spinning up the
- * font system.
+ * Build a pdfmake document definition for the audit log. Pure function
+ * with no IO and no pdfmake runtime, so it can be unit-tested without
+ * spinning up the font system.
  *
  * A4 landscape because the entity column needs the horizontal room. Header
  * carries the period, filter, and "downloaded by" so an archived copy of the

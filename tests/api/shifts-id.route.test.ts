@@ -71,7 +71,7 @@ describe('PUT /api/shifts/[id]', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
-    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    // AML validation defaults to "clean". No neighbouring shifts, no holidays.
     mockPrisma.shift.findMany.mockResolvedValue([])
     mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
@@ -146,7 +146,7 @@ describe('DELETE /api/shifts/[id]', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
-    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    // AML validation defaults to "clean". No neighbouring shifts, no holidays.
     mockPrisma.shift.findMany.mockResolvedValue([])
     mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)

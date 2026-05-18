@@ -7,12 +7,12 @@ import { ServiceError } from './errors'
  * Look up the user's nearby shifts and active approved holidays, then run the
  * AML §10-8 evaluator. Throws a typed ServiceError when a hard conflict is
  * detected. Must be called inside a transaction so the validation is
- * serialised with the write — no TOCTOU window where two parallel callers
+ * serialised with the write. No TOCTOU window where two parallel callers
  * each see "clean" and both insert a violating shift.
  *
  * `targetId` is the id of the row being created or updated (use a stable
  * placeholder for create flows). `excludeShiftIds` lets swap flows drop rows
- * that are about to leave the user — e.g. the shift they're giving away in a
+ * that are about to leave the user. E.g. the shift they're giving away in a
  * two-way swap should not count against their post-swap schedule.
  *
  * The 14-day shift-fetch window is intentionally wider than the 7-day rolling

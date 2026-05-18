@@ -79,7 +79,7 @@ model User {
   name        String
   email       String       @unique
   role        UserRole     @default(EMPLOYEE)
-  // teamId is the user's "home" or primary team — kept for display labels and
+  // teamId is the user's "home" or primary team. Kept for display labels and
   // sensible defaults when creating new objects on the user's behalf. The
   // authoritative source for "is this user currently allowed into team X?"
   // is the TeamMembership table (where membership status is also tracked).
@@ -130,7 +130,7 @@ model Shift {
   userId        String
   // `date` is the calendar day the shift belongs to (YYYY-MM-DD). It is
   // stored as a String rather than a DateTime / @db.Date so it can never be
-  // shifted across timezones at the JSON/React boundary — a shift on the 27th
+  // shifted across timezones at the JSON/React boundary. A shift on the 27th
   // is the 27th regardless of where the user is reading from. Format and
   // validity are enforced by Zod (`dateString` in lib/validation/schemas.ts).
   date          String
@@ -321,7 +321,7 @@ model HolidayRequest {
 model WeekNote {
   id        String   @id @default(cuid())
   teamId    String
-  /// The employee the note is *about* — week notes are per-employee
+  /// The employee the note is *about*. Week notes are per-employee
   /// ("fokus for uka" for this person), not per-team.
   userId    String
   /// ISO 8601 week-year. Use this together with isoWeek instead of a calendar
@@ -340,7 +340,7 @@ model WeekNote {
   creator User? @relation("WeekNoteCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
   /// At most one note per (team, user, ISO year, ISO week). The upsert API
-  /// relies on this constraint to make writes idempotent — repeated saves
+  /// relies on this constraint to make writes idempotent. Repeated saves
   /// merge into the same row instead of producing duplicates.
   @@unique([teamId, userId, isoYear, isoWeek])
   @@index([teamId, userId, isoYear, isoWeek])

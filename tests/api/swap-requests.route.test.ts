@@ -97,7 +97,7 @@ describe('POST /api/swap-requests', () => {
     mockPrisma.swapRequest.findFirst.mockResolvedValue(null)
     // No conflicting shift on the recipient by default.
     mockPrisma.shift.findFirst.mockResolvedValue(null)
-    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    // AML validation defaults to "clean". No neighbouring shifts, no holidays.
     mockPrisma.shift.findMany.mockResolvedValue([])
     mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
@@ -168,7 +168,7 @@ describe('POST /api/swap-requests', () => {
       startDateTime: new Date('2026-04-28T06:00:00Z'),
       endDateTime: new Date('2026-04-28T14:00:00Z'),
     })
-    // Recipient (user-2) already has a shift ending 22:00 the night before — only 8h rest.
+    // Recipient (user-2) already has a shift ending 22:00 the night before. Only 8h rest.
     mockPrisma.shift.findMany.mockResolvedValue([
       {
         id: 'other-1',

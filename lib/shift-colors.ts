@@ -29,7 +29,7 @@ function isLightColor(hexColor: string): boolean {
 
   // Perceived luminance, scaled 0-255. Threshold of 130 (rather than the
   // intuitive 128 midpoint) is chosen so that mid-orange shift types like
-  // N1 #CD853F (brightness 147) get dark text — white text on that orange
+  // N1 #CD853F (brightness 147) get dark text. White text on that orange
   // measures 2.78:1, far below WCAG AA's 4.5:1, while black text gives
   // 5.94:1. Shift colours below brightness ~115 should be avoided in the
   // admin UI: they sit in a contrast dead zone where neither black nor

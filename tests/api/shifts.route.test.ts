@@ -85,7 +85,7 @@ describe('POST /api/shifts', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue(ADMIN_USER)
-    // AML validation needs both lookups; default to "clean" — no neighbouring shifts, no holidays.
+    // AML validation needs both lookups; default to "clean". No neighbouring shifts, no holidays.
     mockPrisma.shift.findMany.mockResolvedValue([])
     mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)

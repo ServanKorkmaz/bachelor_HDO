@@ -5,7 +5,7 @@ import { parseJsonBody } from '@/lib/validation/parseJson'
 import { notificationPreferencesSchema } from '@/lib/validation/schemas'
 
 /**
- * Get notification preferences for a user. Self or admin only — these settings
+ * Get notification preferences for a user. Self or admin only. These settings
  * are personal and shouldn't leak between accounts.
  */
 export const GET = withAuth<{ id: string }>(async (_request, ctx) => {

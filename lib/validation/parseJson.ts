@@ -5,7 +5,7 @@ export type ParseResult<T> = { data: T } | { error: NextResponse }
 
 /**
  * Parse the JSON body of a request and validate it against a Zod schema.
- * On success, returns `{ data }`. On failure, returns `{ error }` — a 400
+ * On success, returns `{ data }`. On failure, returns `{ error }`. A 400
  * NextResponse with field-level details.
  */
 export async function parseJsonBody<T extends z.ZodTypeAny>(

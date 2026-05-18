@@ -19,7 +19,7 @@ interface Prefs {
 
 /**
  * Personal notification preferences. Lives under `/settings/*` rather than
- * `/admin/*` because every user — admin, leader, employee — manages their
+ * `/admin/*` because every user. Admin, leader, employee. Manages their
  * own preferences. The corresponding admin-only **team** notification
  * settings live at `/admin/settings`.
  */

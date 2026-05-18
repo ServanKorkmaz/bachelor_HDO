@@ -10,7 +10,7 @@ export interface PdfMakeInstance {
  * Memoised loader for pdfmake. We dynamic-import the library (~1MB of font
  * data lives in `vfs_fonts`) so users who never export don't pay for it on
  * first paint, and we cache the result because pdfmake registers fonts on
- * a process-global singleton — re-running setup on every click is wasted
+ * a process-global singleton. Re-running setup on every click is wasted
  * work. The cache lives for the page-load lifetime of the SPA.
  *
  * This module is the single owner of pdfmake setup so every exporter
@@ -25,7 +25,7 @@ async function load(): Promise<PdfMakeInstance> {
   ])
   // `vfs_fonts` is a CJS module: `module.exports = { 'Roboto-Regular.ttf': '<base64>', ... }`.
   // Webpack wraps that object under `.default` when it's dynamic-imported as ESM.
-  // Note: `pdfMake.vfs = ...` is a silent no-op in pdfmake 0.3.x — `addVirtualFileSystem`
+  // Note: `pdfMake.vfs = ...` is a silent no-op in pdfmake 0.3.x. `addVirtualFileSystem`
   // is the supported entry point and writes into pdfmake's internal vfs.
   const fonts =
     (vfsMod as { default?: Record<string, string> }).default ??

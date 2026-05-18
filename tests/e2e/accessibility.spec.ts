@@ -9,12 +9,12 @@ import { signInAsEmail, SEED_ADMIN_EMAIL } from './helpers/auth'
  * samples final colors instead of mid-animation opacities (which inflate
  * perceived contrast on small text and produce false positives).
  *
- * Scope: WCAG 2.1 AA — the legal bar for Norwegian public-sector apps
+ * Scope: WCAG 2.1 AA. The legal bar for Norwegian public-sector apps
  * (Forskrift om universell utforming). We disable two rules by default:
  *
  *   - `region`: triggers on any content not wrapped in a landmark; legitimate
  *     concern but our header/nav/main structure satisfies it at the page
- *     level — false positives come from third-party dropdown portals.
+ *     level. False positives come from third-party dropdown portals.
  *   - `landmark-unique`: complains when more than one <nav> exists; we use
  *     a single primary nav and Radix-rendered popovers don't actually nest.
  *

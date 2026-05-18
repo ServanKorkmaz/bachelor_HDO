@@ -86,7 +86,7 @@ describe('withAuth', () => {
  * Test-only header fallback in `lib/auth/getCurrentUserId.ts`.
  *
  * In production, identity comes from a signed iron-session cookie populated by
- * the Azure AD callback (`@azure/msal-node` + PKCE) — the cookie can't be
+ * the Azure AD callback (`@azure/msal-node` + PKCE). The cookie can't be
  * forged. The `x-current-user-id` header is accepted only when
  * `NODE_ENV === 'test'` so the existing route-handler suite can keep passing
  * a plain header instead of minting sealed cookies. These tests pin that
@@ -113,7 +113,7 @@ describe('withAuth — test-only header fallback', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null)
     const res = await wrapped(makeRequest('definitely-not-a-real-id'))
 
-    // The DB lookup is the wrapper's defense — even with the test-only header
+    // The DB lookup is the wrapper's defense. Even with the test-only header
     // path, the id must resolve to a real users row.
     expect(res.status).toBe(401)
     expect(handler).not.toHaveBeenCalled()
@@ -162,7 +162,7 @@ describe('assertTeamMember', () => {
     )
 
     expect(result).toBeNull()
-    // The membership table should not be queried for admins — this is the
+    // The membership table should not be queried for admins. This is the
     // whole point of the bypass. If this assertion regresses, admins would
     // get locked out of teams they aren't formally members of.
     expect(mockPrisma.teamMembership.findFirst).not.toHaveBeenCalled()

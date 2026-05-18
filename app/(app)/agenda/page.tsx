@@ -29,7 +29,7 @@ import {
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
 
-const WEEKS_VISIBLE = 4 // four weeks per page — matches old HDO Agenda pattern
+const WEEKS_VISIBLE = 4 // four weeks per page, matches old HDO Agenda pattern
 
 type TeamSummary = { id: string; name: string }
 type UserSummary = { id: string; name: string; teamId?: string }
@@ -60,7 +60,7 @@ type WeekNote = {
   body: string
 }
 
-/** Agenda page — per-employee weekly view with editable "fokus for uka" notes
+/** Agenda page. Per-employee weekly view with editable "fokus for uka" notes
  * above each week card. The selected employee, team and reference date are
  * persisted in the URL so a shared link reproduces the same view. */
 export default function AgendaPage() {

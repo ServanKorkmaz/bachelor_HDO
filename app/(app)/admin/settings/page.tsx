@@ -17,7 +17,7 @@ import { axiosInstance } from '@/lib/axios'
 import type { TeamSummary, NotificationSettings } from '@/lib/types'
 
 /**
- * Team-wide notification settings. Admin-only — `AdminLayout` redirects
+ * Team-wide notification settings. Admin-only. `AdminLayout` redirects
  * non-admins. Personal per-user preferences live at `/settings/notifications`.
  */
 export default function AdminNotificationSettingsPage() {

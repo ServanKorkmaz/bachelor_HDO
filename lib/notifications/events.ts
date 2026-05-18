@@ -4,7 +4,7 @@ import { deliverNotificationToChannels } from './deliver'
 
 /**
  * Domain events emitted by the services in `lib/services/`. Each variant
- * carries the bare facts of what happened — never pre-rendered text — so
+ * carries the bare facts of what happened, never pre-rendered text, so
  * `render()` below remains the single source of truth for "this is what the
  * system communicates."
  *
@@ -40,7 +40,7 @@ export type DomainEvent =
  * the event out to email/SMS after the transaction commits.
  *
  * `notificationType` mirrors pre-existing DB values so historical rows stay
- * consistent — that is why several distinct domain events render to the
+ * consistent. That is why several distinct domain events render to the
  * same notificationType (e.g. SWAP_REQUEST_SENT and SWAP_READY_FOR_LEADER
  * both store as 'SWAP_REQUESTED').
  */
@@ -216,7 +216,7 @@ export async function withEvents<T>(
     return run(tx, emit)
   })
 
-  // Tx committed — now fan out to channels. `deliverNotificationToChannels`
+  // Tx committed. Now fan out to channels. `deliverNotificationToChannels`
   // never throws (it logs failures into `notification_delivery_log`), so a
   // misbehaving channel can't take down the caller.
   for (const event of collected) {

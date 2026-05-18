@@ -70,7 +70,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
   /**
    * AML §10-8 issues per visible shift, computed from the same `shifts` and
    * `holidayRequests` props the grid already has. Limitation: the rolling
-   * 7-day weekly-rest window only looks at shifts loaded by the parent — a
+   * 7-day weekly-rest window only looks at shifts loaded by the parent. A
    * gap that straddles the start of the visible window won't be flagged
    * here. The server-side check at save time is still authoritative.
    */
@@ -208,7 +208,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                           )}
                           {approvedHoliday && (
                             // text-amber-950 on bg-amber-500 ≈ 7.4:1 contrast.
-                            // text-white on the same bg was 2.14:1 — fails WCAG AA.
+                            // text-white on the same bg was 2.14:1. Fails WCAG AA.
                             <span className="mb-1 inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                               {holidayLabel(approvedHoliday.type)}
                             </span>

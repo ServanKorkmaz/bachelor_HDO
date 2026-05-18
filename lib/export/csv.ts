@@ -1,6 +1,6 @@
 /**
  * Build a CSV string from a list of rows and a column definition. We don't
- * pull in papaparse for this because we never *parse* CSV — we only write it,
+ * pull in papaparse for this because we never *parse* CSV. We only write it,
  * and a parser library is overkill for a 30-line function. RFC 4180 quoting
  * rules are enforced so values containing commas, quotes, or newlines survive
  * a round-trip through Excel, Google Sheets, and Numbers.

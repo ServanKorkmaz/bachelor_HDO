@@ -25,7 +25,7 @@ interface ExportMenuProps {
 /**
  * Dropdown that lets the user download the currently-visible shifts as CSV
  * or PDF. Sits next to the existing date-navigation controls on the
- * schedule pages and operates on data the page already has in memory — no
+ * schedule pages and operates on data the page already has in memory. No
  * extra network round-trip. The PDF library is dynamically imported on
  * first click so users who never export don't pay its ~1MB bundle cost.
  */

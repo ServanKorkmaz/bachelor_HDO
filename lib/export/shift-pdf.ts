@@ -24,9 +24,9 @@ const HEADER_FILL = '#1e3a8a'  // matches the app's blue
 const HEADER_TEXT = '#ffffff'
 
 /**
- * Build a pdfmake document definition for a list of shifts. Pure function —
- * no IO, no browser APIs — so it can be unit-tested without spinning up
- * pdfmake's runtime.
+ * Build a pdfmake document definition for a list of shifts. Pure function
+ * with no IO and no browser APIs, so it can be unit-tested without spinning
+ * up pdfmake's runtime.
  *
  * Layout: A4 landscape, one row per shift, sorted by date then assignee.
  * Landscape gives the comment column enough room without cramping times.

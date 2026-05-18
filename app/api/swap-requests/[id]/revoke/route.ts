@@ -4,7 +4,7 @@ import { assertTeamMember, withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { revokeSwap } from '@/lib/services/swap-service'
 import { serviceErrorResponse } from '@/lib/services/errors'
 
-/** POST /api/swap-requests/:id/revoke — revert an approved/rejected decision
+/** POST /api/swap-requests/:id/revoke. Revert an approved/rejected decision
  *  back to pending. Admin, or a leader of the swap's team. */
 export const POST = withLeaderOrAdmin<{ id: string }>(async (_request, ctx) => {
   try {

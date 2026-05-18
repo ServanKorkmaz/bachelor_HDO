@@ -4,7 +4,7 @@ import { assertTeamMember, withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { revokeHoliday } from '@/lib/services/holiday-service'
 import { serviceErrorResponse } from '@/lib/services/errors'
 
-/** POST /api/holiday-requests/:id/revoke — revert an approved/rejected
+/** POST /api/holiday-requests/:id/revoke. Revert an approved/rejected
  *  decision back to pending. Admin, or a leader of the request's team. */
 export const POST = withLeaderOrAdmin<{ id: string }>(async (_request, ctx) => {
   try {

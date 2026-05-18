@@ -187,7 +187,7 @@ describe('evaluateShiftIssues — consecutive workdays warning', () => {
 
   it('does not extend the streak across rest days', () => {
     // Workdays: Mon, Tue, [rest Wed], Thu, Fri, Sat, Sun (target). Streak ending at
-    // target = 4 — below the 6-day threshold.
+    // target = 4. Below the 6-day threshold.
     const target = makeShift('2026-05-10', '2026-05-10T08:00:00Z', '2026-05-10T16:00:00Z')
     const others = [
       makeShift('2026-05-04', '2026-05-04T08:00:00Z', '2026-05-04T16:00:00Z'),

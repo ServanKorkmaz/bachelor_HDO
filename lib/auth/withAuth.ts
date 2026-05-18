@@ -7,7 +7,7 @@ export type UserRole = 'ADMIN' | 'LEADER' | 'EMPLOYEE'
 /**
  * Authenticated request context populated by `withAuth` / `withAdmin`. A
  * handler that receives this object is guaranteed to have run through the
- * auth gate — that is the whole point of the wrapper pattern.
+ * auth gate. That is the whole point of the wrapper pattern.
  */
 export interface AuthCtx {
   readonly userId: string
@@ -32,10 +32,10 @@ interface WithAuthOptions {
 }
 
 /**
- * Wrap a Next.js route handler so the auth check runs before the body — and
- * cannot be skipped by mistake. The handler receives a typed `ctx` that is
- * only constructable by this function, which makes "forgot auth check" a
- * compile-time impossibility for any route that uses the wrapper.
+ * Wrap a Next.js route handler so the auth check runs before the body
+ * and cannot be skipped by mistake. The handler receives a typed `ctx`
+ * that is only constructable by this function, which makes "forgot auth
+ * check" a compile-time impossibility for any route that uses the wrapper.
  *
  * The auth check itself mirrors the previous `requireAuth` helper: read the
  * signed iron-session cookie (`__hdo_session`),
@@ -93,7 +93,7 @@ export function withLeaderOrAdmin<TParams = Record<string, never>>(
  * supports cross-team admin reads. Pass `allowedRoles` to narrow further.
  *
  * The source of truth for team membership is the TeamMembership table, not
- * the cached `User.teamId` column — see SECURITY.md.
+ * the cached `User.teamId` column. See SECURITY.md.
  */
 export async function assertTeamMember(
   ctx: AuthCtx,

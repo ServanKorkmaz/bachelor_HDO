@@ -27,7 +27,7 @@ export const GET = withAuth<{ id: string }>(async (_request, ctx) => {
   }
 })
 
-/** Approve or reject a holiday request — leaders/admins of its team only. */
+/** Approve or reject a holiday request. Leaders/admins of its team only. */
 export const PATCH = withAuth<{ id: string }>(async (request, ctx) => {
   try {
     const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
@@ -56,7 +56,7 @@ export const PATCH = withAuth<{ id: string }>(async (request, ctx) => {
   }
 })
 
-/** Edit a PENDING holiday request — only the owner can do this. */
+/** Edit a PENDING holiday request. Only the owner can do this. */
 export const PUT = withAuth<{ id: string }>(async (request, ctx) => {
   try {
     const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)
@@ -83,7 +83,7 @@ export const PUT = withAuth<{ id: string }>(async (request, ctx) => {
   }
 })
 
-/** Cancel (delete) a PENDING holiday request — only the owner can do this. */
+/** Cancel (delete) a PENDING holiday request. Only the owner can do this. */
 export const DELETE = withAuth<{ id: string }>(async (request, ctx) => {
   try {
     const limited = applyRateLimit(request, RATE_LIMITS.holidayWrite)

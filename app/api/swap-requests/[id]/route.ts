@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { swapMessageSchema } from '@/lib/validation/schemas'
 
-/** Cancel (delete) a swap request that is still open — only the requester can do this. */
+/** Cancel (delete) a swap request that is still open. Only the requester can do this. */
 export const DELETE = withAuth<{ id: string }>(async (_request, ctx) => {
   try {
     const { id } = ctx.params
@@ -24,7 +24,7 @@ export const DELETE = withAuth<{ id: string }>(async (_request, ctx) => {
   }
 })
 
-/** Edit message on a PENDING swap request — only the requester can do this. */
+/** Edit message on a PENDING swap request. Only the requester can do this. */
 export const PATCH = withAuth<{ id: string }>(async (request, ctx) => {
   try {
     const { id } = ctx.params

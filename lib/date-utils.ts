@@ -68,7 +68,7 @@ export function calculateShiftHours(startDateTime: Date | string, endDateTime: D
 /** ISO week-year and week-number identifier. Used for keying week notes
  * and rendering "Uke 11 - 2026"-style headers. ISO year may differ from
  * the calendar year at January/December boundaries (e.g. 2024-12-30 is
- * 2025-W01) — always use the ISO year together with the ISO week. */
+ * 2025-W01). Always use the ISO year together with the ISO week. */
 export interface IsoWeek {
   year: number
   week: number

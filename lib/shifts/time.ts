@@ -15,9 +15,9 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000
  * calendar date, wall-clock times, and the parent ShiftType.
  *
  * Rules:
- *  - Start and end times must differ. Equal times are rejected outright —
- *    "08:00 to 08:00" silently produced a 24-hour shift in the previous
- *    inline heuristic.
+ *  - Start and end times must differ. Equal times are rejected outright,
+ *    since "08:00 to 08:00" silently produced a 24-hour shift in the
+ *    previous inline heuristic.
  *  - If `shiftType.crossesMidnight` is true, end is always rolled forward
  *    one day.
  *  - If end falls strictly before start, treat it as an overnight override

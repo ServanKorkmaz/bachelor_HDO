@@ -19,7 +19,7 @@ const STATUS_LABEL: Record<string, string> = {
 /**
  * Inline "Profil" block used at the top of both /settings (employees) and
  * /admin (admins/leaders). Fetches `/api/users/{id}` so the row matches what
- * the server has — the session cookie only carries the user id, not the full
+ * the server has. The session cookie only carries the user id, not the full
  * account metadata we want to display.
  */
 export function ProfileSection() {

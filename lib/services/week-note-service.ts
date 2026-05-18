@@ -44,7 +44,7 @@ function assertValidWeek(year: number, week: number): void {
 /**
  * List week notes for a team in a (year, week) range. The Prisma query uses a
  * tuple comparison via two OR branches because we can't express "row(year,
- * week) BETWEEN tuple AND tuple" in Prisma's filter DSL directly — the
+ * week) BETWEEN tuple AND tuple" in Prisma's filter DSL directly. The
  * equivalent boolean form is:
  *   (year > fromYear) OR (year = fromYear AND week >= fromWeek)
  * combined with the upper-bound mirror. Cheap given the table is small.
@@ -90,7 +90,7 @@ export async function upsertWeekNote(input: WeekNoteInput) {
   return prisma.$transaction(async (tx) => {
     if (trimmed.length === 0) {
       // Capture the row we're about to delete (if any) so the audit entry
-      // records what existed before the clear — privileged-action accountability.
+      // records what existed before the clear. Privileged-action accountability.
       const existing = await tx.weekNote.findUnique({
         where: {
           teamId_userId_isoYear_isoWeek: {

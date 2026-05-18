@@ -72,7 +72,7 @@ const SECTIONS: AdminSection[] = [
  * Admin landing page. Profile sits at the top so admins always see their
  * own account first; the rest of the page is the team-wide admin tooling
  * grouped by purpose. Non-admins reach a slimmer version of this at
- * /settings — both pages share the ProfileSection component.
+ * /settings. Both pages share the ProfileSection component.
  */
 export default function AdminPage() {
   return (

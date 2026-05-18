@@ -32,7 +32,7 @@ const normalizeHexColor = (value: string): string | null => {
  *
  * Reachable only when the parent `AdminLayout` has confirmed the caller is
  * an admin; non-admin role checks below are therefore not needed for UX.
- * The API still enforces them — see `withAdmin` on the shift-types routes.
+ * The API still enforces them. See `withAdmin` on the shift-types routes.
  */
 export default function ShiftTypesPage() {
   const { toast } = useToast()

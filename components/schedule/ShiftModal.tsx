@@ -114,7 +114,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   // ---- AML §10-8 client-side preview ----
   // Mirrors the server-side check in lib/services/shift-service.ts so the
   // leader sees a banner with the exact rule before submitting, instead of
-  // getting a 422 back from the API. The server remains authoritative — this
+  // getting a 422 back from the API. The server remains authoritative. This
   // is purely a UX shortcut.
 
   const effectiveDate = shift?.date ?? date
@@ -170,7 +170,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
         shiftType: selectedShiftType,
       })
     } catch (e) {
-      // Bad time input (e.g. start === end on a non-overnight type) — let the
+      // Bad time input (e.g. start === end on a non-overnight type). Let the
       // existing time validation report that, not the AML banner.
       if (e instanceof ShiftTimeError) return EMPTY_ISSUES
       throw e
@@ -208,7 +208,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     shiftTypeId: string
     startTime: string
     endTime: string
-    /** Optional on POST — the server falls back to the user's home team. */
+    /** Optional on POST. The server falls back to the user's home team. */
     teamId?: string
     /** undefined to leave unset on create, null to clear on update. */
     comment?: string | null

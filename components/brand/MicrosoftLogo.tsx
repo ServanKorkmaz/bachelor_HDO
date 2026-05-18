@@ -8,7 +8,7 @@ interface MicrosoftLogoProps {
  * button per Microsoft's brand guidelines for the "Sign in with Microsoft"
  * pattern: https://learn.microsoft.com/en-us/azure/active-directory/develop/howto-add-branding-in-azure-ad-apps
  *
- * Colours are fixed (orange/green/blue/yellow) — they must not be themed.
+ * Colours are fixed (orange/green/blue/yellow). They must not be themed.
  */
 export function MicrosoftLogo({ className, size = 18 }: MicrosoftLogoProps) {
   return (

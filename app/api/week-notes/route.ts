@@ -63,7 +63,7 @@ export const GET = withAuth(async (request, ctx) => {
 /**
  * PUT /api/week-notes
  *
- * Upsert a week note for one employee. Empty body deletes the row — keeps the
+ * Upsert a week note for one employee. Empty body deletes the row. Keeps the
  * API surface to a single mutation method.
  *
  * Authorization: ADMIN/LEADER may write notes for any employee on a team they

@@ -47,12 +47,12 @@ export const GET = withLeaderOrAdmin(async (request) => {
 
     // Live-entity enrichment. Audit rows are written with a snapshot of the
     // fields the display layer needs, but older rows pre-date this and only
-    // contain `{ status }` — and rather than rewriting append-only audit
+    // contain `{ status }`. Rather than rewriting append-only audit
     // data (which would be wrong), we join with the live entity at read time
     // so the UI can show "Anne Berg → Ingrid Larsen, 13.05.2026" instead of
     // "(uten detaljer)". If the entity has been deleted, no enrichment is
     // attached and the page falls back to the snapshot (which is the right
-    // behaviour — the historical record is the source of truth).
+    // behaviour, since the historical record is the source of truth).
     const swapIds = new Set<string>()
     const holidayIds = new Set<string>()
     for (const log of logs) {

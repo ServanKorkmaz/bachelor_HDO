@@ -21,7 +21,7 @@ export const GET = withAuth(async () => {
   }
 })
 
-/** Create a new shift type. Admin only — shift types are shared across all teams. */
+/** Create a new shift type. Admin only. Shift types are shared across all teams. */
 export const POST = withAdmin(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, shiftTypeBodySchema)

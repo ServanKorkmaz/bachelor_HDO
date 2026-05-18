@@ -1,4 +1,4 @@
-// Re-exports for backward compatibility — schemas live in lib/validation/schemas.ts
+// Re-exports for backward compatibility. Schemas live in lib/validation/schemas.ts
 export {
   patchUserStatusSchema,
   addMemberSchema,

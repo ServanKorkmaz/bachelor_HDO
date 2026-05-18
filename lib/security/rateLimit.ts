@@ -55,13 +55,13 @@ export function checkRateLimit(
 
 /**
  * Stable per-request identifier for rate-limit buckets. Preference order:
- * 1. Sealed session cookie value (stable per logged-in session — covers the new auth and the test-env header fallback when it produces a cookie).
- * 2. `x-current-user-id` header (test environment only — Vitest route tests).
+ * 1. Sealed session cookie value (stable per logged-in session. Covers the new auth and the test-env header fallback when it produces a cookie).
+ * 2. `x-current-user-id` header (test environment only. Vitest route tests).
  * 3. First `x-forwarded-for` IP (unauthenticated callers).
  * 4. Literal `'anon'` (no signal at all).
  *
  * We use the sealed cookie value directly (not the unsealed userId) so this stays
- * synchronous — unsealing requires async crypto and would propagate `await` into
+ * synchronous. Unsealing requires async crypto and would propagate `await` into
  * every rate-limited route. The cookie value is a 1:1 mapping to the session, so
  * it's functionally equivalent for rate-limit bucketing.
  */

@@ -24,7 +24,7 @@ import type { TeamSummary } from '@/lib/types'
  *
  * Reachable only when the parent `AdminLayout` has confirmed the caller is
  * an admin; non-admin role checks below are therefore not needed for UX.
- * The API still enforces them — see `withAdmin` on POST/DELETE /api/teams.
+ * The API still enforces them. See `withAdmin` on POST/DELETE /api/teams.
  */
 export default function TeamsPage() {
   const { toast } = useToast()

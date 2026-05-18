@@ -9,7 +9,7 @@ import { ServiceError } from './errors'
 /**
  * Placeholder id used as the target for AML evaluation in a CREATE flow,
  * before the row has been inserted and assigned a real cuid. Any string that
- * cannot collide with a real cuid works — `assertNoAmlConflict` only uses
+ * cannot collide with a real cuid works. `assertNoAmlConflict` only uses
  * the id to exclude rows from the "other shifts" query, and a real cuid
  * cannot match this placeholder.
  */
@@ -42,7 +42,7 @@ export interface CreateShiftInput {
   comment?: string | null
   /**
    * Optional pre-fetched shift type. When provided the service skips its own
-   * lookup — used by the bulk route to avoid N round-trips for the same set
+   * lookup. Used by the bulk route to avoid N round-trips for the same set
    * of shift-type ids.
    */
   shiftType?: ShiftTypeForTimes

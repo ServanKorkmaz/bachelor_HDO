@@ -22,7 +22,7 @@ async function fetchMe(): Promise<Me> {
  * Current authenticated user, fetched from /api/auth/me. Shared queryKey
  * ['auth', 'me'] so every consumer hits the same React Query cache. The
  * user identity is stable for the lifetime of a session, so we mark the
- * data as never going stale — callers that mutate profile fields are
+ * data as never going stale. Callers that mutate profile fields are
  * responsible for invalidating the cache explicitly.
  */
 export function useMe(): UseQueryResult<Me> {

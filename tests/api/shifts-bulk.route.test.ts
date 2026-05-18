@@ -84,7 +84,7 @@ describe('POST /api/shifts/bulk', () => {
     mockPrisma.shiftType.findMany.mockResolvedValue([])
     mockPrisma.shift.findUnique.mockResolvedValue(null)
     mockPrisma.shift.findFirst.mockResolvedValue(null)
-    // AML validation defaults to "clean" — no neighbouring shifts, no holidays.
+    // AML validation defaults to "clean". No neighbouring shifts, no holidays.
     mockPrisma.shift.findMany.mockResolvedValue([])
     mockPrisma.holidayRequest.findMany.mockResolvedValue([])
     // Bulk now delegates to shift-service.createShift, which calls

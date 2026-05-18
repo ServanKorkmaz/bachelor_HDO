@@ -48,7 +48,7 @@ function assertDates(input: { type: HolidayType; dateFrom: string; dateTo?: stri
  * Reject submissions that overlap an existing non-rejected request for the
  * same user. This pre-check is the only protection today and catches the
  * common non-racing case with a friendly 409. There is a known TOCTOU race
- * window between the check and the insert — see SECURITY.md "Known gaps".
+ * window between the check and the insert. See SECURITY.md "Known gaps".
  * A DB-level `EXCLUDE USING gist` constraint
  * (`holiday_requests_no_overlap_per_user`) is planned as defense-in-depth;
  * the `catch` block in `createHoliday` is wired up in anticipation.
@@ -81,7 +81,7 @@ async function assertNoOverlap(input: CreateHolidayInput) {
 /**
  * Submit a new holiday/absence/sickness request for `userId`. Posts a team-wide
  * notification so leaders can see it. The actor (used for the audit log) is
- * always the same as the request owner — the service does not support
+ * always the same as the request owner. The service does not support
  * submitting on someone else's behalf.
  */
 export async function createHoliday(input: CreateHolidayInput) {
@@ -189,7 +189,7 @@ export async function revokeHoliday(holidayRequestId: string, actorUserId: strin
 }
 
 /**
- * Leader/admin decides on a PENDING holiday request — APPROVE or REJECT.
+ * Leader/admin decides on a PENDING holiday request. APPROVE or REJECT.
  * Writes one audit row and notifies the requester. Returns the updated row
  * with the user relation, matching the route's previous response shape.
  */

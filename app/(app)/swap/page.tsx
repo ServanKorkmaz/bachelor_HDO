@@ -509,7 +509,7 @@ export default function SwapPage() {
                       </span>
                       <span className={`text-xs px-2 py-1 rounded ${
                         // Lighter text shades (400) bring contrast on the
-                        // dim 500/20 bg above WCAG AA's 4.5:1 — the 500
+                        // dim 500/20 bg above WCAG AA's 4.5:1. The 500
                         // shade on its own 500/20 sits at ~4.4:1.
                         request.status === 'APPROVED' ? 'bg-green-500/20 text-green-400' :
                         request.status === 'REJECTED' ? 'bg-red-500/20 text-red-400' :

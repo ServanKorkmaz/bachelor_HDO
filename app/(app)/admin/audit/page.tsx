@@ -156,7 +156,7 @@ export default function AdminAuditPage() {
   const entityTypeLabel = (type: string) => ENTITY_TYPE_LABELS[type] ?? type
 
   /** Parse the JSON snapshot stored on the audit row. Returns an empty object
-   * if the data is missing or malformed — callers handle the "no fields" case
+   * if the data is missing or malformed. Callers handle the "no fields" case
    * explicitly. */
   const parseSnapshot = (e: AuditEntry): Record<string, unknown> => {
     const json = e.afterJson || e.beforeJson
@@ -172,7 +172,7 @@ export default function AdminAuditPage() {
   /** Merge the historical JSON snapshot with the live-entity snapshot the API
    * attaches when the entity still exists. The historical snapshot wins on
    * conflicts because it represents what was true at the time of the action,
-   * but its gaps are filled from the live entity — that's what lets older
+   * but its gaps are filled from the live entity. That's what lets older
    * "(uten detaljer)" revoke rows display the right names and dates. */
   const resolveFields = (e: AuditEntry): Record<string, unknown> => {
     const snap = parseSnapshot(e)

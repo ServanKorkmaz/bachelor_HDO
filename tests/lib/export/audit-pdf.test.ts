@@ -20,8 +20,9 @@ const meta = {
 
 /**
  * Unit tests for the audit PDF document-definition builder. Exercise the pure
- * function — no pdfmake runtime, no fonts — so they're fast and deterministic.
- * The downloader is excluded for the same reason as the shift-pdf tests.
+ * function with no pdfmake runtime and no fonts, so they're fast and
+ * deterministic. The downloader is excluded for the same reason as the
+ * shift-pdf tests.
  */
 describe('buildAuditPdf', () => {
   it('renders an A4 landscape document with period metadata in the title', () => {

@@ -77,7 +77,7 @@ export const POST = withAuth(async (request, ctx) => {
     if (forbidden) return forbidden
 
     // Only ADMIN/LEADER may post LEADERS-only notes. Silently downgrade
-    // because that mirrors the original behavior — clients won't see an error
+    // because that mirrors the original behavior. Clients won't see an error
     // here, they just get a less-restricted note than they asked for.
     const effectiveVisibility: NoteVisibility =
       visibility === 'LEADERS' && ctx.role === 'EMPLOYEE'
@@ -86,7 +86,7 @@ export const POST = withAuth(async (request, ctx) => {
 
     const note = await createNote({
       teamId,
-      // createdByUserId always comes from the authenticated caller — never trust the body
+      // createdByUserId always comes from the authenticated caller. Never trust the body
       createdByUserId: ctx.userId,
       type,
       status,
