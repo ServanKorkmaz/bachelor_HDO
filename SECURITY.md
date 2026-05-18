@@ -1,9 +1,13 @@
 # Security model
 
 This document describes the security posture of the HDO Turnusplan MVP, the
-threats it defends against, and the trade-offs that exist because the app is
-currently a demo using mock authentication. It is meant to be read by reviewers
-who want to understand *why* the code looks the way it does.
+threats it defends against, and the trade-offs that exist. Authentication is
+**Microsoft Entra ID** (OAuth Authorization Code + PKCE via `@azure/msal-node`
+with `iron-session` signed cookies). The historical mock-auth design that
+preceded it is retained only as a test-environment seam — see
+"Authentication: Microsoft Entra ID via MSAL Node" for the current production
+implementation. This document is meant to be read by reviewers who want to
+understand *why* the code looks the way it does.
 
 ## Authentication (historical: mock system)
 

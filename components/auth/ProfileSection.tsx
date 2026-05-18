@@ -18,8 +18,8 @@ const STATUS_LABEL: Record<string, string> = {
 /**
  * Inline "Profil" block used at the top of both /settings (employees) and
  * /admin (admins/leaders). Fetches `/api/users/{id}` so the row matches what
- * the server has — `MockUser` in the auth store only carries the fields the
- * client needs for role gating, not full account metadata.
+ * the server has — the session cookie only carries the user id, not the full
+ * account metadata we want to display.
  */
 export function ProfileSection() {
   const { data: me } = useQuery({

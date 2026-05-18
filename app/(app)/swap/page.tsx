@@ -26,6 +26,9 @@ import { useToast } from '@/components/ui/use-toast'
 import { statusToNorwegian } from '@/lib/i18n'
 import { axiosInstance } from '@/lib/axios'
 
+const SWAP_LOOKAHEAD_DAYS = 30
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
 /** Compact shift picker: shows a scrollable list when nothing is selected, collapses to the selected item when one is chosen. Double-click the selected item to deselect and expand again. */
 function ShiftPickerList({
   shifts,
@@ -138,7 +141,7 @@ export default function SwapPage() {
     weekStart.setDate(now.getDate() + mondayOffset)
     return {
       dateFrom: format(weekStart, 'yyyy-MM-dd'),
-      dateTo: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+      dateTo: format(new Date(Date.now() + SWAP_LOOKAHEAD_DAYS * MS_PER_DAY), 'yyyy-MM-dd'),
     }
   }, [])
 

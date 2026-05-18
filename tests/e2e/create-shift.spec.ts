@@ -41,16 +41,20 @@ test.describe('Create shift via grid', () => {
     // On first run the cell is empty (POST); on repeat runs it may be occupied
     // (PUT) — both outcomes are valid (see comment above).
     const firstEmployeeRow = page.locator('tbody tr').first()
-    // Skip the first column (employee name) and the last column (sum) and
-    // click the second data cell (first day column).
-    await firstEmployeeRow.locator('td').nth(1).click()
+    // Wait for the shift-types fetch that the modal fires on mount. Set the
+    // waiter up BEFORE the click so we don't miss a fast response. The modal's
+    // useEffect populates selectedShiftTypeId only after this resolves;
+    // clicking Lagre before then triggers a silent no-op in handleSave.
+    await Promise.all([
+      page.waitForResponse(r => r.url().includes('/api/shift-types') && r.ok()),
+      // Skip the first column (employee name) and the last column (sum) and
+      // click the second data cell (first day column).
+      firstEmployeeRow.locator('td').nth(1).click(),
+    ])
 
-    // Modal opens. Wait for shift-types to load so the default selection is
-    // populated — handleSave silently no-ops if `selectedShiftTypeId` is empty.
+    // Modal opens.
     await expect(page.getByRole('dialog')).toBeVisible()
     await expect(page.getByText(/Detaljer for dag/)).toBeVisible()
-    // Wait for the Lagre button to be present — shift-types must have loaded
-    // for canEditShifts to be true and for selectedShiftTypeId to be set.
     await expect(page.getByRole('button', { name: 'Lagre' })).toBeVisible()
 
     // Click Lagre and capture the API response. Accept POST (new shift) or PUT

@@ -47,7 +47,7 @@ Connection is configured via the `DATABASE_URL` environment variable and accesse
   - `api/` — API route handlers
 - **`components/`** — React components
 - **`lib/`**
-  - `auth/` — Auth helpers and mock auth store
+  - `auth/` — Microsoft Entra (Azure AD) OAuth + session helpers
   - `admin/` — Audit logging and validation schemas
   - `notifications/` — Multi-channel notification delivery
   - `date-utils.ts` — Date/time utility functions
