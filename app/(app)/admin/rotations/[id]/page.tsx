@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { axiosInstance } from '@/lib/axios'
 import { useToast } from '@/components/ui/use-toast'
 import { RotationEditor, type RotationFormValue } from '@/components/admin/RotationEditor'
@@ -18,6 +18,7 @@ export default function EditRotationPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const { data: pattern, isLoading } = useQuery<RotationPattern>({
     queryKey: ['rotation-pattern', params.id],
@@ -32,6 +33,8 @@ export default function EditRotationPage() {
       axiosInstance.put(`/api/rotation-patterns/${params.id}`, value),
     onSuccess: () => {
       toast({ title: 'Mønster oppdatert' })
+      queryClient.invalidateQueries({ queryKey: ['rotation-patterns'] })
+      queryClient.invalidateQueries({ queryKey: ['rotation-pattern', params.id] })
       router.push('/admin/rotations')
     },
     onError: (e: { response?: { data?: { error?: string } } }) => {
