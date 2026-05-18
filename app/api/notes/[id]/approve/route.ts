@@ -29,7 +29,11 @@ export const POST = withAuth<{ id: string }>(async (request, ctx) => {
     const forbidden = await assertTeamMember(ctx, existing.teamId, ['ADMIN', 'LEADER'])
     if (forbidden) return forbidden
 
-    const note = await decideNote(ctx.params.id, status as 'APPROVED' | 'REJECTED', ctx.userId)
+    const note = await decideNote({
+      noteId: ctx.params.id,
+      status: status as 'APPROVED' | 'REJECTED',
+      actorUserId: ctx.userId,
+    })
     return NextResponse.json(note)
   } catch (error) {
     const mapped = serviceErrorResponse(error)

@@ -4,7 +4,7 @@ import { addDays, parse, format } from 'date-fns'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('🌱 Starting seed...')
+  console.log('Starting seed...')
 
   // Clean existing data (order: audit log, then memberships, then rest; users/teams cascade to memberships)
   await prisma.auditLog.deleteMany()
@@ -26,7 +26,7 @@ async function main() {
     },
   })
 
-  console.log('✅ Created team:', team.name)
+  console.log('Created team:', team.name)
 
   // Create notification settings
   await prisma.notificationSettings.create({
@@ -114,7 +114,7 @@ async function main() {
     }),
   ])
 
-  console.log('✅ Created shift types:', shiftTypes.length)
+  console.log('Created shift types:', shiftTypes.length)
 
   // Create users
   const users = await Promise.all([
@@ -196,7 +196,7 @@ async function main() {
     }),
   ])
 
-  console.log('✅ Created users:', users.length)
+  console.log('Created users:', users.length)
 
   // Backfill team memberships so Admin Users page shows one team/role per user
   for (const user of users) {
@@ -213,7 +213,7 @@ async function main() {
       update: {},
     })
   }
-  console.log('✅ Backfilled team memberships')
+  console.log('Backfilled team memberships')
 
   // Seed shifts for 6 weeks starting 2026-04-27 (2 weeks before demo date)
   const weekStart = parse('2026-04-27', 'yyyy-MM-dd', new Date())
@@ -329,14 +329,14 @@ async function main() {
     },
   })
 
-  console.log('✅ Created notes')
+  console.log('Created notes')
 
-  console.log('🎉 Seed completed!')
+  console.log('Seed completed.')
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e)
+    console.error('Seed failed:', e)
     process.exit(1)
   })
   .finally(async () => {

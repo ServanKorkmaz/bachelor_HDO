@@ -4,6 +4,7 @@ import { withAdmin } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
+import { ServiceError, serviceErrorResponse } from '@/lib/services/errors'
 
 /** Update a shift type by id. Admin only. */
 export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
@@ -15,7 +16,7 @@ export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
     const shiftType = await prisma.$transaction(async (tx) => {
       const existing = await tx.shiftType.findUnique({ where: { id: ctx.params.id } })
       if (!existing) {
-        throw new Error('NOT_FOUND')
+        throw new ServiceError('SHIFT_TYPE_NOT_FOUND', 'Shift type not found', 404)
       }
       const updated = await tx.shiftType.update({
         where: { id: ctx.params.id },
@@ -45,9 +46,8 @@ export const PUT = withAdmin<{ id: string }>(async (request, ctx) => {
 
     return NextResponse.json(shiftType)
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_FOUND') {
-      return NextResponse.json({ error: 'Shift type not found' }, { status: 404 })
-    }
+    const mapped = serviceErrorResponse(error)
+    if (mapped) return mapped
     console.error('Error updating shift type:', error)
     return NextResponse.json({ error: 'Failed to update shift type' }, { status: 500 })
   }
@@ -59,7 +59,7 @@ export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
     await prisma.$transaction(async (tx) => {
       const existing = await tx.shiftType.findUnique({ where: { id: ctx.params.id } })
       if (!existing) {
-        throw new Error('NOT_FOUND')
+        throw new ServiceError('SHIFT_TYPE_NOT_FOUND', 'Shift type not found', 404)
       }
       await tx.shiftType.delete({ where: { id: ctx.params.id } })
       await createAuditLog(tx, {
@@ -78,9 +78,8 @@ export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_FOUND') {
-      return NextResponse.json({ error: 'Shift type not found' }, { status: 404 })
-    }
+    const mapped = serviceErrorResponse(error)
+    if (mapped) return mapped
     console.error('Error deleting shift type:', error)
     return NextResponse.json({ error: 'Failed to delete shift type' }, { status: 500 })
   }

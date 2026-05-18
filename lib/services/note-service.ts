@@ -73,12 +73,16 @@ export async function createNote(input: CreateNoteInput): Promise<NoteWithRelati
   })
 }
 
-/** Admin/leader approves or rejects a note and notifies the creator. */
-export async function decideNote(
-  noteId: string,
-  status: 'APPROVED' | 'REJECTED',
+export interface DecideNoteInput {
+  noteId: string
+  status: 'APPROVED' | 'REJECTED'
+  /** Leader/admin performing the decision; recorded for audit purposes. */
   actorUserId: string
-): Promise<NoteWithRelations> {
+}
+
+/** Admin/leader approves or rejects a note and notifies the creator. */
+export async function decideNote(input: DecideNoteInput): Promise<NoteWithRelations> {
+  const { noteId, status, actorUserId } = input
   return withEvents(async (tx, emit) => {
     const existing = await tx.note.findUnique({ where: { id: noteId } })
     if (!existing) {

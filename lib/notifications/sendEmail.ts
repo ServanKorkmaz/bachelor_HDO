@@ -10,7 +10,7 @@ export interface EmailNotification {
 
 /** Send an email notification (stubbed – logs to console; wire to real provider later). */
 export async function sendEmail(notification: EmailNotification): Promise<void> {
-  console.log('📧 Email notification:', {
+  console.log('Email notification (stub):', {
     to: notification.to,
     subject: notification.subject,
     body: notification.body,

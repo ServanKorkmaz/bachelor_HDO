@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
+import { ServiceError, serviceErrorResponse } from '@/lib/services/errors'
 
 /** Delete a team by id. Admin only. */
 export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
@@ -9,7 +10,7 @@ export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
     await prisma.$transaction(async (tx) => {
       const existing = await tx.team.findUnique({ where: { id: ctx.params.id } })
       if (!existing) {
-        throw new Error('NOT_FOUND')
+        throw new ServiceError('TEAM_NOT_FOUND', 'Team not found', 404)
       }
       await tx.team.delete({ where: { id: ctx.params.id } })
       await createAuditLog(tx, {
@@ -24,9 +25,8 @@ export const DELETE = withAdmin<{ id: string }>(async (_request, ctx) => {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    if (error instanceof Error && error.message === 'NOT_FOUND') {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 })
-    }
+    const mapped = serviceErrorResponse(error)
+    if (mapped) return mapped
     console.error('Error deleting team:', error)
     return NextResponse.json({ error: 'Failed to delete team' }, { status: 500 })
   }

@@ -10,7 +10,7 @@ export interface SmsNotification {
 /** Send an SMS notification (stub implementation). */
 export async function sendSms(notification: SmsNotification): Promise<void> {
   // Stub implementation - placeholder for existing SMS endpoint integration
-  console.log('📱 SMS notification (stub):', {
+  console.log('SMS notification (stub):', {
     to: notification.to,
     message: notification.message,
   })
