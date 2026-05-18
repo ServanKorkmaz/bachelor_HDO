@@ -26,6 +26,14 @@ jobs:
       # Prisma client is mocked in tests, but the schema's datasource block
       # is parsed at generate-time. A dummy URL keeps prisma generate happy.
       DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+      # lib/auth/azureAd.ts validates these at module-load (fail-fast guard
+      # for production). `next build` imports the callback route during page
+      # data collection, so it needs *any* values present — production gets
+      # the real secrets from the deployment env, not from CI.
+      AZURE_TENANT_ID: 00000000-0000-0000-0000-000000000000
+      AZURE_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+      AZURE_CLIENT_SECRET: ci-dummy-not-a-real-secret
+      AZURE_REDIRECT_URI: http://localhost:4000/auth/azure/callback
 
     steps:
       - name: Checkout
