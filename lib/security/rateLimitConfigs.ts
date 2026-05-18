@@ -14,4 +14,5 @@ export const RATE_LIMITS = {
   notesApprove: { routeKey: 'notes.approve', limit: 30, windowMs: ONE_MINUTE },
   swapWrite: { routeKey: 'swap.write', limit: 30, windowMs: ONE_MINUTE },
   holidayWrite: { routeKey: 'holiday.write', limit: 30, windowMs: ONE_MINUTE },
+  rotationGenerate: { routeKey: 'rotation.generate', limit: 5, windowMs: ONE_MINUTE },
 } satisfies Record<string, RateLimitConfig>
