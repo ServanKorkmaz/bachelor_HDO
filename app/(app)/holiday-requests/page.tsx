@@ -55,7 +55,7 @@ export default function HolidayRequestsPage() {
     await queryClient.invalidateQueries({ queryKey: ['holiday-requests', me?.teamId] })
   }
 
-  if (!me) return <div>Vennligst logg inn</div>
+  if (!me) return <div role="status" aria-live="polite" className="text-muted-foreground p-8">Laster…</div>
 
   // Admin/leader view: show all team requests with approve/reject/revoke
   if (isAdmin || isLeader) {
@@ -95,7 +95,7 @@ export default function HolidayRequestsPage() {
         </div>
 
         {loading ? (
-          <div>Laster…</div>
+          <div role="status" aria-live="polite">Laster…</div>
         ) : items.length === 0 ? (
           <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Ingen forespørsler funnet.</div>
         ) : (
@@ -198,7 +198,7 @@ export default function HolidayRequestsPage() {
       </div>
 
       {loading ? (
-        <div>Laster…</div>
+        <div role="status" aria-live="polite">Laster…</div>
       ) : own.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Du har ingen forespørsler.</div>
       ) : (

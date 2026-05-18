@@ -153,7 +153,7 @@ export default function MonthPage() {
   const weekDays = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
 
   if (!me) {
-    return <div className="text-muted-foreground p-8">Laster…</div>
+    return <div role="status" aria-live="polite" className="text-muted-foreground p-8">Laster…</div>
   }
 
   return (

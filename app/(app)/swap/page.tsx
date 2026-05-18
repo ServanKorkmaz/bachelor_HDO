@@ -330,7 +330,7 @@ export default function SwapPage() {
   )
 
   if (!me) {
-    return <div className="text-muted-foreground p-8">Laster…</div>
+    return <div role="status" aria-live="polite" className="text-muted-foreground p-8">Laster…</div>
   }
 
   return (

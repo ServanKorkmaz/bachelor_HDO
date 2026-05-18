@@ -51,15 +51,15 @@ export default function AdminHolidayRequestsPage() {
       )
     },
     onSuccess: async () => {
-      toast({ title: 'Updated' })
+      toast({ title: 'Oppdatert' })
       await queryClient.invalidateQueries({ queryKey: requestsQueryKey })
     },
     onError: (error) => {
-      toast({ title: 'Error', description: apiErrorMessage(error, 'Could not update'), variant: 'destructive' })
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke oppdatere'), variant: 'destructive' })
     },
   })
 
-  if (!me) return <div>Vennligst logg inn</div>
+  if (!me) return <div role="status" aria-live="polite" className="text-muted-foreground p-8">Laster…</div>
 
   const handleDecision = async (id: string, action: 'APPROVE' | 'REJECT') => {
     await decisionMutation.mutateAsync({ id, action })
@@ -75,7 +75,7 @@ export default function AdminHolidayRequestsPage() {
       </div>
 
       {loading ? (
-        <div>Laster…</div>
+        <div role="status" aria-live="polite">Laster…</div>
       ) : items.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Ingen forespørsler funnet.</div>
       ) : (
