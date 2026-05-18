@@ -50,7 +50,7 @@ function assertDates(input: { type: HolidayType; dateFrom: string; dateTo?: stri
  * common non-racing case with a friendly 409. There is a known TOCTOU race
  * window between the check and the insert. See SECURITY.md "Known gaps".
  * A DB-level `EXCLUDE USING gist` constraint
- * (`holiday_requests_no_overlap_per_user`) is planned as defense-in-depth;
+ * (`holiday_requests_no_overlap_per_user`) is planned as a second layer;
  * the `catch` block in `createHoliday` is wired up in anticipation.
  */
 async function assertNoOverlap(input: CreateHolidayInput) {

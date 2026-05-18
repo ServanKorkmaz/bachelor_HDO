@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic'
  * List users. Returns only non-sensitive fields (id, name, role, teamId) so the
  * schedule UI can populate dropdowns without exposing emails, Azure OIDs,
  * login timestamps or other PII. Wrapped with withAuth so this goes through
- * the same load-bearing auth check as every other route, not just the edge
- * middleware. Optional teamId: only users with active TeamMembership in that team.
+ * the same auth check as every other route, not just the edge middleware.
+ * Optional teamId: only users with active TeamMembership in that team.
  */
 export const GET = withAuth(async (request) => {
   try {

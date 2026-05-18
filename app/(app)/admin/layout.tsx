@@ -10,10 +10,10 @@ import { useMe } from '@/lib/hooks/useMe'
  * misleading and clutter the interface. With this guard in place, everything
  * rendered under `/admin/*` can assume the caller is an admin or leader.
  *
- * Defense in depth: this is a *UX* gate only. The real protection lives in
- * the API wrappers (`withLeaderOrAdmin` in `lib/auth/withAuth.ts`) and the
- * route handlers themselves. Those reject unauthorized callers regardless of
- * which page they came from.
+ * This is a *UX* gate only. The real protection lives in the API wrappers
+ * (`withLeaderOrAdmin` in `lib/auth/withAuth.ts`) and the route handlers
+ * themselves. Those reject unauthorized callers regardless of which page
+ * they came from.
  */
 export default function AdminLayout({
   children,
