@@ -241,7 +241,7 @@ export function WeekGrid({ weekDates, users, shifts, currentUser, highlightedUse
                         </div>
                       ) : approvedHoliday ? (
                         <div className="min-h-[72px] rounded-md border border-amber-400 bg-amber-50 p-2 text-sm dark:bg-amber-950/30 dark:border-amber-700">
-                          <span className="inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          <span className="inline-block rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
                             {holidayLabel(approvedHoliday.type)}
                           </span>
                         </div>

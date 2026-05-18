@@ -175,16 +175,27 @@ export const POST = withAuth(async (request, ctx) => {
       const batch = items.slice(i, i + BATCH_SIZE)
       const results = await Promise.allSettled(batch.map(item => processItem(item)))
 
-      results.forEach(result => {
-        if (result.status !== 'fulfilled') {
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled') {
+          const value = result.value
+          if (value.status === 'success') {
+            successes.push({ userId: value.userId, date: value.date, shiftId: value.shiftId })
+          } else {
+            failures.push({ userId: value.userId, date: value.date, error: value.error })
+          }
           return
         }
-        const value = result.value
-        if (value.status === 'success') {
-          successes.push({ userId: value.userId, date: value.date, shiftId: value.shiftId })
-        } else {
-          failures.push({ userId: value.userId, date: value.date, error: value.error })
-        }
+        // A non-ServiceError escaped processItem (e.g. Prisma transient error).
+        // Surface it as a failure so the result counts match the input and the
+        // client sees the row, instead of silently dropping it. Log the reason
+        // server-side; do not leak it to the client.
+        const item = batch[idx]
+        console.error('Bulk shift item rejected:', result.reason)
+        failures.push({
+          userId: item?.userId ?? '',
+          date: item?.date ?? '',
+          error: 'Unexpected error',
+        })
       })
     }
 

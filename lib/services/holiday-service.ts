@@ -203,6 +203,13 @@ export async function decideHoliday(
     if (!hr) {
       throw new ServiceError('HOLIDAY_NOT_FOUND', 'Not found', 404)
     }
+    if (hr.status !== 'PENDING') {
+      throw new ServiceError(
+        'HOLIDAY_WRONG_STATE',
+        'Kan kun bestemme forespørsler som venter på behandling',
+        400
+      )
+    }
 
     const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
 
