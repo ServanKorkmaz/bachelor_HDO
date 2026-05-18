@@ -144,6 +144,48 @@ oppstartsfeil — det er en bevisst fail-fast-sjekk i `lib/auth/session.ts`.
 - Multi-stage build betyr at byggetidens avhengigheter (TypeScript,
   ESLint, kildekode) ikke finnes i det endelige imaget — kun runtime-koden.
 
+### Lokal utvikling med docker-compose
+
+For utviklere som vil ha hele stacken (app + Postgres) i containere — uten
+å installere Node eller en lokal database:
+
+```bash
+docker compose up --build
+```
+
+Dette gjør tre ting:
+
+1. Bygger app-imaget ved å stoppe ved `builder`-stadiet i `Dockerfile`
+   (har full kildekode + dev-avhengigheter, kjører `next dev` med hot
+   reload — *ikke* den slanke produksjons-runneren)
+2. Starter en Postgres 16-container med fersk database `hdo_dev`
+3. Kobler appen til Postgres-containeren via `DATABASE_URL`-overstyring
+   (Neon-URL-en i `.env.local` shadowes for compose-bruk)
+
+Krever en `.env.local` med ekte `AZURE_*` + `SESSION_COOKIE_SECRET`.
+`DATABASE_URL` overstyres av compose, så det du har der spiller ingen rolle.
+
+Første gang: seed databasen i et annet shell:
+
+```bash
+docker compose exec app npm run db:seed
+```
+
+Åpne deretter [http://localhost:4000](http://localhost:4000). Endringer i
+kildekoden hot-reloader inn i containeren via volume-mount.
+
+Stopp alt med `docker compose down` (data beholdes), eller
+`docker compose down -v` (sletter også Postgres-volumet).
+
+### VS Code dev container
+
+En `.devcontainer/devcontainer.json` er inkludert. Med "Dev Containers"-
+utvidelsen i VS Code: åpne repoet → `Reopen in Container`. VS Code starter
+compose-stacken og kobler editoren til app-containeren med ESLint,
+Prettier, Prisma, Tailwind og Playwright-utvidelsene forhåndsinstallert.
+Du redigerer kode på din vert; den kjøres i containeren. Null lokalt
+Node-oppsett kreves.
+
 ## Testing
 
 This project uses **Vitest** for fast unit and API route tests.

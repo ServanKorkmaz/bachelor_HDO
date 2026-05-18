@@ -1,0 +1,78 @@
+# Local development with Docker Compose.
+#
+# Brings up the app + a local Postgres in one command. The app builds from
+# the production Dockerfile but stops at the `builder` stage (which still
+# has full source + dev dependencies), then runs `npm run dev` with the
+# source mounted as a volume for hot reload. The production image is
+# unchanged — see Dockerfile for that.
+#
+# Quick start:
+#   1. Copy .env.example -> .env.local and fill in AZURE_* + SESSION_COOKIE_SECRET
+#      (DATABASE_URL is overridden here to point at the local Postgres container)
+#   2. docker compose up --build
+#   3. First run only: in another shell, `docker compose exec app npm run db:seed`
+#   4. Open http://localhost:4000
+#
+# Production deployment uses the full multi-stage Dockerfile (target: runner)
+# and a managed database, NOT this compose file.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Stop at the `builder` stage — it contains source + full node_modules
+      # (including dev deps), so we can run `next dev` for hot reload.
+      target: builder
+    container_name: hdo_app
+    ports:
+      - "4000:4000"
+    env_file:
+      # Load AZURE_* + SESSION_COOKIE_SECRET from the developer's .env.local.
+      # Only these two groups are read — DATABASE_URL is overridden below.
+      - .env.local
+    environment:
+      # Override DATABASE_URL to point at the `db` service in this network.
+      # Whatever sits in .env.local (typically a Neon URL) is shadowed.
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/hdo_dev
+      NODE_ENV: development
+      # Help Next.js's file watcher work reliably inside Docker volumes on
+      # macOS/Windows where native fs events don't propagate to the container.
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      # Mount source for hot reload. The named volumes below shadow specific
+      # subdirs so the container's own node_modules + .next stay isolated
+      # from the host's (avoids native-binding mismatches Alpine vs host OS).
+      - .:/app
+      - node_modules:/app/node_modules
+      - next_cache:/app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npm run dev"
+
+  db:
+    image: postgres:16-alpine
+    container_name: hdo_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hdo_dev
+    ports:
+      # Expose 5432 to the host so you can connect from psql / pgAdmin /
+      # Prisma Studio. Comment out for stricter isolation.
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hdo_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  node_modules:
+  next_cache:
+  postgres_data:
