@@ -238,6 +238,8 @@ entries cannot disappear if the mutation succeeds. Covered actions:
 
 - **Identity / membership:** user creation, status/role changes, team-member
   add/remove/role-change.
+- **Organisation:** team create / delete; shift-type create / update / delete
+  (org-standardised codes shared across all teams).
 - **Schedule (HDO-grade accountability):** shift create / update / delete,
   including bulk operations.
 - **Notes:** create, approve, reject. Per-employee week notes upsert / delete.

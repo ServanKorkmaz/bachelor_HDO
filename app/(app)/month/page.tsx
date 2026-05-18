@@ -152,6 +152,10 @@ export default function MonthPage() {
 
   const weekDays = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag']
 
+  if (!me) {
+    return <div className="text-muted-foreground p-8">Laster…</div>
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

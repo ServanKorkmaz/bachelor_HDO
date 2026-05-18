@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { withAdmin, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftTypeBodySchema } from '@/lib/validation/schemas'
+import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,21 +22,32 @@ export const GET = withAuth(async () => {
 })
 
 /** Create a new shift type. Admin only — shift types are shared across all teams. */
-export const POST = withAdmin(async (request) => {
+export const POST = withAdmin(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, shiftTypeBodySchema)
     if ('error' in parsed) return parsed.error
     const { code, label, color, defaultStartTime, defaultEndTime, crossesMidnight } = parsed.data
 
-    const shiftType = await prisma.shiftType.create({
-      data: {
-        code,
-        label,
-        color,
-        defaultStartTime,
-        defaultEndTime,
-        crossesMidnight: crossesMidnight ?? false,
-      },
+    const shiftType = await prisma.$transaction(async (tx) => {
+      const created = await tx.shiftType.create({
+        data: {
+          code,
+          label,
+          color,
+          defaultStartTime,
+          defaultEndTime,
+          crossesMidnight: crossesMidnight ?? false,
+        },
+      })
+      await createAuditLog(tx, {
+        actorUserId: ctx.userId,
+        action: AUDIT_ACTION.SHIFT_TYPE_CREATED,
+        entityType: AUDIT_ENTITY_TYPE.SHIFT_TYPE,
+        entityId: created.id,
+        beforeJson: null,
+        afterJson: JSON.stringify({ code, label, color }),
+      })
+      return created
     })
 
     return NextResponse.json(shiftType)

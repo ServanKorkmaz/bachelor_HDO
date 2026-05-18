@@ -249,7 +249,9 @@ export default function AgendaPage() {
     },
   })
 
-  if (!me) return null
+  if (!me) {
+    return <div className="text-muted-foreground p-8">Laster…</div>
+  }
 
   const selectedUser = users.find((u) => u.id === selectedUserId)
   const selectedTeam = teams.find((t) => t.id === selectedTeamId)

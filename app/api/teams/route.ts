@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { withAdmin, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { teamCreateSchema } from '@/lib/validation/schemas'
+import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,22 +27,30 @@ export const GET = withAuth(async (_request, ctx) => {
 })
 
 /** Create a team and default notification settings. Admin only. */
-export const POST = withAdmin(async (request) => {
+export const POST = withAdmin(async (request, ctx) => {
   try {
     const parsed = await parseJsonBody(request, teamCreateSchema)
     if ('error' in parsed) return parsed.error
     const { name } = parsed.data
 
-    const team = await prisma.team.create({
-      data: { name },
-    })
-
-    await prisma.notificationSettings.create({
-      data: {
-        teamId: team.id,
-        emailEnabled: true,
-        smsEndpoint: null,
-      },
+    const team = await prisma.$transaction(async (tx) => {
+      const created = await tx.team.create({ data: { name } })
+      await tx.notificationSettings.create({
+        data: {
+          teamId: created.id,
+          emailEnabled: true,
+          smsEndpoint: null,
+        },
+      })
+      await createAuditLog(tx, {
+        actorUserId: ctx.userId,
+        action: AUDIT_ACTION.TEAM_CREATED,
+        entityType: AUDIT_ENTITY_TYPE.TEAM,
+        entityId: created.id,
+        beforeJson: null,
+        afterJson: JSON.stringify({ name: created.name }),
+      })
+      return created
     })
 
     return NextResponse.json(team)

@@ -1,8 +1,10 @@
 /** Entity types for audit log. Use these instead of string literals. */
 export const AUDIT_ENTITY_TYPE = {
   USER: 'user',
+  TEAM: 'team',
   TEAM_MEMBERSHIP: 'team_membership',
   SHIFT: 'shift',
+  SHIFT_TYPE: 'shift_type',
   NOTE: 'note',
   WEEK_NOTE: 'week_note',
   SWAP_REQUEST: 'swap_request',
@@ -20,6 +22,11 @@ export const AUDIT_ACTION = {
   SHIFT_CREATED: 'SHIFT_CREATED',
   SHIFT_UPDATED: 'SHIFT_UPDATED',
   SHIFT_DELETED: 'SHIFT_DELETED',
+  SHIFT_TYPE_CREATED: 'SHIFT_TYPE_CREATED',
+  SHIFT_TYPE_UPDATED: 'SHIFT_TYPE_UPDATED',
+  SHIFT_TYPE_DELETED: 'SHIFT_TYPE_DELETED',
+  TEAM_CREATED: 'TEAM_CREATED',
+  TEAM_DELETED: 'TEAM_DELETED',
   NOTE_CREATED: 'NOTE_CREATED',
   NOTE_APPROVED: 'NOTE_APPROVED',
   NOTE_REJECTED: 'NOTE_REJECTED',

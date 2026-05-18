@@ -329,6 +329,10 @@ export default function SwapPage() {
     (r) => r.toUserId === me?.id && r.status === 'AWAITING_ACCEPTANCE'
   )
 
+  if (!me) {
+    return <div className="text-muted-foreground p-8">Laster…</div>
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
