@@ -1,9 +1,9 @@
 # Security
 
-This document describes the main security measures in HDO Turnusplan, the
-trade-offs they imply, and the gaps that remain. Authentication is handled
-by **Microsoft Entra ID** (OAuth 2.0 Authorization Code + PKCE via
-`@azure/msal-node`) with signed session cookies (`iron-session`).
+This document covers the security measures in HDO Turnusplan and the gaps
+that are still open. Authentication is handled by **Microsoft Entra ID**
+(OAuth 2.0 Authorization Code + PKCE via `@azure/msal-node`) with signed
+session cookies (`iron-session`).
 
 ---
 
@@ -17,8 +17,8 @@ runs; only the user id ends up in our session.
 
 Sessions are signed cookies managed by `iron-session`. The cookie is
 `HttpOnly`, `Secure` in production, and `SameSite=Lax`. The session secret
-comes from `SESSION_COOKIE_SECRET` and must be at least 32 characters —
-shorter values throw on startup (see `lib/auth/session.ts`).
+comes from `SESSION_COOKIE_SECRET` and must be at least 32 characters.
+Shorter values throw on startup (see `lib/auth/session.ts`).
 
 The callback at `/auth/azure/callback`:
 
