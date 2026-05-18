@@ -9,6 +9,7 @@ export const AUDIT_ENTITY_TYPE = {
   WEEK_NOTE: 'week_note',
   SWAP_REQUEST: 'swap_request',
   HOLIDAY_REQUEST: 'holiday_request',
+  ROTATION_PATTERN: 'rotation_pattern',
 } as const
 
 /** Actions for audit log. Use these instead of string literals. */
@@ -41,6 +42,10 @@ export const AUDIT_ACTION = {
   HOLIDAY_APPROVED: 'HOLIDAY_APPROVED',
   HOLIDAY_REJECTED: 'HOLIDAY_REJECTED',
   HOLIDAY_REVOKED: 'HOLIDAY_REVOKED',
+  ROTATION_PATTERN_CREATED: 'ROTATION_PATTERN_CREATED',
+  ROTATION_PATTERN_UPDATED: 'ROTATION_PATTERN_UPDATED',
+  ROTATION_PATTERN_DELETED: 'ROTATION_PATTERN_DELETED',
+  ROTATION_GENERATED:       'ROTATION_GENERATED',
 } as const
 
 export interface AuditEntry {
