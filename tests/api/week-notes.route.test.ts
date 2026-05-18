@@ -4,11 +4,14 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     weekNote: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       upsert: vi.fn(),
-      deleteMany: vi.fn(),
+      delete: vi.fn(),
     },
     user: { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -40,6 +43,8 @@ beforeEach(() => {
   // Default: the actor is a leader on the requested team. Individual tests override.
   mockPrisma.user.findUnique.mockResolvedValue({ id: LEADER, role: 'LEADER' })
   mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'm-1' })
+  // Service wraps writes in a transaction; pass-through is enough for these unit tests.
+  mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
 })
 
 describe('GET /api/week-notes', () => {
@@ -107,6 +112,7 @@ describe('GET /api/week-notes', () => {
 
 describe('PUT /api/week-notes', () => {
   it('upserts a note when body is non-empty and trims surrounding whitespace', async () => {
+    mockPrisma.weekNote.findUnique.mockResolvedValue(null)
     mockPrisma.weekNote.upsert.mockResolvedValue({
       id: 'n1',
       teamId: TEAM,
@@ -134,10 +140,27 @@ describe('PUT /api/week-notes', () => {
         update: expect.objectContaining({ body: 'Fokus på overvåkning' }),
       }),
     )
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actorUserId: LEADER,
+          action: 'WEEK_NOTE_UPSERTED',
+          entityType: 'week_note',
+        }),
+      }),
+    )
   })
 
   it('deletes the note when body is empty (single-method upsert contract)', async () => {
-    mockPrisma.weekNote.deleteMany.mockResolvedValue({ count: 1 })
+    mockPrisma.weekNote.findUnique.mockResolvedValue({
+      id: 'n1',
+      teamId: TEAM,
+      userId: EMPLOYEE,
+      isoYear: 2026,
+      isoWeek: 11,
+      body: 'Existing',
+    })
+    mockPrisma.weekNote.delete.mockResolvedValue({})
 
     const res = await PUT(makePut({
       teamId: TEAM,
@@ -148,16 +171,22 @@ describe('PUT /api/week-notes', () => {
     }))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ deleted: true })
-    expect(mockPrisma.weekNote.deleteMany).toHaveBeenCalledWith(
+    expect(mockPrisma.weekNote.delete).toHaveBeenCalledWith({ where: { id: 'n1' } })
+    expect(mockPrisma.weekNote.upsert).not.toHaveBeenCalled()
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ teamId: TEAM, userId: EMPLOYEE }),
+        data: expect.objectContaining({
+          actorUserId: LEADER,
+          action: 'WEEK_NOTE_DELETED',
+          entityType: 'week_note',
+        }),
       }),
     )
-    expect(mockPrisma.weekNote.upsert).not.toHaveBeenCalled()
   })
 
   it('allows an EMPLOYEE to upsert their own week note', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({ id: EMPLOYEE, role: 'EMPLOYEE' })
+    mockPrisma.weekNote.findUnique.mockResolvedValue(null)
     mockPrisma.weekNote.upsert.mockResolvedValue({
       id: 'n1',
       teamId: TEAM,

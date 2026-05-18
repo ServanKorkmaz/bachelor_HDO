@@ -69,12 +69,12 @@ export const POST = withAuth(async (request, ctx) => {
     const processItem = async (item: BulkShiftItem): Promise<ItemResult> => {
       let userId = item.userId
       let date = item.date
-      let existingShift: { id: string; teamId: string; userId: string; date: string; user: { name: string } } | null = null
+      let existingShift: { id: string; teamId: string; userId: string; date: string; shiftTypeId: string; user: { name: string } } | null = null
 
       if (item.shiftId) {
         const shift = await prisma.shift.findUnique({
           where: { id: item.shiftId },
-          select: { id: true, userId: true, date: true, teamId: true, user: { select: { name: true } } },
+          select: { id: true, userId: true, date: true, teamId: true, shiftTypeId: true, user: { select: { name: true } } },
         })
         if (!shift || shift.teamId !== teamId) {
           return { status: 'failure', userId: userId || '', date: date || '', error: 'Shift not found' }
@@ -121,7 +121,7 @@ export const POST = withAuth(async (request, ctx) => {
       if (!existingShift && action !== 'create') {
         const found = await prisma.shift.findFirst({
           where: { userId, date, teamId },
-          select: { id: true, teamId: true, userId: true, date: true, user: { select: { name: true } } },
+          select: { id: true, teamId: true, userId: true, date: true, shiftTypeId: true, user: { select: { name: true } } },
         })
         existingShift = found
       }
@@ -131,6 +131,7 @@ export const POST = withAuth(async (request, ctx) => {
           const created = await createShift({
             teamId,
             userId,
+            actorUserId: ctx.userId,
             date,
             shiftTypeId: shiftType!.id,
             startTime: item.startTime!,
@@ -147,6 +148,7 @@ export const POST = withAuth(async (request, ctx) => {
           }
           const updated = await updateShift(existingShift, {
             userId,
+            actorUserId: ctx.userId,
             date,
             shiftTypeId: shiftType!.id,
             startTime: item.startTime!,
@@ -161,7 +163,7 @@ export const POST = withAuth(async (request, ctx) => {
         if (!existingShift) {
           return { status: 'failure', userId, date, error: 'Shift not found' }
         }
-        await deleteShift(existingShift)
+        await deleteShift(existingShift, ctx.userId)
         return { status: 'success', userId, date, shiftId: existingShift.id }
       } catch (e) {
         if (e instanceof ServiceError) {

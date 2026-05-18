@@ -6,6 +6,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     user:           { findUnique: vi.fn() },
     teamMembership: { findFirst: vi.fn() },
     notification:   { create: vi.fn() },
+    auditLog:       { create: vi.fn() },
     $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),

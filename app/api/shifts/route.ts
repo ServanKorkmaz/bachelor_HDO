@@ -89,6 +89,7 @@ export const POST = withAuth(async (request, ctx) => {
     const shift = await createShift({
       teamId: finalTeamId,
       userId,
+      actorUserId: ctx.userId,
       date,
       shiftTypeId,
       startTime,

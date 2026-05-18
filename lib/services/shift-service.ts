@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
 import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
 import { withEvents } from '@/lib/notifications/events'
 import { assertNoAmlConflict } from './aml'
@@ -32,6 +33,8 @@ type ShiftTypeForTimes = { crossesMidnight: boolean }
 export interface CreateShiftInput {
   teamId: string
   userId: string
+  /** Leader/admin performing the write; recorded for audit purposes. */
+  actorUserId: string
   date: string
   shiftTypeId: string
   startTime: string
@@ -47,6 +50,8 @@ export interface CreateShiftInput {
 
 export interface UpdateShiftInput {
   userId: string
+  /** Leader/admin performing the write; recorded for audit purposes. */
+  actorUserId: string
   date: string
   shiftTypeId: string
   startTime: string
@@ -131,6 +136,20 @@ export async function createShift(input: CreateShiftInput): Promise<ShiftWithRel
       translateUniqueViolation(e)
     }
 
+    await createAuditLog(tx, {
+      actorUserId: input.actorUserId,
+      action: AUDIT_ACTION.SHIFT_CREATED,
+      entityType: AUDIT_ENTITY_TYPE.SHIFT,
+      entityId: shift.id,
+      beforeJson: null,
+      afterJson: JSON.stringify({
+        teamId: shift.teamId,
+        userId: shift.userId,
+        date: shift.date,
+        shiftTypeId: shift.shiftTypeId,
+      }),
+    })
+
     await emit({
       type: 'SHIFT_CREATED',
       teamId: shift.teamId,
@@ -149,7 +168,7 @@ export async function createShift(input: CreateShiftInput): Promise<ShiftWithRel
  * a redundant lookup and keeps the recipient stable across a reassignment.
  */
 export async function updateShift(
-  existing: { id: string; teamId: string; userId: string },
+  existing: { id: string; teamId: string; userId: string; date: string; shiftTypeId: string },
   input: UpdateShiftInput
 ): Promise<ShiftWithRelations> {
   const shiftType = await loadShiftType(input.shiftTypeId, input.shiftType)
@@ -187,6 +206,23 @@ export async function updateShift(
       translateUniqueViolation(e)
     }
 
+    await createAuditLog(tx, {
+      actorUserId: input.actorUserId,
+      action: AUDIT_ACTION.SHIFT_UPDATED,
+      entityType: AUDIT_ENTITY_TYPE.SHIFT,
+      entityId: shift.id,
+      beforeJson: JSON.stringify({
+        userId: existing.userId,
+        date: existing.date,
+        shiftTypeId: existing.shiftTypeId,
+      }),
+      afterJson: JSON.stringify({
+        userId: shift.userId,
+        date: shift.date,
+        shiftTypeId: shift.shiftTypeId,
+      }),
+    })
+
     await emit({
       type: 'SHIFT_UPDATED',
       teamId: existing.teamId,
@@ -200,15 +236,32 @@ export async function updateShift(
 }
 
 /** Delete an already-loaded shift and notify the previous assignee. */
-export async function deleteShift(existing: {
-  id: string
-  teamId: string
-  userId: string
-  date: string
-  user: { name: string }
-}): Promise<void> {
+export async function deleteShift(
+  existing: {
+    id: string
+    teamId: string
+    userId: string
+    date: string
+    shiftTypeId: string
+    user: { name: string }
+  },
+  actorUserId: string
+): Promise<void> {
   await withEvents(async (tx, emit) => {
     await tx.shift.delete({ where: { id: existing.id } })
+    await createAuditLog(tx, {
+      actorUserId,
+      action: AUDIT_ACTION.SHIFT_DELETED,
+      entityType: AUDIT_ENTITY_TYPE.SHIFT,
+      entityId: existing.id,
+      beforeJson: JSON.stringify({
+        teamId: existing.teamId,
+        userId: existing.userId,
+        date: existing.date,
+        shiftTypeId: existing.shiftTypeId,
+      }),
+      afterJson: null,
+    })
     await emit({
       type: 'SHIFT_DELETED',
       teamId: existing.teamId,

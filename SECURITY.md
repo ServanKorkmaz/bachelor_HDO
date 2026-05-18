@@ -232,10 +232,21 @@ it is no longer on the middleware public allowlist and requires a valid
 
 ## Audit logging
 
-Privileged actions (user creation/status changes, membership changes, swap
-decisions, holiday decisions) are recorded in the `AuditLog` table via
-`createAuditLog` inside the same Prisma transaction as the underlying
-mutation, so audit entries cannot disappear if the mutation succeeds.
+Privileged actions are recorded in the `AuditLog` table via `createAuditLog`
+inside the same Prisma transaction as the underlying mutation, so audit
+entries cannot disappear if the mutation succeeds. Covered actions:
+
+- **Identity / membership:** user creation, status/role changes, team-member
+  add/remove/role-change.
+- **Schedule (HDO-grade accountability):** shift create / update / delete,
+  including bulk operations.
+- **Notes:** create, approve, reject. Per-employee week notes upsert / delete.
+- **Swap requests:** request, approve, reject, revoke, execute.
+- **Holiday / absence requests:** request, approve, reject, revoke.
+
+`beforeJson` / `afterJson` capture the relevant fields for entity updates
+(e.g. for shifts: `userId`, `date`, `shiftTypeId`) so a reviewer can answer
+"who scheduled whom, when, and what changed" without replaying the database.
 
 ## Notification events
 

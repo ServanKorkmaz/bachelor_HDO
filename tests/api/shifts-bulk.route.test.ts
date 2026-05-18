@@ -30,6 +30,9 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     holidayRequest: {
       findMany: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),

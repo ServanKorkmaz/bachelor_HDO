@@ -1,5 +1,6 @@
 import { Prisma, type NoteType, type RequestStatus, type NoteVisibility } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
 import { holidayTypeToNorwegian } from '@/lib/i18n'
 import { withEvents } from '@/lib/notifications/events'
 import { ServiceError } from './errors'
@@ -46,6 +47,21 @@ export async function createNote(input: CreateNoteInput): Promise<NoteWithRelati
       include: noteInclude,
     })
 
+    await createAuditLog(tx, {
+      actorUserId: input.createdByUserId,
+      action: AUDIT_ACTION.NOTE_CREATED,
+      entityType: AUDIT_ENTITY_TYPE.NOTE,
+      entityId: note.id,
+      beforeJson: null,
+      afterJson: JSON.stringify({
+        teamId: note.teamId,
+        type: note.type,
+        visibility: note.visibility,
+        dateFrom: note.dateFrom,
+        dateTo: note.dateTo,
+      }),
+    })
+
     await emit({
       type: 'NOTE_CREATED',
       teamId: input.teamId,
@@ -60,7 +76,8 @@ export async function createNote(input: CreateNoteInput): Promise<NoteWithRelati
 /** Admin/leader approves or rejects a note and notifies the creator. */
 export async function decideNote(
   noteId: string,
-  status: 'APPROVED' | 'REJECTED'
+  status: 'APPROVED' | 'REJECTED',
+  actorUserId: string
 ): Promise<NoteWithRelations> {
   return withEvents(async (tx, emit) => {
     const existing = await tx.note.findUnique({ where: { id: noteId } })
@@ -72,6 +89,15 @@ export async function decideNote(
       where: { id: noteId },
       data: { status },
       include: noteInclude,
+    })
+
+    await createAuditLog(tx, {
+      actorUserId,
+      action: status === 'APPROVED' ? AUDIT_ACTION.NOTE_APPROVED : AUDIT_ACTION.NOTE_REJECTED,
+      entityType: AUDIT_ENTITY_TYPE.NOTE,
+      entityId: note.id,
+      beforeJson: JSON.stringify({ status: existing.status }),
+      afterJson: JSON.stringify({ status: note.status }),
     })
 
     const typeNor = holidayTypeToNorwegian(note.type as string)

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { createAuditLog, AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@/lib/admin/audit'
 import { ServiceError } from './errors'
 
 /** A note attached to one specific (team, employee, ISO year, ISO week) cell. */
@@ -86,37 +87,76 @@ export async function upsertWeekNote(input: WeekNoteInput) {
   assertValidWeek(input.isoYear, input.isoWeek)
   const trimmed = input.body.trim()
 
-  if (trimmed.length === 0) {
-    await prisma.weekNote.deleteMany({
+  return prisma.$transaction(async (tx) => {
+    if (trimmed.length === 0) {
+      // Capture the row we're about to delete (if any) so the audit entry
+      // records what existed before the clear — privileged-action accountability.
+      const existing = await tx.weekNote.findUnique({
+        where: {
+          teamId_userId_isoYear_isoWeek: {
+            teamId: input.teamId,
+            userId: input.userId,
+            isoYear: input.isoYear,
+            isoWeek: input.isoWeek,
+          },
+        },
+      })
+      if (!existing) return null
+
+      await tx.weekNote.delete({ where: { id: existing.id } })
+      await createAuditLog(tx, {
+        actorUserId: input.actorUserId,
+        action: AUDIT_ACTION.WEEK_NOTE_DELETED,
+        entityType: AUDIT_ENTITY_TYPE.WEEK_NOTE,
+        entityId: existing.id,
+        beforeJson: JSON.stringify({ body: existing.body, userId: existing.userId }),
+        afterJson: null,
+      })
+      return null
+    }
+
+    const previous = await tx.weekNote.findUnique({
       where: {
-        teamId: input.teamId,
-        userId: input.userId,
-        isoYear: input.isoYear,
-        isoWeek: input.isoWeek,
+        teamId_userId_isoYear_isoWeek: {
+          teamId: input.teamId,
+          userId: input.userId,
+          isoYear: input.isoYear,
+          isoWeek: input.isoWeek,
+        },
       },
     })
-    return null
-  }
 
-  return prisma.weekNote.upsert({
-    where: {
-      teamId_userId_isoYear_isoWeek: {
+    const note = await tx.weekNote.upsert({
+      where: {
+        teamId_userId_isoYear_isoWeek: {
+          teamId: input.teamId,
+          userId: input.userId,
+          isoYear: input.isoYear,
+          isoWeek: input.isoWeek,
+        },
+      },
+      create: {
         teamId: input.teamId,
         userId: input.userId,
         isoYear: input.isoYear,
         isoWeek: input.isoWeek,
+        body: trimmed,
+        createdBy: input.actorUserId,
       },
-    },
-    create: {
-      teamId: input.teamId,
-      userId: input.userId,
-      isoYear: input.isoYear,
-      isoWeek: input.isoWeek,
-      body: trimmed,
-      createdBy: input.actorUserId,
-    },
-    update: {
-      body: trimmed,
-    },
+      update: {
+        body: trimmed,
+      },
+    })
+
+    await createAuditLog(tx, {
+      actorUserId: input.actorUserId,
+      action: AUDIT_ACTION.WEEK_NOTE_UPSERTED,
+      entityType: AUDIT_ENTITY_TYPE.WEEK_NOTE,
+      entityId: note.id,
+      beforeJson: previous ? JSON.stringify({ body: previous.body }) : null,
+      afterJson: JSON.stringify({ body: note.body, userId: note.userId }),
+    })
+
+    return note
   })
 }

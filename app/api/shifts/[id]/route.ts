@@ -28,7 +28,7 @@ export const PUT = withAuth<{ id: string }>(async (request, ctx) => {
     const forbidden = await assertTeamMember(ctx, existingShift.teamId, ['ADMIN', 'LEADER'])
     if (forbidden) return forbidden
 
-    const shift = await updateShift(existingShift, parsed.data)
+    const shift = await updateShift(existingShift, { ...parsed.data, actorUserId: ctx.userId })
     return NextResponse.json(shift)
   } catch (error) {
     const mapped = serviceErrorResponse(error)
@@ -56,7 +56,7 @@ export const DELETE = withAuth<{ id: string }>(async (request, ctx) => {
     const forbidden = await assertTeamMember(ctx, shift.teamId, ['ADMIN', 'LEADER'])
     if (forbidden) return forbidden
 
-    await deleteShift(shift)
+    await deleteShift(shift, ctx.userId)
     return NextResponse.json({ success: true })
   } catch (error) {
     const mapped = serviceErrorResponse(error)
