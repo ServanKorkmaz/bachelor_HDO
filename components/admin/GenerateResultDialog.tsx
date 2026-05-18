@@ -1,6 +1,10 @@
 "use client"
 
 import Link from 'next/link'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 
@@ -14,8 +18,30 @@ interface Props {
   onClose: () => void
 }
 
+interface UserOption { id: string; name: string }
+
+function formatDateNo(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return `${d}.${m}.${y}`
+}
+
 export function GenerateResultDialog({ result, onClose }: Props) {
   const total = result.successes.length + result.failures.length
+  const { data: me } = useMe()
+
+  const { data: users = [] } = useQuery<UserOption[]>({
+    queryKey: ['team-users', me?.teamId],
+    queryFn: async () => {
+      const res = await axiosInstance.get(`/api/users?teamId=${me?.teamId}`)
+      return Array.isArray(res.data) ? res.data : []
+    },
+    enabled: Boolean(me?.teamId),
+  })
+
+  const nameById = useMemo(
+    () => new Map(users.map((u) => [u.id, u.name])),
+    [users]
+  )
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -34,11 +60,14 @@ export function GenerateResultDialog({ result, onClose }: Props) {
           </p>
 
           {result.failures.length > 0 && (
-            <ul className="max-h-64 space-y-1 overflow-auto rounded bg-muted/40 p-3 text-xs">
+            <ul className="max-h-64 space-y-2 overflow-auto rounded bg-muted/40 p-3 text-sm">
               {result.failures.map((f, i) => (
-                <li key={i}>
-                  <span className="font-medium">{f.userId}</span>{' '}
-                  <span className="text-muted-foreground">{f.date}:</span> {f.error}
+                <li key={i} className="leading-snug">
+                  <div>
+                    <span className="font-medium">{nameById.get(f.userId) ?? f.userId}</span>
+                    <span className="text-muted-foreground"> · {formatDateNo(f.date)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{f.error}</div>
                 </li>
               ))}
             </ul>
