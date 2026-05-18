@@ -16,6 +16,7 @@ import {
 import { Plus, Trash2, Edit } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import type { ShiftType } from '@/lib/types'
 
 const normalizeHexColor = (value: string): string | null => {
   const cleaned = value.trim().replace(/^#/, '')
@@ -37,7 +38,7 @@ export default function ShiftTypesPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [editingShiftType, setEditingShiftType] = useState<any>(null)
+  const [editingShiftType, setEditingShiftType] = useState<ShiftType | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string; label: string }>({ open: false, id: '', label: '' })
   const [colorInput, setColorInput] = useState('#000000')
   const [formData, setFormData] = useState({
@@ -49,7 +50,7 @@ export default function ShiftTypesPage() {
     crossesMidnight: false,
   })
 
-  const { data: shiftTypes = [] } = useQuery<any[]>({
+  const { data: shiftTypes = [] } = useQuery<ShiftType[]>({
     queryKey: ['shift-types'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/shift-types')
@@ -129,7 +130,7 @@ export default function ShiftTypesPage() {
     })
   }
 
-  const openEditModal = (shiftType: any) => {
+  const openEditModal = (shiftType: ShiftType) => {
     setColorInput(shiftType.color)
     setEditingShiftType(shiftType)
     setFormData({

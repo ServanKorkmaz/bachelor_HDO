@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { axiosInstance } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
+import type { NotificationItem } from '@/lib/types'
 
 const POLL_INTERVAL_MS = 30_000
 const DROPDOWN_LIMIT = 10
@@ -24,7 +25,7 @@ export function NotificationsPanel() {
   const { data: me } = useMe()
   const queryClient = useQueryClient()
 
-  const { data: notifications = [] } = useQuery<any[]>({
+  const { data: notifications = [] } = useQuery<NotificationItem[]>({
     queryKey: ['notifications', me?.id],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/notifications?userId=${me!.id}`)

@@ -23,8 +23,9 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { UserPlus, Shield, UserMinus, UserX, Loader2, Plus, Building2 } from 'lucide-react'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
+import type { TeamSummary } from '@/lib/types'
 
 type UserRow = {
   id: string
@@ -66,7 +67,7 @@ export default function AdminUsersPage() {
     if (teamId) setTeamFilter(teamId)
   }, [searchParams])
 
-  const { data: fetchedTeams = [] } = useQuery<any[]>({
+  const { data: fetchedTeams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')
@@ -90,7 +91,7 @@ export default function AdminUsersPage() {
       try {
         const res = await axiosInstance.get(`/api/admin/users?${params.toString()}`)
         return Array.isArray(res.data) ? res.data : []
-      } catch (e: any) {
+      } catch {
         toast({ title: 'Feil', description: 'Kunne ikke hente brukere', variant: 'destructive' })
         return []
       }
@@ -151,9 +152,8 @@ export default function AdminUsersPage() {
       setCreateTeamId('')
       setCreateRole('EMPLOYEE')
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-    } catch (e: any) {
-      const err = e?.response?.data?.error
-      toast({ title: 'Feil', description: err || 'Kunne ikke opprette bruker', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: 'Feil', description: apiErrorMessage(e, 'Kunne ikke opprette bruker'), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -168,9 +168,8 @@ export default function AdminUsersPage() {
       setAddDialog(null)
       setAddTeamId('')
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-    } catch (e: any) {
-      const err = e?.response?.data?.error
-      toast({ title: 'Feil', description: err || 'Kunne ikke legge til', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: 'Feil', description: apiErrorMessage(e, 'Kunne ikke legge til'), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -184,9 +183,8 @@ export default function AdminUsersPage() {
       toast({ title: 'Rolle oppdatert', description: `Rolle satt til ${roleLabel(newRole)}.` })
       setRoleDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-    } catch (e: any) {
-      const err = e?.response?.data?.error
-      toast({ title: 'Feil', description: err || 'Kunne ikke oppdatere', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: 'Feil', description: apiErrorMessage(e, 'Kunne ikke oppdatere'), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -201,9 +199,8 @@ export default function AdminUsersPage() {
       toast({ title: 'Fjernet fra team', description: `${removeDialog.user.name} er fjernet fra teamet.` })
       setRemoveDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-    } catch (e: any) {
-      const err = e?.response?.data?.error
-      toast({ title: 'Feil', description: err || 'Kunne ikke fjerne', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: 'Feil', description: apiErrorMessage(e, 'Kunne ikke fjerne'), variant: 'destructive' })
     } finally {
       setBusy(false)
     }
@@ -220,9 +217,8 @@ export default function AdminUsersPage() {
       })
       setStatusDialog(null)
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-    } catch (e: any) {
-      const err = e?.response?.data?.error
-      toast({ title: 'Feil', description: err || 'Kunne ikke oppdatere', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: 'Feil', description: apiErrorMessage(e, 'Kunne ikke oppdatere'), variant: 'destructive' })
     } finally {
       setBusy(false)
     }

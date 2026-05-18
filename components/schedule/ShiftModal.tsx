@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatTime, formatDateDisplay, formatDayName } from '@/lib/date-utils'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
+import type { UserSummary } from '@/lib/types'
 import {
   evaluateShiftIssues,
   type IssueHoliday,
@@ -102,7 +103,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
   })
 
   // Fetch users
-  const { data: users = [] } = useQuery<any[]>({
+  const { data: users = [] } = useQuery<UserSummary[]>({
     queryKey: ['users'],
     queryFn: () => axiosInstance.get('/api/users').then(res => res.data),
   })
@@ -198,9 +199,20 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
     shift?.id,
   ])
 
+  interface SaveShiftPayload {
+    userId: string
+    date: string
+    shiftTypeId: string
+    startTime: string
+    endTime: string
+    /** Optional on POST — the server falls back to the user's home team. */
+    teamId?: string
+    /** undefined to leave unset on create, null to clear on update. */
+    comment?: string | null
+  }
   // Save shift mutation (POST or PUT)
   const saveShiftMutation = useMutation({
-    mutationFn: async (shiftData: any) => {
+    mutationFn: async (shiftData: SaveShiftPayload) => {
       const url = shift ? `/api/shifts/${shift.id}` : '/api/shifts'
       const method = shift ? 'PUT' : 'POST'
 
@@ -215,18 +227,11 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
       queryClient.invalidateQueries({ queryKey: ['shifts'] })
       onClose()
     },
-    onError: (error: unknown) => {
+    onError: (error) => {
       // Surface the server's message (e.g. AML §10-8 violation text) instead
       // of a generic "Kunne ikke lagre vakt", so the leader sees the same
       // explanation the banner shows.
-      const fallback = 'Kunne ikke lagre vakt'
-      let message = fallback
-      if (error && typeof error === 'object' && 'response' in error) {
-        const resp = (error as { response?: { data?: { error?: string } } }).response
-        if (typeof resp?.data?.error === 'string') {
-          message = resp.data.error
-        }
-      }
+      const message = apiErrorMessage(error, 'Kunne ikke lagre vakt')
       alert(message)
     },
   })

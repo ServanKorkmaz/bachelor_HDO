@@ -17,6 +17,7 @@ import { Plus, Trash2, Users } from 'lucide-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import type { TeamSummary } from '@/lib/types'
 
 /**
  * Admin page to create and remove teams.
@@ -32,7 +33,7 @@ export default function TeamsPage() {
   const [newTeamName, setNewTeamName] = useState('')
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; teamId: string; teamName: string }>({ open: false, teamId: '', teamName: '' })
 
-  const { data: teams = [] } = useQuery<any[]>({
+  const { data: teams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')

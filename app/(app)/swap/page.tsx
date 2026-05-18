@@ -24,8 +24,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { statusToNorwegian } from '@/lib/i18n'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
+import type {
+  TeamSummary,
+  UserSummary,
+  Shift,
+  SwapRequestWithRelations,
+} from '@/lib/types'
 
 const SWAP_LOOKAHEAD_DAYS = 30
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -37,12 +43,12 @@ function ShiftPickerList({
   onChange,
   emptyLabel = 'Ingen vakter i perioden',
 }: {
-  shifts: any[]
+  shifts: Shift[]
   value: string
   onChange: (id: string) => void
   emptyLabel?: string
 }) {
-  const selected = shifts.find((s: any) => s.id === value)
+  const selected = shifts.find((s) => s.id === value)
 
   if (selected) {
     return (
@@ -65,7 +71,7 @@ function ShiftPickerList({
         <p className="p-3 text-sm text-muted-foreground">{emptyLabel}</p>
       ) : (
         <ul className="divide-y divide-border">
-          {shifts.map((shift: any) => (
+          {shifts.map((shift) => (
             <li
               key={shift.id}
               onClick={() => onChange(shift.id)}
@@ -103,7 +109,7 @@ export default function SwapPage() {
 
   const closeConfirm = () => setConfirmDialog(d => ({ ...d, open: false }))
 
-  const { data: teams = [] } = useQuery<any[]>({
+  const { data: teams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const response = await axiosInstance.get('/api/teams')
@@ -118,7 +124,7 @@ export default function SwapPage() {
   }, [teams, selectedTeamId])
 
   // Brukere i valgt team (for «Bytt med») – bruk teamId så TeamMembership inkluderes
-  const { data: users = [] } = useQuery<any[]>({
+  const { data: users = [] } = useQuery<UserSummary[]>({
     queryKey: ['users', selectedTeamId],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/users?teamId=${selectedTeamId}`)
@@ -139,7 +145,7 @@ export default function SwapPage() {
     }
   }, [])
 
-  const { data: swapRequests = [] } = useQuery<any[]>({
+  const { data: swapRequests = [] } = useQuery<SwapRequestWithRelations[]>({
     queryKey: ['swap-requests', selectedTeamId],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/swap-requests?teamId=${selectedTeamId}`)
@@ -148,7 +154,7 @@ export default function SwapPage() {
     enabled: Boolean(selectedTeamId),
   })
 
-  const { data: shifts = [] } = useQuery<any[]>({
+  const { data: shifts = [] } = useQuery<Shift[]>({
     queryKey: ['shifts', selectedTeamId, dateFrom, dateTo],
     queryFn: async () => {
       const response = await axiosInstance.get(
@@ -160,10 +166,10 @@ export default function SwapPage() {
   })
 
   const myShifts = shifts.filter(
-    (s: any) => (s.userId ?? s.user?.id) === me?.id
+    (s) => (s.userId ?? s.user?.id) === me?.id
   )
 
-  const { data: colleagueShifts = [] } = useQuery<any[]>({
+  const { data: colleagueShifts = [] } = useQuery<Shift[]>({
     queryKey: ['shifts', selectedTeamId, selectedToUserId, dateFrom, dateTo],
     queryFn: async () => {
       const response = await axiosInstance.get(
@@ -200,9 +206,8 @@ export default function SwapPage() {
       setSelectedToShiftId('')
       setMessage('')
       await refreshSwapData()
-    } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Kunne ikke opprette vaktbytteforespørsel'
-      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    } catch (error) {
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke opprette vaktbytteforespørsel'), variant: 'destructive' })
     }
   }
 
@@ -214,9 +219,8 @@ export default function SwapPage() {
         {},
       )
       await refreshSwapData()
-    } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Kunne ikke godkjenne forespørsel'
-      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    } catch (error) {
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke godkjenne forespørsel'), variant: 'destructive' })
     }
   }
 
@@ -228,9 +232,8 @@ export default function SwapPage() {
         {},
       )
       await refreshSwapData()
-    } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Kunne ikke avvise forespørsel'
-      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    } catch (error) {
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke avvise forespørsel'), variant: 'destructive' })
     }
   }
 
@@ -244,9 +247,8 @@ export default function SwapPage() {
         try {
           await axiosInstance.delete(`/api/swap-requests/${requestId}`)
           await refreshSwapData()
-        } catch (error: any) {
-          const msg = error?.response?.data?.error || 'Kunne ikke avbryte forespørsel'
-          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        } catch (error) {
+          toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke avbryte forespørsel'), variant: 'destructive' })
         }
       },
     })
@@ -259,9 +261,8 @@ export default function SwapPage() {
         {},
       )
       await refreshSwapData()
-    } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Kunne ikke godta forespørsel'
-      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    } catch (error) {
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke godta forespørsel'), variant: 'destructive' })
     }
   }
 
@@ -278,9 +279,8 @@ export default function SwapPage() {
             {},
           )
           await refreshSwapData()
-        } catch (error: any) {
-          const msg = error?.response?.data?.error || 'Kunne ikke avslå forespørsel'
-          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        } catch (error) {
+          toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke avslå forespørsel'), variant: 'destructive' })
         }
       },
     })
@@ -294,9 +294,8 @@ export default function SwapPage() {
         {},
       )
       await refreshSwapData()
-    } catch (error: any) {
-      const msg = error?.response?.data?.error || 'Kunne ikke trekke tilbake beslutningen'
-      toast({ title: 'Feil', description: msg, variant: 'destructive' })
+    } catch (error) {
+      toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke trekke tilbake beslutningen'), variant: 'destructive' })
     }
   }
 
@@ -313,22 +312,21 @@ export default function SwapPage() {
             {},
           )
           await refreshSwapData()
-        } catch (error: any) {
-          const msg = error?.response?.data?.error || 'Kunne ikke utføre vaktbytte'
-          toast({ title: 'Feil', description: msg, variant: 'destructive' })
+        } catch (error) {
+          toast({ title: 'Feil', description: apiErrorMessage(error, 'Kunne ikke utføre vaktbytte'), variant: 'destructive' })
         }
       },
     })
   }
 
-  const pendingRequests = swapRequests.filter((r: any) => r.status === 'PENDING')
-  const awaitingRequests = swapRequests.filter((r: any) => r.status === 'AWAITING_ACCEPTANCE')
-  const otherRequests = swapRequests.filter((r: any) => r.status !== 'PENDING' && r.status !== 'AWAITING_ACCEPTANCE')
+  const pendingRequests = swapRequests.filter((r) => r.status === 'PENDING')
+  const awaitingRequests = swapRequests.filter((r) => r.status === 'AWAITING_ACCEPTANCE')
+  const otherRequests = swapRequests.filter((r) => r.status !== 'PENDING' && r.status !== 'AWAITING_ACCEPTANCE')
   const myRequests = swapRequests.filter(
-    (r: any) => r.requestedByUserId === me?.id
+    (r) => r.requestedByUserId === me?.id
   )
   const incomingRequests = swapRequests.filter(
-    (r: any) => r.toUserId === me?.id && r.status === 'AWAITING_ACCEPTANCE'
+    (r) => r.toUserId === me?.id && r.status === 'AWAITING_ACCEPTANCE'
   )
 
   return (
@@ -362,7 +360,7 @@ export default function SwapPage() {
         <section>
           <h2 className="text-xl font-semibold mb-4">Venter på kollegas svar</h2>
           <div className="space-y-2">
-            {awaitingRequests.map((request: any) => (
+            {awaitingRequests.map((request) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -396,7 +394,7 @@ export default function SwapPage() {
         <section>
           <h2 className="text-xl font-semibold mb-4">Venter på godkjenning</h2>
           <div className="space-y-2">
-            {pendingRequests.map((request: any) => (
+            {pendingRequests.map((request) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -442,7 +440,7 @@ export default function SwapPage() {
         <section>
           <h2 className="text-xl font-semibold mb-4">Inngående forespørsler</h2>
           <div className="space-y-2">
-            {incomingRequests.map((request: any) => (
+            {incomingRequests.map((request) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -494,7 +492,7 @@ export default function SwapPage() {
               {canApproveSwaps ? 'Ingen forespørsler' : 'Ingen forespørsler'}
             </p>
           ) : (
-            (canApproveSwaps ? otherRequests : myRequests).map((request: any) => (
+            (canApproveSwaps ? otherRequests : myRequests).map((request) => (
               <div
                 key={request.id}
                 className="p-4 bg-card rounded-lg border"
@@ -608,8 +606,8 @@ export default function SwapPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {users
-                    .filter((u: any) => u.id !== me?.id)
-                    .map((user: any) => (
+                    .filter((u) => u.id !== me?.id)
+                    .map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}
                       </SelectItem>
@@ -620,7 +618,7 @@ export default function SwapPage() {
             {selectedToUserId && (
               <div className="space-y-2">
                 <Label>
-                  Vakt fra {users.find((u: any) => u.id === selectedToUserId)?.name ?? 'kollegaen'} (valgfritt)
+                  Vakt fra {users.find((u) => u.id === selectedToUserId)?.name ?? 'kollegaen'} (valgfritt)
                 </Label>
                 <ShiftPickerList
                   shifts={colleagueShifts}

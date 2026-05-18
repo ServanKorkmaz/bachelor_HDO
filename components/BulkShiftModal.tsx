@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
+import type { Shift } from '@/lib/types'
 
 type BulkAction = 'create' | 'update' | 'delete'
 
@@ -139,7 +140,7 @@ function EmployeeSelect({ users, value, onChange, isLoading, error }: EmployeeSe
 }
 
 interface ShiftListItemProps {
-  shift: any
+  shift: Shift
   selected: boolean
   onSelect: () => void
 }
@@ -164,7 +165,7 @@ function ShiftListItem({ shift, selected, onSelect }: ShiftListItemProps) {
 }
 
 interface EmployeeShiftPickerProps {
-  shifts: any[]
+  shifts: Shift[]
   selectedShiftId?: string
   onSelect: (shiftId: string) => void
   isLoading: boolean
@@ -203,7 +204,7 @@ function EmployeeShiftPicker({
   }, [filter, query, shifts, today])
 
   const grouped = useMemo(() => {
-    const groups = new Map<string, any[]>()
+    const groups = new Map<string, Shift[]>()
     filtered.forEach(shift => {
       const month = formatShiftMonth(shift.date)
       if (!groups.has(month)) {
@@ -307,7 +308,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
   const usersError = usersErrorObj ? 'Kunne ikke laste ansatte' : null
 
   // Fetch team shifts
-  const { data: teamShifts = [], isLoading: shiftsLoading, error: shiftsErrorObj } = useQuery<any[]>({
+  const { data: teamShifts = [], isLoading: shiftsLoading, error: shiftsErrorObj } = useQuery<Shift[]>({
     queryKey: ['shifts', teamId],
     queryFn: async () => {
       if (!teamId) return []
@@ -322,9 +323,26 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
 
   const shiftsError = shiftsErrorObj ? 'Kunne ikke laste vakter' : null
 
+  type BulkPayload = {
+    action: BulkAction
+    teamId: string
+    items: Array<{
+      shiftId?: string
+      userId?: string
+      date?: string
+      shiftTypeId?: string
+      startTime?: string
+      endTime?: string
+      comment?: string
+    }>
+  }
+  type BulkResponse = {
+    successes?: Array<{ userId: string; date: string; shiftId?: string }>
+    failures?: Array<{ userId: string; date: string; error: string }>
+  }
   // Bulk update mutation
   const bulkUpdateMutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: BulkPayload): Promise<BulkResponse> => {
       const response = await axiosInstance.post('/api/shifts/bulk', payload)
       return response.data
     },
@@ -340,8 +358,8 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
       queryClient.invalidateQueries({ queryKey: ['shifts', teamId] })
       onClose()
     },
-    onError: (error: any) => {
-      alert(error?.response?.data?.error || 'Kunne ikke oppdatere vakter')
+    onError: (error) => {
+      alert(apiErrorMessage(error, 'Kunne ikke oppdatere vakter'))
     },
   })
 
@@ -623,7 +641,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
                               shiftId: value,
                               userId: shift.userId,
                               date: shift.date,
-                              shiftTypeId: shift.shiftTypeId,
+                              shiftTypeId: shift.shiftType.id,
                               startTime: format(new Date(shift.startDateTime), 'HH:mm'),
                               endTime: format(new Date(shift.endDateTime), 'HH:mm'),
                               comment: shift.comment || '',

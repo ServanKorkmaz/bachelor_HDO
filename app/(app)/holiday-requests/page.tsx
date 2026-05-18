@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
 
 type RequestRow = {
@@ -68,11 +68,7 @@ export default function HolidayRequestsPage() {
         toast({ title: action === 'APPROVE' ? 'Godkjent' : 'Avvist' })
         await refreshItems()
       } catch (e) {
-        const errorMessage =
-          e && typeof e === 'object' && 'response' in e
-            ? (e as any).response?.data?.error
-            : null
-        toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+        toast({ title: 'Feil', description: apiErrorMessage(e), variant: 'destructive' })
       }
     }
 
@@ -85,11 +81,7 @@ export default function HolidayRequestsPage() {
         toast({ title: 'Trukket tilbake', description: 'Forespørselen er satt tilbake til ventende.' })
         await refreshItems()
       } catch (e) {
-        const errorMessage =
-          e && typeof e === 'object' && 'response' in e
-            ? (e as any).response?.data?.error
-            : null
-        toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+        toast({ title: 'Feil', description: apiErrorMessage(e), variant: 'destructive' })
       }
     }
 
@@ -161,11 +153,7 @@ export default function HolidayRequestsPage() {
       setDeleteId(null)
       await refreshItems()
     } catch (e) {
-      const errorMessage =
-        e && typeof e === 'object' && 'response' in e
-          ? (e as any).response?.data?.error
-          : null
-      toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+      toast({ title: 'Feil', description: apiErrorMessage(e), variant: 'destructive' })
     }
   }
 
@@ -188,11 +176,7 @@ export default function HolidayRequestsPage() {
       setEditItem(null)
       await refreshItems()
     } catch (e) {
-      const errorMessage =
-        e && typeof e === 'object' && 'response' in e
-          ? (e as any).response?.data?.error
-          : null
-      toast({ title: 'Feil', description: errorMessage || 'Nettverksfeil', variant: 'destructive' })
+      toast({ title: 'Feil', description: apiErrorMessage(e), variant: 'destructive' })
     }
   }
 

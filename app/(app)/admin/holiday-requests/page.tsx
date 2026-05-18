@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
 
 type RequestRow = {
@@ -54,9 +54,8 @@ export default function AdminHolidayRequestsPage() {
       toast({ title: 'Updated' })
       await queryClient.invalidateQueries({ queryKey: requestsQueryKey })
     },
-    onError: (error: any) => {
-      const message = error?.response?.data?.error || 'Could not update'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+    onError: (error) => {
+      toast({ title: 'Error', description: apiErrorMessage(error, 'Could not update'), variant: 'destructive' })
     },
   })
 

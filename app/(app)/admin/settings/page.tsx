@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import type { TeamSummary, NotificationSettings } from '@/lib/types'
 
 /**
  * Team-wide notification settings. Admin-only — `AdminLayout` redirects
@@ -22,13 +23,13 @@ import { axiosInstance } from '@/lib/axios'
 export default function AdminNotificationSettingsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const [teams, setTeams] = useState<any[]>([])
+  const [teams, setTeams] = useState<TeamSummary[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
-  const [settings, setSettings] = useState<any>(null)
+  const [settings, setSettings] = useState<NotificationSettings | null>(null)
   const [emailEnabled, setEmailEnabled] = useState(true)
   const [smsEndpoint, setSmsEndpoint] = useState('')
 
-  const { data: fetchedTeams = [] } = useQuery<any[]>({
+  const { data: fetchedTeams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')
@@ -43,7 +44,7 @@ export default function AdminNotificationSettingsPage() {
     }
   }, [fetchedTeams, selectedTeamId])
 
-  const { data: teamSettings } = useQuery<any>({
+  const { data: teamSettings } = useQuery<NotificationSettings>({
     queryKey: ['notification-settings', selectedTeamId],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/notification-settings?teamId=${selectedTeamId}`)

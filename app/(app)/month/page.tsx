@@ -23,6 +23,7 @@ import { getShiftChipStyle } from '@/lib/shift-colors'
 import { ShiftModal } from '@/components/schedule/ShiftModal'
 import { ExportMenu } from '@/components/schedule/ExportMenu'
 import { axiosInstance } from '@/lib/axios'
+import type { TeamSummary, Shift, HolidayRequestRow } from '@/lib/types'
 
 function holidayLabel(type: string): string {
   if (type === 'HOLIDAY') return 'Ferie'
@@ -35,8 +36,8 @@ function holidayLabel(type: string): string {
 export default function MonthPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
-  const [selectedShift, setSelectedShift] = useState<any>(null)
-  const [selectedDayShifts, setSelectedDayShifts] = useState<{ date: string; shifts: any[] } | null>(null)
+  const [selectedShift, setSelectedShift] = useState<Shift | null>(null)
+  const [selectedDayShifts, setSelectedDayShifts] = useState<{ date: string; shifts: Shift[] } | null>(null)
   const { data: me } = useMe()
 
   const monthStart = useMemo(() => startOfMonth(selectedDate), [selectedDate])
@@ -59,7 +60,7 @@ export default function MonthPage() {
     return days
   }, [firstDayOfWeek, daysInMonth])
 
-  const { data: fetchedTeams = [] } = useQuery<any[]>({
+  const { data: fetchedTeams = [] } = useQuery<TeamSummary[]>({
     queryKey: ['teams'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/teams')
@@ -75,7 +76,7 @@ export default function MonthPage() {
 
   const startDate = format(monthStart, 'yyyy-MM-dd')
   const endDate = format(monthEnd, 'yyyy-MM-dd')
-  const { data: fetchedShifts = [] } = useQuery<any[]>({
+  const { data: fetchedShifts = [] } = useQuery<Shift[]>({
     queryKey: ['shifts', selectedTeamId, startDate, endDate],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/shifts?teamId=${selectedTeamId}&dateFrom=${startDate}&dateTo=${endDate}`)
@@ -85,7 +86,7 @@ export default function MonthPage() {
   })
 
   const shiftsByDate = useMemo(() => {
-    const map = new Map<string, any[]>()
+    const map = new Map<string, Shift[]>()
     const activeShifts = Array.isArray(fetchedShifts) ? fetchedShifts : []
     activeShifts.forEach(shift => {
       const dateStr = shift.date
@@ -97,7 +98,7 @@ export default function MonthPage() {
     return map
   }, [fetchedShifts])
 
-  const { data: allHolidayRequests = [] } = useQuery<any[]>({
+  const { data: allHolidayRequests = [] } = useQuery<HolidayRequestRow[]>({
     queryKey: ['holiday-requests', selectedTeamId],
     queryFn: async () => {
       const res = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
@@ -107,10 +108,10 @@ export default function MonthPage() {
   })
 
   const approvedHolidayByUser = useMemo(() => {
-    const map = new Map<string, any[]>()
+    const map = new Map<string, HolidayRequestRow[]>()
     allHolidayRequests
-      .filter((r: any) => r.status === 'APPROVED')
-      .forEach((r: any) => {
+      .filter((r) => r.status === 'APPROVED')
+      .forEach((r) => {
         if (!map.has(r.userId)) map.set(r.userId, [])
         map.get(r.userId)!.push(r)
       })
@@ -144,7 +145,7 @@ export default function MonthPage() {
     }
   }
 
-  const handleShiftClick = (shift: any) => {
+  const handleShiftClick = (shift: Shift) => {
     setSelectedDayShifts(null)
     setSelectedShift(shift)
   }
@@ -233,10 +234,10 @@ export default function MonthPage() {
                   {format(date, 'd')}
                 </div>
                 <div className="space-y-1.5">
-                  {dayShifts.slice(0, 3).map((shift: any) => {
+                  {dayShifts.slice(0, 3).map((shift) => {
                     const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
                     const approvedHoliday = userHolidays.find(
-                      (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
+                      (r) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
                     ) ?? null
                     return (
                     <button
@@ -312,7 +313,7 @@ export default function MonthPage() {
               {selectedDayShifts.shifts.map((shift) => {
                 const userHolidays = approvedHolidayByUser.get(shift.userId) ?? []
                 const approvedHoliday = userHolidays.find(
-                  (r: any) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
+                  (r) => shift.date >= r.dateFrom && shift.date <= (r.dateTo ?? r.dateFrom)
                 ) ?? null
                 return (
                 <button

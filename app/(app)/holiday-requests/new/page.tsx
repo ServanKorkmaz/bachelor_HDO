@@ -9,15 +9,22 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
-import { axiosInstance } from '@/lib/axios'
+import { axiosInstance, apiErrorMessage } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
+
+interface HolidayCreatePayload {
+  type: 'HOLIDAY' | 'ABSENCE' | 'SICKNESS'
+  dateFrom: string
+  dateTo?: string
+  message?: string
+}
 
 export default function NewHolidayRequestPage() {
   const { data: me } = useMe()
   const router = useRouter()
   const { toast } = useToast()
 
-  const [type, setType] = useState('HOLIDAY')
+  const [type, setType] = useState<HolidayCreatePayload['type']>('HOLIDAY')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [message, setMessage] = useState('')
@@ -28,7 +35,7 @@ export default function NewHolidayRequestPage() {
   const sicknessMinStr = useMemo(() => dateNDaysAgoString(30), [])
 
   const createHolidayRequest = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: HolidayCreatePayload) => {
       const res = await axiosInstance.post('/api/holiday-requests', payload)
       return res.data
     },
@@ -85,8 +92,7 @@ export default function NewHolidayRequestPage() {
       router.push('/agenda')
     } catch (err) {
       console.error(err)
-      const message = (err as any)?.response?.data?.error || 'Nettverksfeil'
-      toast({ title: 'Feil', description: message, variant: 'destructive' })
+      toast({ title: 'Feil', description: apiErrorMessage(err), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -98,7 +104,7 @@ export default function NewHolidayRequestPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <Label>Type</Label>
-          <Select value={type} onValueChange={(v: string) => setType(v)}>
+          <Select value={type} onValueChange={(v) => setType(v as HolidayCreatePayload['type'])}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

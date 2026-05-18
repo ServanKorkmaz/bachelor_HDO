@@ -15,7 +15,7 @@ import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { axiosInstance } from '@/lib/axios'
 import { useMe } from '@/lib/hooks/useMe'
-import type { TeamSummary, UserSummary, Shift } from '@/lib/types'
+import type { TeamSummary, UserSummary, Shift, HolidayRequestRow } from '@/lib/types'
 
 const TEAM_ID_PARAM = 'teamId'
 
@@ -85,7 +85,7 @@ export default function StandardPlanPage() {
     enabled: Boolean(selectedTeamId),
   })
 
-  const { data: allHolidayRequests = [] } = useQuery({
+  const { data: allHolidayRequests = [] } = useQuery<HolidayRequestRow[]>({
     queryKey: ['holiday-requests', selectedTeamId],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/holiday-requests?teamId=${selectedTeamId}`)
@@ -95,7 +95,7 @@ export default function StandardPlanPage() {
   })
 
   const approvedHolidayRequests = useMemo(
-    () => allHolidayRequests.filter((r: any) => r.status === 'APPROVED'),
+    () => allHolidayRequests.filter((r) => r.status === 'APPROVED'),
     [allHolidayRequests]
   )
 
