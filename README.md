@@ -39,7 +39,7 @@ HDO-grade krav til sikkerhet, sporbarhet og universell utforming.
 3. **Agenda** — kronologisk liste over vakter og notater
 4. **Vaktbytter** — forespørsel → aksept → leder-godkjenning → utførelse
 5. **Ferie- og fraværsforespørsler** — egne flyt for ferie, sykdom og annet fravær
-6. **Notater** — ukenotater (per ISO-uke) og hendelsesnotater med synlighetsvalg
+6. **Notater** — ukenotater (per ansatt per ISO-uke) og hendelsesnotater med synlighetsvalg
 7. **Admin** — administrasjon av team, brukere, vakttyper, varslingsinnstillinger og revisjonslogg
 
 ### Avanserte funksjoner
@@ -371,7 +371,7 @@ singleton Prisma-klient (`lib/prisma.ts`).
 | `Shift` | Planlagte vakter (dato lagret som streng for tidssone-stabilitet) |
 | `SwapRequest` | Vaktbytteforespørsler |
 | `Note` | Notater (generelle, fravær, sykdom) |
-| `WeekNote` | Ukenotater (per ISO-uke) |
+| `WeekNote` | Ukenotater (per ansatt per ISO-uke) |
 | `HolidayRequest` | Ferie- og fraværsforespørsler |
 | `Notification` | Per-bruker varselinnboks |
 | `NotificationSettings` | Per-team varselskonfigurasjon |
