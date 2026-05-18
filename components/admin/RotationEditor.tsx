@@ -164,7 +164,9 @@ export function RotationEditor({ teamId: initialTeamId, initial, lockTeam, onSub
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Planen gjentas hver {weeks}. uke ved generering.</p>
+        <p className="text-xs text-muted-foreground">
+          Planen gjentas hver {weeks}. uke. Startdato velges når du genererer vakter fra planen.
+        </p>
       </div>
 
       <div className="space-y-2">
