@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withLeaderOrAdmin, withAuth } from '@/lib/auth/withAuth'
+import { withAdmin, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { shiftTypeBodySchema } from '@/lib/validation/schemas'
 
@@ -20,8 +20,8 @@ export const GET = withAuth(async () => {
   }
 })
 
-/** Create a new shift type. Admin only. */
-export const POST = withLeaderOrAdmin(async (request) => {
+/** Create a new shift type. Admin only — shift types are shared across all teams. */
+export const POST = withAdmin(async (request) => {
   try {
     const parsed = await parseJsonBody(request, shiftTypeBodySchema)
     if ('error' in parsed) return parsed.error

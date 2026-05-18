@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/use-toast'
 import { statusToNorwegian } from '@/lib/i18n'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 const SWAP_LOOKAHEAD_DAYS = 30
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -89,14 +90,7 @@ export default function SwapPage() {
   const [selectedToUserId, setSelectedToUserId] = useState<string>('')
   const [selectedToShiftId, setSelectedToShiftId] = useState<string>('')
   const [message, setMessage] = useState<string>('')
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const canApproveSwaps = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const { toast } = useToast()
   const [confirmDialog, setConfirmDialog] = useState<{

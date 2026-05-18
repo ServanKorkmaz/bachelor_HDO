@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 import {
   formatDateDisplay,
   fromIsoWeek,
@@ -62,14 +63,7 @@ type WeekNote = {
  * above each week card. The selected employee, team and reference date are
  * persisted in the URL so a shared link reproduces the same view. */
 export default function AgendaPage() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()

@@ -31,6 +31,7 @@ import {
   type ShiftIssues,
 } from '@/lib/domain/shift-issues'
 import { buildShiftDateTimes, ShiftTimeError } from '@/lib/shifts/time'
+import { useMe, type Me } from '@/lib/hooks/useMe'
 import { ShiftIssueBanner } from './ShiftIssueIndicator'
 
 const PREVIEW_TARGET_ID = '__preview__'
@@ -62,14 +63,9 @@ export interface Shift {
   comment?: string
 }
 
-/** Minimal user shape passed down by pages that already have the me query. */
-export interface Me {
-  id: string
-  name: string
-  email: string
-  role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'
-  teamId: string
-}
+// Re-export Me for parent components that pass currentUser. Shape lives in
+// the shared useMe hook.
+export type { Me } from '@/lib/hooks/useMe'
 
 interface ShiftModalProps {
   shift: Shift | null
@@ -81,22 +77,12 @@ interface ShiftModalProps {
 
 /** Modal for viewing, creating, or updating a single shift. */
 export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftModalProps) {
-  // Use the me query only as a fallback when the parent hasn't passed currentUser.
-  // The parent (WeekGrid / page) already fetches ['auth', 'me'] and passes the
-  // result in as currentUser, so this avoids a race where me is undefined for
-  // the first render cycle and canEditShifts is incorrectly false (hiding the
-  // Lagre button before the query resolves).
-  const { data: meFromQuery } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<Me>
-    },
-    // staleTime: Infinity so a cached result is used immediately — the parent
-    // already populated this cache entry, so there is no network round-trip.
-    staleTime: Infinity,
-  })
+  // Use the me query only as a fallback when the parent hasn't passed
+  // currentUser. The parent (WeekGrid / page) already calls useMe() and
+  // passes the result in, so this avoids a race where me is undefined for
+  // the first render cycle and canEditShifts is incorrectly false (hiding
+  // the Lagre button before the query resolves).
+  const { data: meFromQuery } = useMe()
   const me = currentUser ?? meFromQuery
   const canEditShifts = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const queryClient = useQueryClient()

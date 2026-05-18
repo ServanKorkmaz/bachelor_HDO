@@ -5,6 +5,11 @@ import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
+/** Upper bound on rows returned in one fetch. Audit log can grow large; the
+ *  admin UI does filter-based browsing, not pagination, so this caps payload
+ *  size and avoids loading the entire table at once. */
+const MAX_ROWS = 1000
+
 /**
  * GET /api/admin/audit
  *
@@ -37,7 +42,7 @@ export const GET = withLeaderOrAdmin(async (request) => {
     const logs = await prisma.auditLog.findMany({
       where: Object.keys(where).length ? where : undefined,
       orderBy: { createdAt: 'desc' },
-      take: 1000,
+      take: MAX_ROWS,
     })
 
     // Live-entity enrichment. Audit rows are written with a snapshot of the

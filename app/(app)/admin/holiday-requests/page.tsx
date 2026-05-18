@@ -6,6 +6,7 @@ import { holidayTypeToNorwegian, statusToNorwegian } from '@/lib/i18n'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 type RequestRow = {
   id: string
@@ -25,14 +26,7 @@ type RequestRow = {
  * an admin. The API enforces it independently via `withAuth` + role checks.
  */
 export default function AdminHolidayRequestsPage() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const { toast } = useToast()
   const queryClient = useQueryClient()
 

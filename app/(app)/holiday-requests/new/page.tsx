@@ -10,16 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from '@/components/ui/select'
 import { useToast } from '@/components/ui/use-toast'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 export default function NewHolidayRequestPage() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const router = useRouter()
   const { toast } = useToast()
 

@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Calendar, CalendarDays, List, RefreshCw, Settings, CalendarCheck } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
 import { UserMenu } from '../auth/UserMenu'
 import { NotificationsPanel } from './NotificationsPanel'
+import { useMe } from '@/lib/hooks/useMe'
 import { cn } from '../../lib/utils'
 
 const baseNavItems = [
@@ -24,14 +24,7 @@ const baseNavItems = [
  */
 export function Navigation() {
   const pathname = usePathname()
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ role: 'ADMIN' | 'LEADER' | 'EMPLOYEE' }>
-    },
-  })
+  const { data: me } = useMe()
 
   const isAdminOrLeader = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const settingsHref = isAdminOrLeader ? '/admin' : '/settings'

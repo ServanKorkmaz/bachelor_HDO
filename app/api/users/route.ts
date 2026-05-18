@@ -1,15 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const dynamic = 'force-dynamic'
 
 /**
  * List users. Returns only non-sensitive fields (id, name, role, teamId) so the
  * schedule UI can populate dropdowns without exposing emails, Azure OIDs,
- * login timestamps or other PII. Gated by cookie-based session auth.
- * Optional teamId: only users with active TeamMembership in that team.
+ * login timestamps or other PII. Wrapped with withAuth so this goes through
+ * the same load-bearing auth check as every other route, not just the edge
+ * middleware. Optional teamId: only users with active TeamMembership in that team.
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request) => {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
@@ -34,5 +36,5 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching users:', error)
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
   }
-}
+})
 

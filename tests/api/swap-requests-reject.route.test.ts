@@ -6,10 +6,11 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    notification: { create: vi.fn() },
-    auditLog:     { create: vi.fn() },
-    user:         { findUnique: vi.fn() },
-    $transaction: vi.fn(),
+    notification:   { create: vi.fn() },
+    auditLog:       { create: vi.fn() },
+    user:           { findUnique: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
+    $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
 }))
@@ -47,6 +48,8 @@ describe('POST /api/swap-requests/[id]/reject', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
+    // assertTeamMember requires an active membership row for non-admin callers
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'm1' })
     mockDeliverNotificationToChannels.mockResolvedValue(undefined)
   })
 

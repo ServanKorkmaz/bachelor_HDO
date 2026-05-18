@@ -310,39 +310,37 @@ for detaljer.
 ### Vakter
 
 - `GET|POST /api/shifts`
-- `GET|PATCH|DELETE /api/shifts/[id]`
+- `PUT|DELETE /api/shifts/[id]`
 - `POST /api/shifts/bulk`
 - `GET|POST /api/shift-types`
-- `GET|PATCH|DELETE /api/shift-types/[id]`
+- `PUT|DELETE /api/shift-types/[id]`
 
 ### Vaktbytter
 
 - `GET|POST /api/swap-requests`
-- `GET|PATCH|DELETE /api/swap-requests/[id]`
+- `PATCH|DELETE /api/swap-requests/[id]`
 - `POST /api/swap-requests/[id]/{accept,approve,decline,execute,reject,revoke}`
 
 ### Notater, ukenotater og fravær
 
 - `GET|POST /api/notes`
-- `GET|PATCH|DELETE /api/notes/[id]`
 - `POST /api/notes/[id]/approve`
-- `GET|POST /api/week-notes`
+- `GET|PUT /api/week-notes` — PUT er upsert (tom kropp sletter)
 - `GET|POST /api/holiday-requests`
-- `GET|PATCH /api/holiday-requests/[id]`
+- `GET|PATCH|PUT|DELETE /api/holiday-requests/[id]`
 - `POST /api/holiday-requests/[id]/revoke`
 
 ### Brukere og team
 
-- `GET|POST /api/users`
-- `GET|PATCH /api/users/[id]`
+- `GET /api/users` — kun lesning (oppretting via `/api/admin/users`)
+- `GET|PUT /api/users/[id]` — PUT oppdaterer rolle (admin)
 - `GET|PUT /api/users/[id]/notification-preferences`
 - `GET|POST /api/teams`
-- `GET|PATCH /api/teams/[id]`
+- `DELETE /api/teams/[id]`
 
 ### Varsler og innstillinger
 
 - `GET /api/notifications`
-- `GET|DELETE /api/notifications/[id]`
 - `POST /api/notifications/[id]/read`
 - `GET|PUT /api/notification-settings`
 
@@ -351,7 +349,7 @@ for detaljer.
 - `GET /api/admin/audit` — revisjonslogg
 - `GET|POST /api/admin/users`
 - `PATCH /api/admin/users/[id]`
-- `GET|POST /api/admin/teams/[teamId]/members`
+- `POST /api/admin/teams/[teamId]/members`
 - `PATCH|DELETE /api/admin/teams/[teamId]/members/[membershipId]`
 
 ---

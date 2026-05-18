@@ -1,31 +1,17 @@
 "use client"
 
-import { useQuery } from '@tanstack/react-query'
 import { LogOut } from 'lucide-react'
 import { Button } from '../ui/button'
+import { useMe, type Role } from '@/lib/hooks/useMe'
 
-interface Me {
-  id: string
-  name: string
-  email: string
-  role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'
-  teamId: string
-}
-
-const ROLE_LABEL: Record<Me['role'], string> = {
+const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Admin',
   LEADER: 'Leder',
   EMPLOYEE: 'Ansatt',
 }
 
-async function fetchMe(): Promise<Me> {
-  const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-  if (!res.ok) throw new Error('failed to load user')
-  return res.json()
-}
-
 export function UserMenu() {
-  const { data: me, isLoading } = useQuery({ queryKey: ['auth', 'me'], queryFn: fetchMe })
+  const { data: me, isLoading } = useMe()
 
   if (isLoading) {
     return <div className="h-9 w-32 animate-pulse rounded bg-muted" aria-hidden />

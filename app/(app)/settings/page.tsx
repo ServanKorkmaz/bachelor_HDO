@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Bell } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useMe } from '@/lib/hooks/useMe'
 import { ProfileSection } from '@/components/auth/ProfileSection'
 
 /**
@@ -13,14 +13,7 @@ import { ProfileSection } from '@/components/auth/ProfileSection'
  * than getting redirected away.
  */
 export default function SettingsPage() {
-  const { data: me, isLoading } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me, isLoading } = useMe()
 
   if (isLoading || !me) {
     return <div className="text-muted-foreground p-8">Laster…</div>

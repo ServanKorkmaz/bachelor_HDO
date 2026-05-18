@@ -13,28 +13,25 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
+
+const POLL_INTERVAL_MS = 30_000
+const DROPDOWN_LIMIT = 10
 
 /** Notification bell with polling and mark-as-read handling. */
 export function NotificationsPanel() {
   const [isOpen, setIsOpen] = useState(false)
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const queryClient = useQueryClient()
 
   const { data: notifications = [] } = useQuery<any[]>({
     queryKey: ['notifications', me?.id],
     queryFn: async () => {
       const response = await axiosInstance.get(`/api/notifications?userId=${me!.id}`)
-      return Array.isArray(response.data) ? response.data.slice(0, 10) : []
+      return Array.isArray(response.data) ? response.data.slice(0, DROPDOWN_LIMIT) : []
     },
     enabled: Boolean(me?.id),
-    refetchInterval: 30000,
+    refetchInterval: POLL_INTERVAL_MS,
   })
 
   const markAsReadMutation = useMutation({

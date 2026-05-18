@@ -24,6 +24,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { UserPlus, Shield, UserMinus, UserX, Loader2, Plus, Building2 } from 'lucide-react'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 type UserRow = {
   id: string
@@ -51,14 +52,7 @@ function roleLabel(role: string): string {
  * `withLeaderOrAdmin`.
  */
 export default function AdminUsersPage() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [teams, setTeams] = useState<{ id: string; name: string }[]>([])

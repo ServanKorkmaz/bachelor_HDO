@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
+import { assertTeamMember, withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { addMemberSchema } from '@/lib/admin/schemas'
 
-/** POST /api/admin/teams/:teamId/members - Add user to team. Admin only. */
+/** POST /api/admin/teams/:teamId/members - Add user to team. ADMIN, or
+ *  a LEADER of that specific team. */
 export const POST = withLeaderOrAdmin<{ teamId: string }>(async (request, ctx) => {
   try {
     const { teamId } = ctx.params
+    const forbidden = await assertTeamMember(ctx, teamId, ['LEADER', 'ADMIN'])
+    if (forbidden) return forbidden
     const body = await request.json().catch(() => ({}))
     const parsed = addMemberSchema.safeParse(body)
     if (!parsed.success) {

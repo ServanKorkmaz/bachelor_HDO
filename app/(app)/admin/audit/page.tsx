@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { format } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 import { downloadCsv } from '@/lib/export/csv'
 
 /** Live-entity snapshot the API attaches when the audit row points at a
@@ -93,14 +94,7 @@ function formatDate(value: string | undefined | null): string {
 
 /** Admin revisjonslogg: viser hvem som gjorde hva og når. */
 export default function AdminAuditPage() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const { toast } = useToast()
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [dateFrom, setDateFrom] = useState<string>('')

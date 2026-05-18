@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 type BulkAction = 'create' | 'update' | 'delete'
 
@@ -282,14 +283,7 @@ function EmployeeShiftPicker({
 
 /** Modal for bulk create/update/delete of shifts across users and dates. */
 export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const queryClient = useQueryClient()
   const [action, setAction] = useState<BulkAction>('create')
   const [rows, setRows] = useState<BulkShiftRow[]>([])

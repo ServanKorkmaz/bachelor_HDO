@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 
 const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Administrator',
@@ -22,14 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
  * account metadata we want to display.
  */
 export function ProfileSection() {
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
 
   const { data: userData, isLoading } = useQuery({
     queryKey: ['user', me?.id],

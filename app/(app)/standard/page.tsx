@@ -14,6 +14,7 @@ import { ExportMenu } from '@/components/schedule/ExportMenu'
 import { getWeekStart, getWeekDates as getWeekDatesUtil } from '@/lib/date-utils'
 import { getShiftChipStyle } from '@/lib/shift-colors'
 import { axiosInstance } from '@/lib/axios'
+import { useMe } from '@/lib/hooks/useMe'
 import type { TeamSummary, UserSummary, Shift } from '@/lib/types'
 
 const TEAM_ID_PARAM = 'teamId'
@@ -25,14 +26,7 @@ export default function StandardPlanPage() {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedTeamId, setSelectedTeamId] = useState<string>('')
   const [selectedUserId, setSelectedUserId] = useState<string>('')
-  const { data: me } = useQuery({
-    queryKey: ['auth', 'me'],
-    queryFn: async () => {
-      const res = await fetch('/api/auth/me', { credentials: 'same-origin' })
-      if (!res.ok) throw new Error('failed to load user')
-      return res.json() as Promise<{ id: string; name: string; email: string; role: 'ADMIN' | 'LEADER' | 'EMPLOYEE'; teamId: string }>
-    },
-  })
+  const { data: me } = useMe()
   const canEditShifts = me?.role === 'ADMIN' || me?.role === 'LEADER'
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false)
 

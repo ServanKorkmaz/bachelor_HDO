@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { withLeaderOrAdmin, withAuth } from '@/lib/auth/withAuth'
+import { withAdmin, withAuth } from '@/lib/auth/withAuth'
 import { parseJsonBody } from '@/lib/validation/parseJson'
 import { teamCreateSchema } from '@/lib/validation/schemas'
 
@@ -26,7 +26,7 @@ export const GET = withAuth(async (_request, ctx) => {
 })
 
 /** Create a team and default notification settings. Admin only. */
-export const POST = withLeaderOrAdmin(async (request) => {
+export const POST = withAdmin(async (request) => {
   try {
     const parsed = await parseJsonBody(request, teamCreateSchema)
     if ('error' in parsed) return parsed.error

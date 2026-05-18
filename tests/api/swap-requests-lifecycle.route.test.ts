@@ -15,6 +15,7 @@ const { mockPrisma, mockDeliverNotificationToChannels } = vi.hoisted(() => ({
     auditLog:       { create: vi.fn() },
     user:           { findUnique: vi.fn() },
     holidayRequest: { findMany: vi.fn() },
+    teamMembership: { findFirst: vi.fn() },
     $transaction:   vi.fn(),
   },
   mockDeliverNotificationToChannels: vi.fn(),
@@ -64,6 +65,8 @@ describe('POST /api/swap-requests/[id]/approve', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
+    // assertTeamMember requires an active membership row for non-admin callers
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'm1' })
     // executeSwap re-checks time overlap + AML against current state; default everything to "clean".
     mockPrisma.shift.findFirst.mockResolvedValue(null)
     mockPrisma.shift.findMany.mockResolvedValue([])
@@ -111,6 +114,8 @@ describe('POST /api/swap-requests/[id]/execute', () => {
     mockPrisma.notification.create.mockResolvedValue({})
     mockPrisma.auditLog.create.mockResolvedValue({})
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'leader-1', role: 'LEADER' })
+    // assertTeamMember requires an active membership row for non-admin callers
+    mockPrisma.teamMembership.findFirst.mockResolvedValue({ id: 'm1' })
     // executeSwap re-checks time overlap + AML against current state; default everything to "clean".
     mockPrisma.shift.findFirst.mockResolvedValue(null)
     mockPrisma.shift.findMany.mockResolvedValue([])

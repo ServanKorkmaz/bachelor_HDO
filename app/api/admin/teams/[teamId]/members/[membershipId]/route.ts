@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { withLeaderOrAdmin } from '@/lib/auth/withAuth'
+import { assertTeamMember, withLeaderOrAdmin } from '@/lib/auth/withAuth'
 import { createAuditLog, AUDIT_ENTITY_TYPE, AUDIT_ACTION } from '@/lib/admin/audit'
 import { patchMembershipSchema } from '@/lib/admin/schemas'
 
-/** PATCH /api/admin/teams/:teamId/members/:membershipId - Update role/status. Admin or leader only. */
+/** PATCH /api/admin/teams/:teamId/members/:membershipId - Update role/status.
+ *  ADMIN, or a LEADER of that specific team. */
 export const PATCH = withLeaderOrAdmin<{ teamId: string; membershipId: string }>(async (request, ctx) => {
   try {
     const { teamId, membershipId } = ctx.params
+    const forbidden = await assertTeamMember(ctx, teamId, ['LEADER', 'ADMIN'])
+    if (forbidden) return forbidden
     const body = await request.json().catch(() => ({}))
     const parsed = patchMembershipSchema.safeParse(body)
     if (!parsed.success) {
@@ -67,10 +70,13 @@ export const PATCH = withLeaderOrAdmin<{ teamId: string; membershipId: string }>
   }
 })
 
-/** DELETE /api/admin/teams/:teamId/members/:membershipId - Soft remove (set status inactive). Admin or leader only. */
+/** DELETE /api/admin/teams/:teamId/members/:membershipId - Soft remove (set
+ *  status inactive). ADMIN, or a LEADER of that specific team. */
 export const DELETE = withLeaderOrAdmin<{ teamId: string; membershipId: string }>(async (_request, ctx) => {
   try {
     const { teamId, membershipId } = ctx.params
+    const forbidden = await assertTeamMember(ctx, teamId, ['LEADER', 'ADMIN'])
+    if (forbidden) return forbidden
 
     const existing = await prisma.teamMembership.findFirst({
       where: { id: membershipId, teamId },
