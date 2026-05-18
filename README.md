@@ -124,9 +124,7 @@ npm run dev
 
 ## Microsoft Entra ID — app-registrering
 
-For en fullstendig gjennomgang av design og krav, se
-[`specs/2026-05-17-azure-ad-auth-design.md`](specs/2026-05-17-azure-ad-auth-design.md).
-Oppsummert trenger app-registreringen i Entra:
+App-registreringen i Entra trenger:
 
 - **Redirect URI (Web)**: `<https://din-host>/auth/azure/callback`
   (merk: `/auth/...`, *ikke* `/api/auth/...`)
@@ -284,8 +282,6 @@ bachelor_HDO/
 │   ├── lib/                  # Unit-tester
 │   ├── api/                  # Route-tester
 │   └── e2e/                  # Playwright + axe-core
-├── specs/                    # Designspecs (historikk, frosset)
-├── plans/                    # Implementeringsplaner (historikk, frosset)
 ├── Dockerfile                # Multi-stage produksjonsbygg
 ├── docker-compose.yml        # Lokal stack (app + Postgres)
 ├── .devcontainer/            # VS Code dev container
@@ -388,8 +384,6 @@ felter.
 
 - **[`README.md`](README.md)** — denne filen
 - **[`SECURITY.md`](SECURITY.md)** — sikkerhetsmodell, GDPR/personvern, kjente gap
-- **[`specs/`](specs/)** — designspecs (frosset historikk)
-- **[`plans/`](plans/)** — implementeringsplaner (frosset historikk)
 - **TypeDoc** — generer API-dokumentasjon med `npm run docs` (output i
   `docs/`, gitignored)
 

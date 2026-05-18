@@ -132,11 +132,6 @@ owner's test account against the deployed environment. This validates the
 Entra registration, secret rotation, redirect URI configuration, and
 network egress in a way no automated test can.
 
-### Spec & plan
-
-- `specs/2026-05-17-azure-ad-auth-design.md`
-- `plans/2026-05-17-azure-ad-auth.md`
-
 ## CSRF
 
 Cookie-based sessions are vulnerable to CSRF because browsers attach cookies
