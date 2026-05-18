@@ -1,7 +1,7 @@
 "use client"
 
 import Link from 'next/link'
-import { Bell, Building2, Calendar, FileText, LucideIcon, Users } from 'lucide-react'
+import { Bell, Building2, Calendar, FileText, LucideIcon, Repeat, Users } from 'lucide-react'
 import { ProfileSection } from '@/components/auth/ProfileSection'
 
 interface AdminCard {
@@ -45,6 +45,12 @@ const SECTIONS: AdminSection[] = [
         icon: Calendar,
         title: 'Vakttyper',
         description: 'Definer vakttyper, tider og farger.',
+      },
+      {
+        href: '/admin/rotations',
+        icon: Repeat,
+        title: 'Turnusmønstre',
+        description: 'Lag mønstre som gjentas og generer vakter fremover.',
       },
       {
         href: '/admin/settings',
