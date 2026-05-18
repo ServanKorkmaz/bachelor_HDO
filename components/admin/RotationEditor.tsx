@@ -11,7 +11,13 @@ import {
 } from '@/components/ui/select'
 
 interface UserOption { id: string; name: string }
-interface ShiftTypeOption { id: string; code: string; label: string }
+interface ShiftTypeOption {
+  id: string
+  code: string
+  label: string
+  defaultStartTime: string
+  defaultEndTime: string
+}
 interface TeamOption { id: string; name: string }
 
 export interface RotationSlot {
@@ -69,13 +75,25 @@ export function RotationEditor({ teamId: initialTeamId, initial, lockTeam, onSub
     enabled: Boolean(teamId),
   })
 
-  const { data: shiftTypes = [] } = useQuery<ShiftTypeOption[]>({
+  const { data: allShiftTypes = [] } = useQuery<ShiftTypeOption[]>({
     queryKey: ['shift-types'],
     queryFn: async () => {
       const res = await axiosInstance.get('/api/shift-types')
       return Array.isArray(res.data) ? res.data : []
     },
   })
+
+  // Shift types with start==end==00:00 (e.g. "Fri") expand to 24-hour shifts in
+  // the DB. In a rotation context, putting one on every off-day would clash
+  // back-to-back and the AML hvile-check would reject most of them. The "—"
+  // option already covers "no work this day", so off-style types are filtered
+  // out of the dropdown here.
+  const shiftTypes = useMemo(
+    () => allShiftTypes.filter(
+      (st) => !(st.defaultStartTime === '00:00' && st.defaultEndTime === '00:00')
+    ),
+    [allShiftTypes]
+  )
 
   const slots: RotationSlot[] = useMemo(() => {
     const out: RotationSlot[] = []
