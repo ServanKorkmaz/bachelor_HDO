@@ -45,8 +45,9 @@ HDO-grade requirements for security, traceability and universal design.
 ### Advanced features
 
 8. **Bulk shift changes**: mass editing of shifts across users and dates
-9. **Notification system**: email and SMS (both stubbed in this MVP, logging to the console, but ready to be wired up to real providers) with team- and user-level preferences
-10. **Audit log (AuditLog)**: every security event and admin action is logged immutably
+9. **Rotation patterns (turnusplaner)**: leaders define an N-week rotation template per employee (1-8 week cycle) and generate concrete shifts K weeks forward (1-52 weeks). The generator delegates each shift to the standard `createShift` service so AML §10-8 validation, audit logging and notifications are reused. Conflicts (duplicate shift, AML breach, holiday overlap) are skipped per slot and reported back in the result dialog.
+10. **Notification system**: email and SMS (both stubbed in this MVP, logging to the console, but ready to be wired up to real providers) with team- and user-level preferences
+11. **Audit log (AuditLog)**: every security event and admin action is logged immutably
 
 ### Roles
 
@@ -226,7 +227,7 @@ pre-installed (ESLint, Prettier, Prisma, Tailwind, Playwright).
 
 Test status at the last verification:
 
-- **Vitest**: 334 / 334 passing (unit + route tests for API handlers)
+- **Vitest**: 377 / 377 passing (unit + route tests for API handlers)
 - **Playwright**: 18 / 18 passing
 - **axe-core**: 0 WCAG 2.1 AA violations on the 7 main pages, no rules
   disabled. See `tests/e2e/accessibility.spec.ts`.
@@ -248,7 +249,7 @@ bachelor_HDO/
 │   │   ├── swap/             # Shift swaps
 │   │   ├── holiday-requests/ # Holiday / absence requests
 │   │   ├── settings/         # User settings
-│   │   └── admin/            # Admin (audit, users, teams, shift types, holidays)
+│   │   └── admin/            # Admin (audit, users, teams, shift types, holidays, rotations)
 │   ├── api/                  # API route handlers (see next section)
 │   ├── auth/azure/callback/  # OAuth callback from Microsoft (outside /api/)
 │   └── login/                # Login page
@@ -258,13 +259,14 @@ bachelor_HDO/
 │   ├── auth/                 # Profile and user menu
 │   ├── brand/                # HDO brand elements
 │   ├── schedule/             # Schedule components
+│   ├── admin/                # RotationEditor + generate / result dialogs
 │   ├── Providers/            # React providers (QueryClient and friends)
 │   └── BulkShiftModal.tsx
 ├── lib/
 │   ├── auth/                 # withAuth, session, Azure MSAL, getCurrentUserId
 │   ├── admin/                # AuditLog + validation schemas
 │   ├── domain/               # Domain calculations (hours, pay etc.)
-│   ├── services/             # Domain services (swap, holiday, notification)
+│   ├── services/             # Domain services (shift, swap, holiday, rotation, notification)
 │   ├── notifications/        # Multi-channel delivery (email stub + sms stub)
 │   ├── security/             # Rate limiting, cookie config
 │   ├── shifts/               # Shift operations (bulk, validation)
@@ -310,6 +312,12 @@ middleware → `withAuth` wrapper → `assertTeamMember` per resource). See
 - `POST /api/shifts/bulk`
 - `GET|POST /api/shift-types`
 - `PUT|DELETE /api/shift-types/[id]`
+
+### Rotation patterns
+
+- `GET|POST /api/rotation-patterns`
+- `GET|PUT|DELETE /api/rotation-patterns/[id]`
+- `POST /api/rotation-patterns/[id]/generate` (creates K weeks of shifts from the pattern)
 
 ### Swaps
 
@@ -373,6 +381,7 @@ through a singleton Prisma client (`lib/prisma.ts`).
 | `NotificationSettings` | Per-team notification config |
 | `NotificationDeliveryLog` | Delivery history for email / SMS |
 | `UserNotificationPreference` | Per-user channel choice |
+| `RotationPattern` | Repeating shift rotation template (slots stored as JSON, N-week cycle) |
 | `AuditLog` | Immutable log for security and admin events |
 
 See `prisma/schema.prisma` for the full schema and comments on the

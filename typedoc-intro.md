@@ -41,6 +41,7 @@ PostgreSQL hosted on **[Neon](https://neon.tech)** (Frankfurt / EU region, serve
 | `NotificationSettings` | Per-team notification config |
 | `NotificationDeliveryLog` | Delivery history for email / SMS |
 | `UserNotificationPreference` | Per-user channel choice |
+| `RotationPattern` | Repeating shift rotation template (slots stored as JSON, N-week cycle) |
 | `AuditLog` | Immutable log for security and admin events |
 
 See `prisma/schema.prisma` for the full schema.
@@ -50,14 +51,14 @@ See `prisma/schema.prisma` for the full schema.
 ## Project layout
 
 - **`app/`**
-  - `(app)/`: authenticated routes under the app layout (standard, month, agenda, swap, holiday, settings, admin)
+  - `(app)/`: authenticated routes under the app layout (standard, month, agenda, swap, holiday, settings, admin/rotations)
   - `api/`: API route handlers
   - `auth/azure/callback/`: OAuth callback from Microsoft (outside `/api/`)
-- **`components/`**: React components (`ui/`, `layout/`, `auth/`, `schedule/`, `brand/`, `Providers/`)
+- **`components/`**: React components (`ui/`, `layout/`, `auth/`, `schedule/`, `admin/`, `brand/`, `Providers/`)
 - **`lib/`**
   - `auth/`: `withAuth`, session, MSAL helpers, `getCurrentUserId`
   - `admin/`: audit log + validation schemas
-  - `services/`: domain services (swap, holiday, notification)
+  - `services/`: domain services (shift, swap, holiday, rotation, notification)
   - `domain/`: domain calculations (hours, AML compliance)
   - `notifications/`: multi-channel delivery (email + SMS stubs)
   - `security/`: rate limiting, cookie config
