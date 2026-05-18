@@ -1,62 +1,73 @@
-A modern shift scheduling system (turnusplan) built for **Helsetjenestens driftsorganisasjon for nødnett HF (HDO)**.
+Shift scheduling system (turnusplan) built for **Helsetjenestens driftsorganisasjon for nødnett HF (HDO)**.
+
+This page is the auto-generated API reference. For setup, the full feature list and the security model, see the project [`README.md`](https://github.com/ServanKorkmaz/bachelor_HDO/blob/main/README.md) and [`SECURITY.md`](https://github.com/ServanKorkmaz/bachelor_HDO/blob/main/SECURITY.md) in the repo.
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14+ (App Router) |
-| Language | TypeScript |
-| Styling | Tailwind CSS + shadcn/ui |
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript (strict) |
+| UI | Tailwind CSS + shadcn/ui |
 | Forms | React Hook Form + Zod |
-| State | Zustand |
+| Client state | Zustand + TanStack Query |
 | ORM | Prisma |
-| Database | PostgreSQL (Neon serverless) |
-| Testing | Vitest |
+| Database | PostgreSQL (Neon, Frankfurt / EU) |
+| Auth | Microsoft Entra ID (OAuth 2.0 + PKCE via `@azure/msal-node`) + `iron-session` |
+| Tests | Vitest (unit + route) + Playwright (E2E + axe-core) |
 
 ---
 
 ## Database
 
-The application uses **PostgreSQL** hosted on **[Neon](https://neon.tech)** (Frankfurt / EU region, serverless).
+PostgreSQL hosted on **[Neon](https://neon.tech)** (Frankfurt / EU region, serverless). Connection is configured via `DATABASE_URL` and shared through a singleton Prisma client (`lib/prisma.ts`).
 
-Connection is configured via the `DATABASE_URL` environment variable and accessed through a shared Prisma client (`lib/prisma.ts`).
-
-### Core models
+### Models
 
 | Model | Description |
 |---|---|
 | `Team` | Organisation team |
-| `User` | Users with roles: `ADMIN`, `LEADER`, `EMPLOYEE` |
-| `ShiftType` | Shift templates with colours and default times |
-| `Shift` | Scheduled shifts linked to a user and team |
-| `Note` | Absence / sickness notes with approval status |
-| `SwapRequest` | Shift swap requests between employees |
+| `User` | Users with a system role (`ADMIN` / `LEADER` / `EMPLOYEE`) and `azureOid` |
+| `TeamMembership` | Many-to-many between user and team, with a per-team role |
+| `ShiftType` | Shift types with colours and default times |
+| `Shift` | Scheduled shifts (date stored as a string for timezone stability) |
+| `SwapRequest` | Shift swap requests |
+| `Note` | Notes (general, absence, sickness) with visibility scope |
+| `WeekNote` | Week notes (per employee per ISO-week) |
+| `HolidayRequest` | Holiday and absence requests |
 | `Notification` | Per-user notification inbox |
-| `AuditLog` | Immutable change log for admin actions |
-| `NotificationSettings` | Per-team notification configuration |
-| `UserNotificationPreference` | Per-user channel preferences (email / SMS) |
+| `NotificationSettings` | Per-team notification config |
+| `NotificationDeliveryLog` | Delivery history for email / SMS |
+| `UserNotificationPreference` | Per-user channel choice |
+| `AuditLog` | Immutable log for security and admin events |
+
+See `prisma/schema.prisma` for the full schema.
 
 ---
 
-## Architecture
+## Project layout
 
 - **`app/`**
-  - `(app)/` — Next.js route groups (UI pages)
+  - `(app)/` — authenticated routes under the app layout (standard, month, agenda, swap, holiday, settings, admin)
   - `api/` — API route handlers
-- **`components/`** — React components
+  - `auth/azure/callback/` — OAuth callback from Microsoft (outside `/api/`)
+- **`components/`** — React components (`ui/`, `layout/`, `auth/`, `schedule/`, `brand/`, `Providers/`)
 - **`lib/`**
-  - `auth/` — Microsoft Entra (Azure AD) OAuth + session helpers
-  - `admin/` — Audit logging and validation schemas
-  - `notifications/` — Multi-channel notification delivery
-  - `date-utils.ts` — Date/time utility functions
-  - `i18n.ts` — Norwegian label translation helpers
-  - `utils.ts` — Tailwind class merging utility
-- **`prisma/`**
-  - `schema.prisma` — Database schema
-  - `seed.ts` — Demo seed data
-- **`tests/`** — Vitest unit and route tests
+  - `auth/` — `withAuth`, session, MSAL helpers, `getCurrentUserId`
+  - `admin/` — audit log + validation schemas
+  - `services/` — domain services (swap, holiday, notification)
+  - `domain/` — domain calculations (hours, AML compliance)
+  - `notifications/` — multi-channel delivery (email + SMS stubs)
+  - `security/` — rate limiting, cookie config
+  - `shifts/` — shift operations
+  - `validation/` — Zod schemas
+  - `export/` — PDF and CSV export
+  - `i18n.ts` — Norwegian labels
+  - `prisma.ts` — shared Prisma client
+- **`prisma/`** — schema, migrations, seed
+- **`tests/`** — `lib/` (unit), `api/` (route), `e2e/` (Playwright + axe-core)
 
 ---
 
@@ -64,8 +75,9 @@ Connection is configured via the `DATABASE_URL` environment variable and accesse
 
 ```sh
 npm install       # install dependencies
-npm run dev       # start development server
-npm test          # run all tests
+npm run dev       # start the dev server
+npm test          # run vitest
+npm run test:e2e  # run playwright
 npm run docs      # regenerate this documentation
 ```
 
@@ -75,6 +87,6 @@ npm run docs      # regenerate this documentation
 
 | Role | Permissions |
 |---|---|
-| `ADMIN` | Full access — manage teams, users, shift types |
-| `LEADER` | Create/edit shifts, approve absence/swap requests |
-| `EMPLOYEE` | View schedules, request absence, request shift swaps |
+| `ADMIN` | Full access — manage teams, users and shift types |
+| `LEADER` | Create / edit shifts, approve absence and swap requests |
+| `EMPLOYEE` | View schedules, request absence and shift swaps |
