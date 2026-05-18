@@ -42,9 +42,6 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
     initial ? Array.from(new Set(initial.slots.map((s) => s.userId))) : []
   )
-  const [activeUserId, setActiveUserId] = useState<string | null>(
-    initial?.slots[0]?.userId ?? null
-  )
   // Map<userId|weekIndex|dayOfWeek, shiftTypeId>
   const [slotMap, setSlotMap] = useState<Map<string, string>>(
     new Map(initial?.slots.map((s) => [`${s.userId}|${s.weekIndex}|${s.dayOfWeek}`, s.shiftTypeId]) ?? [])
@@ -93,7 +90,6 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
   function addUser(userId: string) {
     if (selectedUserIds.includes(userId)) return
     setSelectedUserIds([...selectedUserIds, userId])
-    if (!activeUserId) setActiveUserId(userId)
   }
 
   function removeUser(userId: string) {
@@ -105,14 +101,12 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
       }
       return next
     })
-    if (activeUserId === userId) setActiveUserId(selectedUserIds.find((id) => id !== userId) ?? null)
   }
 
   function handleSubmit() {
     onSubmit({ teamId, name: name.trim(), weeks, slots })
   }
 
-  const activeUser = users.find((u) => u.id === activeUserId)
   const availableUsersToAdd = users.filter((u) => !selectedUserIds.includes(u.id))
 
   return (
@@ -132,11 +126,11 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">Mønsteret gjentas hver {weeks}. uke ved generering.</p>
+        <p className="text-xs text-muted-foreground">Planen gjentas hver {weeks}. uke ved generering.</p>
       </div>
 
       <div className="space-y-2">
-        <Label>Ansatte i mønsteret</Label>
+        <Label>Ansatte i planen</Label>
         <div className="flex flex-wrap gap-2">
           {selectedUserIds.map((id) => {
             const u = users.find((x) => x.id === id)
@@ -161,64 +155,54 @@ export function RotationEditor({ teamId, initial, onSubmit, submitting }: Props)
       </div>
 
       {selectedUserIds.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex gap-1">
-            {selectedUserIds.map((id) => {
-              const u = users.find((x) => x.id === id)
-              return (
-                <Button
-                  key={id}
-                  variant={activeUserId === id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveUserId(id)}
-                >
-                  {u?.name ?? id}
-                </Button>
-              )
-            })}
-          </div>
-
-          {activeUser && (
-            <table className="w-full border-separate border-spacing-1 text-sm">
-              <thead>
-                <tr className="text-xs text-muted-foreground">
-                  <th className="p-1 text-left">Uke</th>
-                  {WEEKDAY_LABELS.map((d) => <th key={d} className="p-1">{d}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {Array.from({ length: weeks }, (_, w) => (
-                  <tr key={w}>
-                    <td className="p-1 text-xs text-muted-foreground">Uke {w + 1}</td>
-                    {WEEKDAY_LABELS.map((_, d) => {
-                      const dayOfWeek = d + 1
-                      const key = `${activeUser.id}|${w}|${dayOfWeek}`
-                      const value = slotMap.get(key) ?? '__none__'
-                      return (
-                        <td key={d} className="p-1">
-                          <Select value={value} onValueChange={(v) => setCell(activeUser.id, w, dayOfWeek, v)}>
-                            <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">&#x2014;</SelectItem>
-                              {shiftTypes.map((st) => (
-                                <SelectItem key={st.id} value={st.id}>{st.label || st.code}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+        <div className="space-y-6">
+          {selectedUserIds.map((userId) => {
+            const u = users.find((x) => x.id === userId)
+            return (
+              <div key={userId} className="space-y-2 rounded-lg border bg-card p-4">
+                <h3 className="text-sm font-semibold">{u?.name ?? userId}</h3>
+                <table className="w-full border-separate border-spacing-1 text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      <th className="p-1 text-left">Uke</th>
+                      {WEEKDAY_LABELS.map((d) => <th key={d} className="p-1">{d}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: weeks }, (_, w) => (
+                      <tr key={w}>
+                        <td className="p-1 text-xs text-muted-foreground">Uke {w + 1}</td>
+                        {WEEKDAY_LABELS.map((_, d) => {
+                          const dayOfWeek = d + 1
+                          const key = `${userId}|${w}|${dayOfWeek}`
+                          const value = slotMap.get(key) ?? '__none__'
+                          return (
+                            <td key={d} className="p-1">
+                              <Select value={value} onValueChange={(v) => setCell(userId, w, dayOfWeek, v)}>
+                                <SelectTrigger className="w-full text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__">&#x2014;</SelectItem>
+                                  {shiftTypes.map((st) => (
+                                    <SelectItem key={st.id} value={st.id}>{st.label || st.code}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })}
         </div>
       )}
 
       <div className="flex justify-end gap-2 pt-4">
         <Button onClick={handleSubmit} disabled={submitting || !name.trim() || selectedUserIds.length === 0}>
-          {submitting ? 'Lagrer…' : 'Lagre mønster'}
+          {submitting ? 'Lagrer…' : 'Lagre plan'}
         </Button>
       </div>
     </div>

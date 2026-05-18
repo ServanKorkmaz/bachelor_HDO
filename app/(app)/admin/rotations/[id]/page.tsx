@@ -32,7 +32,7 @@ export default function EditRotationPage() {
     mutationFn: async (value: RotationFormValue) =>
       axiosInstance.put(`/api/rotation-patterns/${params.id}`, value),
     onSuccess: () => {
-      toast({ title: 'Mønster oppdatert' })
+      toast({ title: 'Plan oppdatert' })
       queryClient.invalidateQueries({ queryKey: ['rotation-patterns'] })
       queryClient.invalidateQueries({ queryKey: ['rotation-pattern', params.id] })
       router.push('/admin/rotations')
@@ -57,7 +57,7 @@ export default function EditRotationPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Rediger turnusmønster</h1>
+      <h1 className="text-3xl font-bold">Rediger turnusplan</h1>
       <RotationEditor
         teamId={pattern.teamId}
         initial={initial}

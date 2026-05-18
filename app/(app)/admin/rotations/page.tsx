@@ -38,7 +38,7 @@ export default function RotationsPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => axiosInstance.delete(`/api/rotation-patterns/${id}`),
     onSuccess: () => {
-      toast({ title: 'Mønster slettet' })
+      toast({ title: 'Plan slettet' })
       queryClient.invalidateQueries({ queryKey: ['rotation-patterns', teamId] })
     },
     onError: () => toast({ title: 'Feil', description: 'Kunne ikke slette', variant: 'destructive' }),
@@ -57,21 +57,21 @@ export default function RotationsPage() {
     <div className="space-y-6">
       <header className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Turnusmønstre</h1>
+          <h1 className="text-3xl font-bold">Turnusplaner</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Definer mønstre som gjentas etter faste intervaller og generer
+            Definer planer som gjentas etter faste intervaller og generer
             vakter fremover.
           </p>
         </div>
         <Link href="/admin/rotations/new">
-          <Button>+ Nytt mønster</Button>
+          <Button>+ Ny plan</Button>
         </Link>
       </header>
 
       {isLoading && <p className="text-muted-foreground">Laster…</p>}
 
       {!isLoading && patterns.length === 0 && (
-        <p className="text-muted-foreground">Ingen turnusmønstre opprettet ennå.</p>
+        <p className="text-muted-foreground">Ingen turnusplaner opprettet ennå.</p>
       )}
 
       {patterns.length > 0 && (

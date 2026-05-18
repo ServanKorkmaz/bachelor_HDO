@@ -18,14 +18,14 @@ export default function NewRotationPage() {
     mutationFn: async (value: RotationFormValue) =>
       axiosInstance.post('/api/rotation-patterns', value),
     onSuccess: () => {
-      toast({ title: 'Mønster opprettet' })
+      toast({ title: 'Plan opprettet' })
       queryClient.invalidateQueries({ queryKey: ['rotation-patterns'] })
       router.push('/admin/rotations')
     },
     onError: (e: { response?: { data?: { error?: string } } }) => {
       toast({
         title: 'Feil',
-        description: e.response?.data?.error ?? 'Kunne ikke opprette mønster',
+        description: e.response?.data?.error ?? 'Kunne ikke opprette plan',
         variant: 'destructive',
       })
     },
@@ -35,7 +35,7 @@ export default function NewRotationPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold">Nytt turnusmønster</h1>
+      <h1 className="text-3xl font-bold">Ny turnusplan</h1>
       <RotationEditor
         teamId={teamId}
         onSubmit={(value) => createMutation.mutate(value)}

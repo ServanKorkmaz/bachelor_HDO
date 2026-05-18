@@ -49,8 +49,8 @@ const SECTIONS: AdminSection[] = [
       {
         href: '/admin/rotations',
         icon: Repeat,
-        title: 'Turnusmønstre',
-        description: 'Lag mønstre som gjentas og generer vakter fremover.',
+        title: 'Turnusplaner',
+        description: 'Lag planer som gjentas og generer vakter fremover.',
       },
       {
         href: '/admin/settings',
