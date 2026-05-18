@@ -7,7 +7,7 @@ describe('lib/auth/azureAd', () => {
     process.env.AZURE_TENANT_ID = '2fa3d13b-cb75-4f29-bf34-f17a7578c041'
     process.env.AZURE_CLIENT_ID = 'bad829ef-851f-43e6-8d5b-55ae7b9106e8'
     process.env.AZURE_CLIENT_SECRET = 'test-secret-value'
-    process.env.AZURE_REDIRECT_URI = 'http://localhost:4000/api/auth/azure/callback'
+    process.env.AZURE_REDIRECT_URI = 'http://localhost:4000/auth/azure/callback'
   })
 
   it('throws at import-time when AZURE_TENANT_ID is missing', async () => {

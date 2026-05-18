@@ -31,7 +31,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: 'npx cross-env NODE_ENV=test SESSION_COOKIE_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa AZURE_TENANT_ID=test-tenant AZURE_CLIENT_ID=test-client-id AZURE_CLIENT_SECRET=test-secret AZURE_REDIRECT_URI=http://localhost:4000/api/auth/azure/callback npm run dev',
+        command: 'npx cross-env NODE_ENV=test SESSION_COOKIE_SECRET=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa AZURE_TENANT_ID=test-tenant AZURE_CLIENT_ID=test-client-id AZURE_CLIENT_SECRET=test-secret AZURE_REDIRECT_URI=http://localhost:4000/auth/azure/callback npm run dev',
         url: 'http://localhost:4000',
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

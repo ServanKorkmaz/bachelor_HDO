@@ -26,7 +26,7 @@ vi.mock('@/lib/security/rateLimit', () => ({
   applyRateLimit: vi.fn(() => null),
 }))
 
-import { GET } from '@/app/api/auth/azure/callback/route'
+import { GET } from '@/app/auth/azure/callback/route'
 import { exchangeCodeForTokens } from '@/lib/auth/azureAd'
 import { prisma } from '@/lib/prisma'
 import { logAuthEvent, AUTH_EVENT } from '@/lib/auth/audit'
@@ -51,7 +51,7 @@ async function reqWithPkce(opts: {
     const sealed = await sealPkce(opts.pkceState ?? { verifier: 'v'.repeat(64), state: 'S', from: '/' })
     headers['cookie'] = `${pkceCookieName}=${sealed}`
   }
-  return new Request(`http://localhost:4000/api/auth/azure/callback?${params.toString()}`, { headers })
+  return new Request(`http://localhost:4000/auth/azure/callback?${params.toString()}`, { headers })
 }
 
 function redirectsTo(res: Response, fragment: string) {
@@ -59,7 +59,7 @@ function redirectsTo(res: Response, fragment: string) {
   expect(res.headers.get('location')).toContain(fragment)
 }
 
-describe('GET /api/auth/azure/callback', () => {
+describe('GET /auth/azure/callback', () => {
   it('redirects to /login?error=expired when pkce cookie is missing', async () => {
     const res = await GET(await reqWithPkce({ code: 'c', state: 'S', pkceState: null }))
     redirectsTo(res, '/login?error=expired')

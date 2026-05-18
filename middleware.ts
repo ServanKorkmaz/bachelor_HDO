@@ -12,7 +12,7 @@ import { sessionCookieName, unsealSession } from '@/lib/auth/session'
 const PUBLIC_PATHS = new Set<string>([
   '/login',
   '/api/auth/azure/login',
-  '/api/auth/azure/callback',
+  '/auth/azure/callback',
   '/api/auth/logout',
 ])
 

@@ -83,7 +83,7 @@ business-logic file stay untouched.
 1. **OAuth route handlers** under `app/api/auth/azure/*` and `app/api/auth/logout/`:
    - `GET /api/auth/azure/login` — generates PKCE verifier + state, sets a
      short-lived `__hdo_pkce` cookie, redirects to Microsoft.
-   - `GET /api/auth/azure/callback` — verifies state (constant-time compare),
+   - `GET /auth/azure/callback` — verifies state (constant-time compare),
      exchanges code, asserts `tid === AZURE_TENANT_ID`, looks up the user
      (by `azureOid` then by email), persists `azureOid` on first login,
      checks `status==='active'`, updates `lastLoginAt`, audits, sets

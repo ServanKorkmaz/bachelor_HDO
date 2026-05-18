@@ -20,7 +20,7 @@ describe('middleware', () => {
 
   it('allows public paths through without a session', async () => {
     const { middleware } = await loadMw()
-    for (const path of ['/login', '/api/auth/azure/login', '/api/auth/azure/callback', '/api/auth/logout']) {
+    for (const path of ['/login', '/api/auth/azure/login', '/auth/azure/callback', '/api/auth/logout']) {
       const res = await middleware(makeReq(path))
       expect(res.status).toBe(200)
     }
