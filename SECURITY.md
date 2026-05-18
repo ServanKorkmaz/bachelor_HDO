@@ -38,8 +38,8 @@ session marker on this request?".
 
 ### Layer 2 — Route-handler wrappers (`lib/auth/withAuth.ts`)
 
-Every route handler is exported through `withAuth` (or its `withAdmin`
-shorthand). The wrapper:
+Every route handler is exported through `withAuth` (or its role-narrowed
+shorthands `withAdmin` and `withLeaderOrAdmin`). The wrapper:
 
 - Reads the current user id from the request.
 - Loads the user from the database, rejecting if missing.
@@ -98,7 +98,9 @@ business-logic file stay untouched.
 
 2. **`middleware.ts`** — verifies the `__hdo_session` signature with pure
    crypto (no DB lookup, Edge-runtime safe). Public paths: `/login`,
-   `/api/auth/azure/*`, `/api/auth/logout`, Next.js internals.
+   `/api/auth/azure/login`, `/auth/azure/callback` (note: outside `/api/`,
+   matching the Entra redirect URI registration), `/api/auth/logout`, and
+   Next.js internals (`/_next`, `/favicon`, `/assets`).
 
 3. **`lib/auth/getCurrentUserId.ts`** — reads the `__hdo_session` cookie.
    In `NODE_ENV==='test'`, falls back to the legacy `x-current-user-id`
@@ -209,13 +211,16 @@ ETL, concurrent races) cannot leave the schema in an impossible shape.
 - `shift_types.color` has a `CHECK ("color" ~ '^#[0-9A-Fa-f]{6}$')` constraint.
   The Zod schema enforces this at the API too; the CHECK exists so seed/SQL
   paths can't sneak past it.
-- `holiday_requests` has an `EXCLUDE USING gist` constraint over
-  `(userId WITH =, daterange(dateFrom, dateTo) WITH &&)` scoped to
-  `WHERE (status <> 'REJECTED')`. Two concurrent submissions for an
-  overlapping period for the same user cannot both succeed; one fails with a
-  Postgres exclusion violation that `lib/services/holiday-service.ts`
-  translates to a 409. Requires the `btree_gist` extension (enabled by the
-  migration).
+- `holiday_requests` overlap protection is application-level only today:
+  `assertNoOverlap` in `lib/services/holiday-service.ts` runs a `findFirst`
+  pre-check before insert. This catches the common non-racing case and
+  returns a friendly 409. **Known gap:** a TOCTOU race window exists between
+  the pre-check and the insert — two concurrent submissions for the same
+  user and overlapping period could both pass the check and both insert. A
+  future migration is planned to add a DB-level `EXCLUDE USING gist`
+  constraint (requiring the `btree_gist` extension and a `DATE` cast on the
+  `String`-typed date columns) so the race is closed in-database. The
+  service's `catch` block is wired up in anticipation of that constraint.
 
 ## Data minimisation
 
@@ -389,3 +394,5 @@ investigation of the authentication surface.
   container.
 - No CSP, HSTS, or other response headers are configured yet. These should be
   added via `next.config.js` headers before going live.
+- Holiday-request overlap protection has a TOCTOU race window — see
+  *DB-level invariants* above for details and the planned DB-level fix.
