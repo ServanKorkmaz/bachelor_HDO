@@ -6,6 +6,9 @@ import type {
   RotationPatternUpdateBody,
   RotationSlot,
 } from '@/lib/validation/rotation-schemas'
+import { addDays, parse, getISODay, format } from 'date-fns'
+import { createShift } from './shift-service'
+import type { ShiftType } from '@prisma/client'
 
 export interface RotationPatternRow {
   id: string
@@ -193,4 +196,100 @@ export async function deletePattern(id: string, actorUserId: string): Promise<vo
       afterJson: null,
     })
   })
+}
+
+interface GenerateInput {
+  patternId: string
+  startMonday: string
+  weeks: number
+  actorUserId: string
+}
+
+interface GenerateResult {
+  successes: Array<{ userId: string; date: string; shiftId: string }>
+  failures: Array<{ userId: string; date: string; error: string }>
+}
+
+/**
+ * Generate concrete shifts from a stored pattern by looping `weeks` weeks
+ * forward starting on `startMonday`. Each generated week N uses the pattern
+ * slots with weekIndex === (N % pattern.weeks), giving the rotation effect.
+ *
+ * Each shift is created via the standard `createShift()` so AML validation,
+ * audit-log writes (`SHIFT_CREATED`), duplicate handling and notifications
+ * all reuse the existing pipeline. Failures are collected per-slot
+ * (skip + report) and do NOT roll back successful shifts.
+ *
+ * One additional `ROTATION_GENERATED` audit entry summarises the batch.
+ */
+export async function generateShifts(input: GenerateInput): Promise<GenerateResult> {
+  const pattern = await getPattern(input.patternId)
+
+  const startDate = parse(input.startMonday, 'yyyy-MM-dd', new Date())
+  if (getISODay(startDate) !== 1) {
+    throw new ServiceError('NOT_A_MONDAY', 'Startdatoen må være en mandag', 400)
+  }
+
+  const slots: RotationSlot[] = JSON.parse(pattern.slotsJson)
+
+  const shiftTypeIds = Array.from(new Set(slots.map((s) => s.shiftTypeId)))
+  const shiftTypes = shiftTypeIds.length > 0
+    ? await prisma.shiftType.findMany({ where: { id: { in: shiftTypeIds } } })
+    : []
+  const shiftTypeMap = new Map<string, ShiftType>(shiftTypes.map((st) => [st.id, st]))
+
+  const successes: GenerateResult['successes'] = []
+  const failures:  GenerateResult['failures']  = []
+
+  for (let weekN = 0; weekN < input.weeks; weekN++) {
+    const cycleWeek = weekN % pattern.weeks
+    const slotsThisWeek = slots.filter((s) => s.weekIndex === cycleWeek)
+
+    for (const slot of slotsThisWeek) {
+      const actualDate = addDays(startDate, weekN * 7 + (slot.dayOfWeek - 1))
+      const dateStr = format(actualDate, 'yyyy-MM-dd')
+      const shiftType = shiftTypeMap.get(slot.shiftTypeId)
+      if (!shiftType) {
+        failures.push({ userId: slot.userId, date: dateStr, error: 'Vakttype mangler' })
+        continue
+      }
+
+      try {
+        const shift = await createShift({
+          teamId: pattern.teamId,
+          userId: slot.userId,
+          actorUserId: input.actorUserId,
+          date: dateStr,
+          shiftTypeId: slot.shiftTypeId,
+          startTime: shiftType.defaultStartTime,
+          endTime: shiftType.defaultEndTime,
+          comment: null,
+          shiftType,
+        })
+        successes.push({ userId: slot.userId, date: dateStr, shiftId: shift.id })
+      } catch (e) {
+        if (e instanceof ServiceError) {
+          failures.push({ userId: slot.userId, date: dateStr, error: e.message })
+        } else {
+          throw e
+        }
+      }
+    }
+  }
+
+  await createAuditLog(prisma as Parameters<typeof createAuditLog>[0], {
+    actorUserId: input.actorUserId,
+    action: AUDIT_ACTION.ROTATION_GENERATED,
+    entityType: AUDIT_ENTITY_TYPE.ROTATION_PATTERN,
+    entityId: pattern.id,
+    beforeJson: null,
+    afterJson: JSON.stringify({
+      startMonday: input.startMonday,
+      weeks: input.weeks,
+      generatedCount: successes.length,
+      failedCount: failures.length,
+    }),
+  })
+
+  return { successes, failures }
 }

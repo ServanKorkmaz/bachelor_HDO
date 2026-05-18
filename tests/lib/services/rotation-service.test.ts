@@ -188,3 +188,133 @@ describe('deletePattern', () => {
     )
   })
 })
+
+import { generateShifts } from '@/lib/services/rotation-service'
+
+vi.mock('@/lib/services/shift-service', () => ({
+  createShift: vi.fn(),
+}))
+
+import { createShift } from '@/lib/services/shift-service'
+
+describe('generateShifts', () => {
+  const monday = '2026-06-01' // verified: this is a Monday
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.shiftType.findMany.mockResolvedValue([
+      { id: 't1', code: 'Dag', defaultStartTime: '08:00', defaultEndTime: '16:00', crossesMidnight: false },
+    ])
+    ;(createShift as ReturnType<typeof vi.fn>).mockImplementation(
+      async (args: { userId: string; date: string }) => ({ id: `s-${args.userId}-${args.date}` })
+    )
+  })
+
+  it('rejects a startMonday that is not a Monday', async () => {
+    mockPrisma.rotationPattern.findUnique.mockResolvedValue({
+      id: 'rp-1', teamId: 'team-1', name: 'X', weeks: 1, slotsJson: '[]',
+    })
+
+    await expect(
+      generateShifts({
+        patternId: 'rp-1',
+        startMonday: '2026-06-02', // Tuesday
+        weeks: 1,
+        actorUserId: 'admin-1',
+      })
+    ).rejects.toMatchObject({ code: 'NOT_A_MONDAY', status: 400 })
+  })
+
+  it('generates 1 shift per slot for a 1-week cycle over 1 week', async () => {
+    mockPrisma.rotationPattern.findUnique.mockResolvedValue({
+      id: 'rp-1', teamId: 'team-1', name: 'X', weeks: 1,
+      slotsJson: JSON.stringify([
+        { userId: 'u1', weekIndex: 0, dayOfWeek: 1, shiftTypeId: 't1' },
+        { userId: 'u1', weekIndex: 0, dayOfWeek: 3, shiftTypeId: 't1' },
+      ]),
+    })
+
+    const result = await generateShifts({
+      patternId: 'rp-1', startMonday: monday, weeks: 1, actorUserId: 'admin-1',
+    })
+
+    expect(result.successes).toHaveLength(2)
+    expect(result.failures).toHaveLength(0)
+    expect(createShift).toHaveBeenCalledTimes(2)
+  })
+
+  it('cycles correctly via modulo for a 3-week pattern over 6 weeks', async () => {
+    mockPrisma.rotationPattern.findUnique.mockResolvedValue({
+      id: 'rp-1', teamId: 'team-1', name: 'X', weeks: 3,
+      slotsJson: JSON.stringify([
+        { userId: 'u1', weekIndex: 0, dayOfWeek: 1, shiftTypeId: 't1' },
+        { userId: 'u1', weekIndex: 1, dayOfWeek: 1, shiftTypeId: 't1' },
+        { userId: 'u1', weekIndex: 2, dayOfWeek: 1, shiftTypeId: 't1' },
+      ]),
+    })
+
+    const result = await generateShifts({
+      patternId: 'rp-1', startMonday: monday, weeks: 6, actorUserId: 'admin-1',
+    })
+
+    expect(result.successes).toHaveLength(6)
+    expect(createShift).toHaveBeenCalledTimes(6)
+    const dates = (createShift as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c: [{ date: string }]) => c[0].date
+    )
+    expect(dates).toEqual([
+      '2026-06-01', '2026-06-08', '2026-06-15',
+      '2026-06-22', '2026-06-29', '2026-07-06',
+    ])
+  })
+
+  it('reports failures from createShift without aborting other slots', async () => {
+    mockPrisma.rotationPattern.findUnique.mockResolvedValue({
+      id: 'rp-1', teamId: 'team-1', name: 'X', weeks: 1,
+      slotsJson: JSON.stringify([
+        { userId: 'u1', weekIndex: 0, dayOfWeek: 1, shiftTypeId: 't1' },
+        { userId: 'u2', weekIndex: 0, dayOfWeek: 1, shiftTypeId: 't1' },
+      ]),
+    })
+
+    ;(createShift as ReturnType<typeof vi.fn>).mockImplementationOnce(async () => {
+      throw new ServiceError('DUPLICATE_SHIFT', 'Brukeren har allerede en vakt', 409)
+    })
+    ;(createShift as ReturnType<typeof vi.fn>).mockImplementationOnce(async (args: { userId: string; date: string }) => ({
+      id: `s-${args.userId}-${args.date}`,
+    }))
+
+    const result = await generateShifts({
+      patternId: 'rp-1', startMonday: monday, weeks: 1, actorUserId: 'admin-1',
+    })
+
+    expect(result.successes).toHaveLength(1)
+    expect(result.failures).toHaveLength(1)
+    expect(result.failures[0].error).toMatch(/allerede/)
+  })
+
+  it('writes a ROTATION_GENERATED audit summary entry', async () => {
+    mockPrisma.rotationPattern.findUnique.mockResolvedValue({
+      id: 'rp-1', teamId: 'team-1', name: 'X', weeks: 1,
+      slotsJson: JSON.stringify([
+        { userId: 'u1', weekIndex: 0, dayOfWeek: 1, shiftTypeId: 't1' },
+      ]),
+    })
+
+    await generateShifts({
+      patternId: 'rp-1', startMonday: monday, weeks: 1, actorUserId: 'admin-1',
+    })
+
+    expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'ROTATION_GENERATED',
+          entityType: 'rotation_pattern',
+          entityId: 'rp-1',
+          afterJson: expect.stringContaining('"generatedCount":1'),
+        }),
+      }),
+    )
+  })
+})
