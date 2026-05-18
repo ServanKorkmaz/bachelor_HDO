@@ -277,7 +277,7 @@ export async function generateShifts(input: GenerateInput): Promise<GenerateResu
     }
   }
 
-  await createAuditLog(prisma as Parameters<typeof createAuditLog>[0], {
+  await createAuditLog(prisma as unknown as Parameters<typeof createAuditLog>[0], {
     actorUserId: input.actorUserId,
     action: AUDIT_ACTION.ROTATION_GENERATED,
     entityType: AUDIT_ENTITY_TYPE.ROTATION_PATTERN,

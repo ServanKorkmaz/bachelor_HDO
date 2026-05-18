@@ -119,7 +119,7 @@ export default function RotationsPage() {
         <GenerateShiftsDialog
           pattern={generatingFor}
           onClose={() => setGeneratingFor(null)}
-          onResult={(r) => {
+          onResult={(r: GenerateResult) => {
             setGeneratingFor(null)
             setResult(r)
           }}

@@ -261,7 +261,7 @@ describe('generateShifts', () => {
     expect(result.successes).toHaveLength(6)
     expect(createShift).toHaveBeenCalledTimes(6)
     const dates = (createShift as ReturnType<typeof vi.fn>).mock.calls.map(
-      (c: [{ date: string }]) => c[0].date
+      (c: Array<{ date: string }>) => c[0].date
     )
     expect(dates).toEqual([
       '2026-06-01', '2026-06-08', '2026-06-15',
