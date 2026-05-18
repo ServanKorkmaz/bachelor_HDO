@@ -45,7 +45,7 @@ HDO-grade krav til sikkerhet, sporbarhet og universell utforming.
 ### Avanserte funksjoner
 
 8. **Bulk vaktendringer** — masseredigering av vakter på tvers av brukere og datoer
-9. **Varslingssystem** — e-post og SMS (SMS er stub) med team- og bruker-preferanser
+9. **Varslingssystem** — e-post og SMS (begge stubs i denne MVP-en — logger til console; klar for å kobles til ekte leverandører) med team- og bruker-preferanser
 10. **Revisjonslogg (AuditLog)** — alle sikkerhetshendelser og admin-handlinger logges udelelig
 
 ### Roller
@@ -267,7 +267,7 @@ bachelor_HDO/
 │   ├── admin/                # AuditLog + valideringsskjemaer
 │   ├── domain/               # Domeneberegninger (timer, lønn etc.)
 │   ├── services/             # Domenetjenester (swap, holiday, notification)
-│   ├── notifications/        # Multi-kanal levering (email + sms-stub)
+│   ├── notifications/        # Multi-kanal levering (email-stub + sms-stub)
 │   ├── security/             # Rate limiting, cookie-config
 │   ├── shifts/               # Vaktoperasjoner (bulk, validering)
 │   ├── validation/           # Zod-skjemaer (dato, ID, payloads)

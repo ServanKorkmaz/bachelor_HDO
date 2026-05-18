@@ -83,33 +83,22 @@ describe('withAuth', () => {
 })
 
 /**
- * MOCK-AUTH THREAT MODEL — DOCUMENTED LIMITATION.
+ * Test-only header fallback in `lib/auth/getCurrentUserId.ts`.
  *
- * `withAuth` accepts the `x-current-user-id` header as the caller's identity
- * verbatim. Any client may send any existing user id and is treated as that
- * user. This is intentional in the demo phase — see SECURITY.md
- * "Authentication (mock)".
- *
- * In production, `lib/auth/getCurrentUserId.ts` is replaced with a signed
- * session cookie read populated by passport-microsoft on the OAuth callback;
- * the cookie can't be forged. The wrapper API, role gating, and per-resource
- * checks stay exactly as they are now — only the identity source swaps.
- *
- * These tests pin down the trust model so a future reader can't mistake
- * "the wrapper accepts a header value" for "the wrapper verifies the
- * caller's identity."
+ * In production, identity comes from a signed iron-session cookie populated by
+ * the Azure AD callback (`@azure/msal-node` + PKCE) — the cookie can't be
+ * forged. The `x-current-user-id` header is accepted only when
+ * `NODE_ENV === 'test'` so the existing route-handler suite can keep passing
+ * a plain header instead of minting sealed cookies. These tests pin that
+ * fallback behavior and the wrapper's DB-lookup defense.
  */
-describe('withAuth — trust model documentation', () => {
+describe('withAuth — test-only header fallback', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('trusts a caller-supplied header pointing at an existing admin (mock-auth design)', async () => {
+  it('resolves an existing admin from the test-only header', async () => {
     const handler = vi.fn(async () => new Response('ok'))
     const wrapped = withAdmin(handler)
 
-    // Anyone can send `x-current-user-id: admin-1`. The wrapper looks the id
-    // up in the DB and, if it resolves to an ADMIN row, lets the handler run.
-    // This is the entire mock-auth contract. Passport-microsoft replaces the
-    // header with a signed cookie to close this in production.
     mockPrisma.user.findUnique.mockResolvedValue({ id: 'admin-1', role: 'ADMIN' })
     const res = await wrapped(makeRequest('admin-1'))
 
@@ -117,15 +106,15 @@ describe('withAuth — trust model documentation', () => {
     expect(handler).toHaveBeenCalledTimes(1)
   })
 
-  it('still rejects when the header points at a non-existent user', async () => {
+  it('rejects when the header points at a non-existent user', async () => {
     const handler = vi.fn(async () => new Response('ok'))
     const wrapped = withAdmin(handler)
 
     mockPrisma.user.findUnique.mockResolvedValue(null)
     const res = await wrapped(makeRequest('definitely-not-a-real-id'))
 
-    // The DB lookup is the one defense the wrapper does have. Forging *any*
-    // value won't work — the value must exist in the users table.
+    // The DB lookup is the wrapper's defense — even with the test-only header
+    // path, the id must resolve to a real users row.
     expect(res.status).toBe(401)
     expect(handler).not.toHaveBeenCalled()
   })
