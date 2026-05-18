@@ -70,6 +70,7 @@ model Team {
   holidayRequests      HolidayRequest[]
   notificationSettings NotificationSettings?
   weekNotes            WeekNote[]
+  rotationPatterns     RotationPattern[]
 
   @@map("teams")
 }
@@ -345,4 +346,27 @@ model WeekNote {
   @@unique([teamId, userId, isoYear, isoWeek])
   @@index([teamId, userId, isoYear, isoWeek])
   @@map("week_notes")
+}
+
+model RotationPattern {
+  id        String   @id @default(cuid())
+  teamId    String
+  name      String
+  /// Number of weeks in the rotation cycle (1-8). Validated at the
+  /// API boundary via Zod; this comment documents the intent.
+  weeks     Int
+  /// JSON array of slots. Shape:
+  ///   [{ userId, weekIndex, dayOfWeek, shiftTypeId }]
+  /// - weekIndex: 0-based (< weeks)
+  /// - dayOfWeek: 1=Mon ... 7=Sun (ISO 8601)
+  /// Slot integrity (user/shift type existence, team membership) is
+  /// validated by the service at write time.
+  slotsJson String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@map("rotation_patterns")
 }
