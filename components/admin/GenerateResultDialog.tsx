@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { axiosInstance } from '@/lib/axios'
-import { useMe } from '@/lib/hooks/useMe'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 
@@ -14,6 +13,8 @@ export interface GenerateResult {
 }
 
 interface Props {
+  /** Team the generated pattern belongs to; used to resolve userId → name. */
+  teamId: string
   result: GenerateResult
   onClose: () => void
 }
@@ -25,17 +26,16 @@ function formatDateNo(iso: string): string {
   return `${d}.${m}.${y}`
 }
 
-export function GenerateResultDialog({ result, onClose }: Props) {
+export function GenerateResultDialog({ teamId, result, onClose }: Props) {
   const total = result.successes.length + result.failures.length
-  const { data: me } = useMe()
 
   const { data: users = [] } = useQuery<UserOption[]>({
-    queryKey: ['team-users', me?.teamId],
+    queryKey: ['team-users', teamId],
     queryFn: async () => {
-      const res = await axiosInstance.get(`/api/users?teamId=${me?.teamId}`)
+      const res = await axiosInstance.get(`/api/users?teamId=${teamId}`)
       return Array.isArray(res.data) ? res.data : []
     },
-    enabled: Boolean(me?.teamId),
+    enabled: Boolean(teamId),
   })
 
   const nameById = useMemo(

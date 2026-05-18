@@ -27,7 +27,7 @@ export default function RotationsPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [generatingFor, setGeneratingFor] = useState<PatternWithTeam | null>(null)
-  const [result, setResult] = useState<GenerateResult | null>(null)
+  const [result, setResult] = useState<{ teamId: string; data: GenerateResult } | null>(null)
 
   const { data: patterns = [], isLoading } = useQuery<PatternWithTeam[]>({
     queryKey: ['rotation-patterns', 'all'],
@@ -132,13 +132,14 @@ export default function RotationsPage() {
           pattern={generatingFor}
           onClose={() => setGeneratingFor(null)}
           onResult={(r: GenerateResult) => {
+            const teamId = generatingFor.teamId
             setGeneratingFor(null)
-            setResult(r)
+            setResult({ teamId, data: r })
           }}
         />
       )}
       {result && (
-        <GenerateResultDialog result={result} onClose={() => setResult(null)} />
+        <GenerateResultDialog teamId={result.teamId} result={result.data} onClose={() => setResult(null)} />
       )}
     </div>
   )
