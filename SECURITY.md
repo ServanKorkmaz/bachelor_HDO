@@ -3,21 +3,12 @@
 This document describes the security posture of the HDO Turnusplan MVP, the
 threats it defends against, and the trade-offs that exist. Authentication is
 **Microsoft Entra ID** (OAuth Authorization Code + PKCE via `@azure/msal-node`
-with `iron-session` signed cookies). The historical mock-auth design that
-preceded it is retained only as a test-environment seam — see
-"Authentication: Microsoft Entra ID via MSAL Node" for the current production
-implementation. This document is meant to be read by reviewers who want to
-understand *why* the code looks the way it does.
+with `iron-session` signed cookies). It is meant to be read by reviewers who
+want to understand *why* the code looks the way it does.
 
-## Authentication (historical: mock system)
-
-Earlier versions of the MVP used a mock authentication system based on a custom
-HTTP header, `x-current-user-id`, set by an Axios interceptor that reads the
-active user from the Zustand store populated by the `RoleSwitcher` component.
-
-This has been replaced by **Microsoft Entra ID** (see below). The mock auth is
-retained for test scenarios; see "Authentication: Microsoft Entra ID via MSAL
-Node" for the current production implementation.
+A short historical note on the pre-Entra mock-auth seam — still relied on by
+the Vitest route-handler suite — is included at the bottom under
+[Appendix: historical mock-auth seam](#appendix-historical-mock-auth-seam).
 
 ## Authorisation — three-layer defense-in-depth
 
@@ -409,3 +400,20 @@ investigation of the authentication surface.
   added via `next.config.js` headers before going live.
 - Holiday-request overlap protection has a TOCTOU race window — see
   *DB-level invariants* above for details and the planned DB-level fix.
+
+## Appendix: historical mock-auth seam
+
+Earlier versions of the MVP used a mock authentication system: a custom HTTP
+header, `x-current-user-id`, set by an Axios interceptor that read the active
+user from a Zustand store populated by a `RoleSwitcher` component. Both the
+interceptor and the `RoleSwitcher` have been removed; production reads the
+caller's identity exclusively from the signed `__hdo_session` cookie set by
+the Entra callback.
+
+One narrow piece of the old design is retained on purpose:
+`lib/auth/getCurrentUserId.ts` still honours `x-current-user-id` **iff**
+`NODE_ENV==='test'`. This keeps the existing route-handler test suite (200+
+tests) running without stubbing the full MSAL stack. The fallback is
+structurally unreachable in production — `NODE_ENV` is `production` in the
+deployed container, and middleware enforces a valid session cookie before any
+route handler runs.
