@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format, parse, subDays } from 'date-fns'
+import { addDays, format, parse, subDays } from 'date-fns'
 import { nb } from 'date-fns/locale/nb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -316,7 +316,7 @@ export function BulkShiftModal({ teamId, onClose }: BulkShiftModalProps) {
       if (!teamId) return []
       const today = new Date()
       const dateFrom = format(subDays(today, SHIFT_LOOKBACK_DAYS), 'yyyy-MM-dd')
-      const dateTo = format(new Date(today.getTime() + SHIFT_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
+      const dateTo = format(addDays(today, SHIFT_LOOKAHEAD_DAYS), 'yyyy-MM-dd')
       const response = await axiosInstance.get(`/api/shifts?teamId=${teamId}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
       return response.data
     },
