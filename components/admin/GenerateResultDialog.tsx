@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { CheckCircle2 } from 'lucide-react'
 import { axiosInstance } from '@/lib/axios'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -47,8 +48,9 @@ export function GenerateResultDialog({ teamId, result, onClose }: Props) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            ✓ Genererte {result.successes.length} av {total} vakter
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" aria-hidden />
+            Genererte {result.successes.length} av {total} vakter
           </DialogTitle>
         </DialogHeader>
 

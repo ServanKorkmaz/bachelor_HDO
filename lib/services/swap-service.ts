@@ -93,7 +93,7 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
   if (toUserConflict) {
     throw new ServiceError(
       'SWAP_DATE_CONFLICT',
-      `Mottakeren har allerede en overlappende vakt den ${shift.date} — byttet er ikke mulig`,
+      `Mottakeren har allerede en overlappende vakt den ${shift.date}. Byttet er ikke mulig.`,
       409
     )
   }
@@ -119,7 +119,7 @@ export async function createSwap(input: CreateSwapInput): Promise<SwapWithRelati
     if (fromUserConflict) {
       throw new ServiceError(
         'SWAP_DATE_CONFLICT',
-        `Du har allerede en overlappende vakt den ${toShift.date} — toveisbyttet er ikke mulig`,
+        `Du har allerede en overlappende vakt den ${toShift.date}. Toveisbyttet er ikke mulig.`,
         409
       )
     }
@@ -377,7 +377,7 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
   if (toUserConflict) {
     throw new ServiceError(
       'SWAP_DATE_CONFLICT',
-      `${sr.toUser.name} har fått en overlappende vakt den ${sr.shift.date} siden godkjenningen — byttet kan ikke gjennomføres`,
+      `${sr.toUser.name} har fått en overlappende vakt den ${sr.shift.date} siden godkjenningen. Byttet kan ikke gjennomføres.`,
       409
     )
   }
@@ -394,7 +394,7 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     if (fromUserConflict) {
       throw new ServiceError(
         'SWAP_DATE_CONFLICT',
-        `${sr.fromUser.name} har fått en overlappende vakt den ${sr.toShift.date} siden godkjenningen — byttet kan ikke gjennomføres`,
+        `${sr.fromUser.name} har fått en overlappende vakt den ${sr.toShift.date} siden godkjenningen. Byttet kan ikke gjennomføres.`,
         409
       )
     }
@@ -473,7 +473,7 @@ export async function executeSwap(swapRequestId: string, actorUserId: string) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
       throw new ServiceError(
         'SWAP_CONFLICT',
-        'En av partene fikk en ny vakt på byttetidspunktet — byttet kan ikke gjennomføres',
+        'En av partene fikk en ny vakt på byttetidspunktet. Byttet kan ikke gjennomføres.',
         409
       )
     }

@@ -116,7 +116,7 @@ export default function HolidayRequestsPage() {
                   <tr key={r.id} className="border-b border-border">
                     <td className="p-3">{r.user.name}</td>
                     <td className="p-3">{holidayTypeToNorwegian(r.type)}</td>
-                    <td className="p-3">{r.dateFrom}{r.dateTo ? ` — ${r.dateTo}` : ''}</td>
+                    <td className="p-3">{r.dateFrom}{r.dateTo ? ` – ${r.dateTo}` : ''}</td>
                     <td className="p-3">{r.message || '—'}</td>
                     <td className="p-3">{statusToNorwegian(r.status)}</td>
                     <td className="p-3 text-right">
@@ -217,7 +217,7 @@ export default function HolidayRequestsPage() {
               {own.map((r) => (
                 <tr key={r.id} className="border-b border-border">
                   <td className="p-3">{holidayTypeToNorwegian(r.type)}</td>
-                  <td className="p-3">{r.dateFrom}{r.dateTo ? ` — ${r.dateTo}` : ''}</td>
+                  <td className="p-3">{r.dateFrom}{r.dateTo ? ` – ${r.dateTo}` : ''}</td>
                   <td className="p-3">{r.message || '—'}</td>
                   <td className="p-3">{statusToNorwegian(r.status)}</td>
                   <td className="p-3 text-right">

@@ -524,7 +524,7 @@ export function ShiftModal({ shift, date, userId, onClose, currentUser }: ShiftM
                 disabled={saveShiftMutation.isPending || issues.hardConflict !== null}
                 title={
                   issues.hardConflict !== null
-                    ? 'Kan ikke lagre — vakten bryter en hard regel (se varsel over).'
+                    ? 'Kan ikke lagre. Vakten bryter en hard regel (se varsel over).'
                     : undefined
                 }
               >

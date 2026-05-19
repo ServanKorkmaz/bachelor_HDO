@@ -22,7 +22,7 @@ export function conflictText(c: Conflict): string {
 export function warningText(w: Warning): string {
   switch (w.kind) {
     case 'ConsecutiveWorkDays':
-      return `${w.streakLength} arbeidsdager på rad — bransjeanbefalingen er maks 5.`
+      return `${w.streakLength} arbeidsdager på rad. Bransjeanbefalingen er maks 5.`
   }
 }
 

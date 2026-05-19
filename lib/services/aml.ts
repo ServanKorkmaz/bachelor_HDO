@@ -93,13 +93,13 @@ export function amlError(c: Conflict): ServiceError {
     case 'RestPeriod':
       return new ServiceError(
         'AML_DAILY_REST',
-        `For lite hvile mellom vakter — kun ${c.hoursBetween} timer (AML §10-8(1) krever 11).`,
+        `For lite hvile mellom vakter: kun ${c.hoursBetween} timer (AML §10-8(1) krever 11).`,
         422
       )
     case 'WeeklyRest':
       return new ServiceError(
         'AML_WEEKLY_REST',
-        `For lite ukentlig hvile — lengste sammenhengende hvile er ${c.hoursInWindow} timer (AML §10-8(2) krever 35).`,
+        `For lite ukentlig hvile: lengste sammenhengende hvile er ${c.hoursInWindow} timer (AML §10-8(2) krever 35).`,
         422
       )
   }
